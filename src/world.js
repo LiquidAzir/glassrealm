@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TAU, clamp, smoothstep, mulberry32, dist2D, distToSeg } from './util.js';
-import { DISCOVERIES, NPCS, WANDERERS, ENEMY_SPAWNS, QUESTS } from './content.js';
+import { DISCOVERIES, NPCS, WANDERERS, ENEMY_SPAWNS, QUESTS, CLUE_SPOTS } from './content.js';
 import { WORLD_SCALE as WS } from './scale.js';
 
 // ============================================================================
@@ -129,6 +129,7 @@ function scaleWorldData() {
   for (const d of DUNGEONS) { sp(d); d.r *= WS; }
   for (const s of SHORTCUT_LINKS) { sp(s.a); sp(s.b); }
   for (const d of DISCOVERIES) sp(d);
+  for (const c of CLUE_SPOTS) sp(c);
   for (const n of NPCS) sp(n.pos);
   for (const w of WANDERERS) { if (w.loop) w.loop.forEach(sp); if (w.home) sp(w.home); }
   for (const s of ENEMY_SPAWNS) sp(s);

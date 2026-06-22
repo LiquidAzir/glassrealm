@@ -61,6 +61,7 @@ export const ITEMS = {
   antidote:        { name: 'Antidote',        icon: '🧴', type: 'potion', cure: 'poison',   dur: 120, col: 0x9ad06a, desc: 'Drink: cures poison + 120s immunity.' },
   venom_flask:     { name: 'Venom Flask',     icon: '🧪', type: 'potion', buff: 'venom',     mult: 1, dur: 60, col: 0x6ad06a, desc: 'Drink: your hits poison foes for 60s.' },
   prayer_potion:   { name: 'Prayer Potion',   icon: '🧪', type: 'potion', restorePrayer: 40, col: 0xffe066, desc: 'Drink: restore 40 prayer.' },
+  clue_scroll:     { name: 'Clue Scroll',      icon: '📜', type: 'clue', desc: 'Tap to read — a treasure trail to a hidden reward casket.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -340,6 +341,20 @@ export const DISCOVERIES = [
   { key: 'fairy_ring',     name: 'Fairy Ring',     kind: 'ring',   x: -48,  z: -136, prompt: 'Step into the ring',  xp: { agility: 600 }, gold: 100, msg: 'The fairy ring hums and quickens your step. (+Agility XP)' },
   { key: 'sunken_idol',    name: 'Sunken Idol',    kind: 'idol',   x: 80,   z: 138,  prompt: 'Pry loose the idol',  gold: 420, msg: 'A golden idol, lost for an age!' },
   { key: 'frozen_pack',    name: 'Frozen Pack',    kind: 'cairn',  x: 84,   z: -106, prompt: 'Take the pack',       gold: 150, loot: { grave_plate: 1, potion: 3 }, msg: 'A lost traveler’s pack, frozen in the snow.' },
+];
+
+// Treasure-trail dig spots for clue scrolls — cryptic hints point at a landmark; dig nearby for a casket.
+// Coords are scaled by WORLD_SCALE in world.js scaleWorldData (like DISCOVERIES).
+export const CLUE_SPOTS = [
+  { x: 0,    z: -36,  hint: 'Where the North Peak watches over the first village, dig.' },
+  { x: 26,   z: 104,  hint: 'Among the sands of the Sunspire Oasis, dig.' },
+  { x: 98,   z: -92,  hint: 'High on the frozen Frostpeak, dig.' },
+  { x: 116,  z: 8,    hint: 'In the shadow of Emberhold’s forge, dig.' },
+  { x: 80,   z: 185,  hint: 'On the salt-worn shore of Saltcrest Harbor, dig.' },
+  { x: -158, z: -38,  hint: 'Atop the windswept Stormhold highlands, dig.' },
+  { x: -25,  z: -110, hint: 'Within the glow of the Moonwell glade, dig.' },
+  { x: 196,  z: 36,   hint: 'Deep in the Kytari jungle, dig.' },
+  { x: 50,   z: -160, hint: 'Beneath the amber leaves of Amberfell, dig.' },
 ];
 
 export const ENEMIES = {

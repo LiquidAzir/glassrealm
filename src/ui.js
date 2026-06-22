@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ITEMS, SHOP, PRAYERS, ACHIEVEMENTS, ENEMIES } from './content.js';
 import { WORLD_SCALE } from './scale.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Bestiary', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Bestiary', 'Log', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -134,7 +134,7 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Diary: renderDiary, Bestiary: renderBestiary, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
@@ -156,7 +156,7 @@ export function createUI(G) {
   function menuSelect() {
     if (TABS[tab] === 'Inventory') {
       const it = G.inventory.list()[row];
-      if (it && (it.def.type === 'consumable' || it.def.type === 'potion')) { G.useItem(it.key); renderMenu(); }
+      if (it && (it.def.type === 'consumable' || it.def.type === 'potion' || it.def.type === 'clue')) { G.useItem(it.key); renderMenu(); }
     } else if (TABS[tab] === 'Gear') {
       const r = gearRows()[row]; if (r) { G.equipChoice(r); renderMenu(); }
     } else if (TABS[tab] === 'Prayer') {
@@ -237,7 +237,7 @@ export function createUI(G) {
     const items = G.inventory.list();
     let html = `<div class="section-head">Pouch &nbsp;·&nbsp; 🪙 ${gold} Gold</div>`;
     if (!items.length) html += `<div class="empty-note">Your pack is empty. Chop trees, forage bushes, and defeat boars to gather loot.</div>`;
-    else html += items.map((it, i) => `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${it.def.icon}</span><div class="row-main"><div class="row-title">${it.def.name}</div><div class="row-sub">${it.def.desc}${(it.def.type === 'consumable' || it.def.type === 'potion') ? ' · tap to use' : ''}</div></div><div class="row-trail">×${it.count}</div></div>`).join('');
+    else html += items.map((it, i) => `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${it.def.icon}</span><div class="row-main"><div class="row-title">${it.def.name}</div><div class="row-sub">${it.def.desc}${(it.def.type === 'consumable' || it.def.type === 'potion' || it.def.type === 'clue') ? ' · tap to use' : ''}</div></div><div class="row-trail">×${it.count}</div></div>`).join('');
     els.menuBody.innerHTML = html;
   }
   function renderSkills() {
@@ -274,6 +274,15 @@ export function createUI(G) {
     html += sect('Available', all.filter((q) => q.status === 'available'), (q) => `<div class="row"><div class="row-main"><div class="row-title">${q.def.saga ? '📜 ' : ''}${q.def.name}</div><div class="row-sub">See ${npcName(q.def.giver)} &nbsp;·&nbsp; ${q.def.desc}</div></div></div>`);
     html += sect('Completed', all.filter((q) => q.status === 'complete'), (q) => `<div class="row" style="opacity:.55"><div class="row-main"><div class="row-title">✓ ${q.def.name}</div></div></div>`);
     els.menuBody.innerHTML = html || `<div class="empty-note">No quests yet. Speak with the villagers around the hearth.</div>`;
+  }
+  function renderLog() {
+    const TYPES = { weapon: 1, armor: 1, amulet: 1, ring: 1, shield: 1 };
+    const keys = Object.keys(ITEMS).filter((k) => TYPES[ITEMS[k].type]);
+    const have = G.collection || new Set();
+    const got = keys.filter((k) => have.has(k)).length;
+    let html = `<div class="section-head">Collection Log — ${got}/${keys.length} gear</div>`;
+    html += keys.map((k) => { const it = ITEMS[k], owned = have.has(k); return `<div class="row" style="${owned ? '' : 'opacity:.4'}"><span class="row-icon">${it.icon}</span><div class="row-main"><div class="row-title">${owned ? it.name : '???'}</div><div class="row-sub">${owned ? it.desc : 'Not yet collected'}</div></div>${owned ? '<div class="row-trail">✓</div>' : ''}</div>`; }).join('');
+    els.menuBody.innerHTML = html;
   }
   function renderMap() {
     els.menuBody.innerHTML = `<div class="section-head">World Map</div><canvas id="mapCanvas" width="300" height="300"></canvas>` +

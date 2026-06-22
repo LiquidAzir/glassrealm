@@ -4,7 +4,7 @@ import { dist2D } from './util.js';
 // equipped weapon (a bow/staff lets you target far foes), and ranged/magic styles
 // prioritise enemies so nearby trees/NPCs don't steal a tap mid-fight.
 export function createInteraction(G) {
-  const RANGE = { tree: 3.4, bush: 3.0, ore: 3.2, fish: 4.6, station: 3.8, plot: 3.2, stall: 3.2, shortcut: 3.2, npc: 3.8, discovery: 3.8, enemy: 2.7 };
+  const RANGE = { tree: 3.4, bush: 3.0, ore: 3.2, fish: 4.6, station: 3.8, plot: 3.2, stall: 3.2, shortcut: 3.2, npc: 3.8, discovery: 3.8, dig: 8, enemy: 2.7 };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   function nearestEnemy(p, range) {
@@ -41,6 +41,7 @@ export function createInteraction(G) {
     for (const sc of G.world.shortcuts) consider('shortcut', sc, sc.x, sc.z, `Shortcut: ${sc.name} (Agility ${sc.level})`);
     for (const n of G.entities.npcs) consider('npc', n, n.pos.x, n.pos.z, 'Talk to ' + n.def.name);
     for (const d of G.world.discoveries) if (!d.found) consider('discovery', d, d.x, d.z, d.prompt || 'Investigate');
+    if (G.activeClue) consider('dig', G.activeClue, G.activeClue.x, G.activeClue.z, 'Dig here (clue)');
 
     // Enemy targeting: a bow/staff reaches out to weapon range. Attack when nothing
     // else is in reach, or when a foe is in melee range and at least as close — so a

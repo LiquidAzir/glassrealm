@@ -14,7 +14,7 @@ import { createDialogue } from './dialogue.js';
 import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -44,6 +44,13 @@ try {
   G.engine = engine; G.world = world; G.player = player; G.input = input;
   G.skills = createSkills(saved && saved.skills, saved && saved.prestige);
   G.inventory = createInventory(saved && saved.inventory);
+  // Collection Log — record every unique gear piece ever obtained (a completion meta-goal).
+  const LOGGABLE = (key) => { const d = ITEMS[key]; return !!d && (d.type === 'weapon' || d.type === 'armor' || d.type === 'amulet' || d.type === 'ring' || d.type === 'shield'); };
+  G.collection = new Set((saved && saved.collection) || []);
+  { const _add = G.inventory.add.bind(G.inventory); G.inventory.add = (key, n) => { const r = _add(key, n); if (LOGGABLE(key) && !G.collection.has(key)) { G.collection.add(key); if (G.ui) G.ui.toast(`✦ Collection Log: ${ITEMS[key].name}`, 'gold', 2200); } return r; }; }
+  G.inventory.list().forEach((it) => { if (LOGGABLE(it.key)) G.collection.add(it.key); });   // seed from already-held items
+  if (saved && saved.player && saved.player.equipment) for (const k of Object.values(saved.player.equipment)) if (k && LOGGABLE(k)) G.collection.add(k);
+  if (saved && saved.clue) G.activeClue = saved.clue;
   G.ui = createUI(G);
   G.quests = createQuests(G, saved && saved.quests);
   G.entities = createEntities(engine.scene, world, G);
@@ -333,6 +340,7 @@ try {
   G.useItem = (key) => {
     const def = ITEMS[key]; if (!def) return;
     if (def.type === 'potion') { G.drinkPotion(key, def); return; }
+    if (def.type === 'clue') { G.readClue(); return; }
     if (def.type !== 'consumable') return;
     if (player.state.hp >= player.state.maxHp) { G.ui.toast('Already at full health'); return; }
     player.state.hp = Math.min(player.state.maxHp, player.state.hp + def.heal);
@@ -351,6 +359,27 @@ try {
     G.inventory.remove(key, 1);
     if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.7, player.position.z, def.col || 0x7cffb0, { n: 10, up: 2.6 });
     G.ui.toast(`Drank ${def.name}`, 'good', 1700); G.audio.sfx('pickup'); G.save.save();
+  };
+  // ---------- clue scrolls / treasure trails: read a clue → cryptic hint → dig the spot → casket ----------
+  G.readClue = () => {
+    if (G.activeClue) { G.ui.toast('Finish your current treasure trail first.', '', 1800); return; }
+    if (!G.inventory.has('clue_scroll', 1)) return;
+    G.inventory.remove('clue_scroll', 1);
+    const spot = CLUE_SPOTS[Math.floor(Math.random() * CLUE_SPOTS.length)];
+    G.activeClue = { x: spot.x, z: spot.z, hint: spot.hint };
+    G.ui.toast(`📜 ${spot.hint}`, 'gold', 6000); G.audio.sfx('ui'); G.save.save();
+  };
+  G.digClue = () => {
+    if (!G.activeClue) return;
+    const gold = 200 + Math.floor(Math.random() * 400); G.inventory.add('gold', gold);
+    const pool = ['sapphire', 'emerald', 'ruby', 'pearl', 'iron_bar', 'mithril_bar', 'potion'];
+    const gearPool = ['guardian_amulet', 'ranger_amulet', 'sorcerer_amulet', 'rune_ring', 'serpent_eye', 'wight_crown'];
+    const parts = [`${gold}g`], n = 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < n; i++) { const k = pool[Math.floor(Math.random() * pool.length)], q = 1 + Math.floor(Math.random() * 2); G.inventory.add(k, q); parts.push(`${ITEMS[k].name}×${q}`); }
+    if (Math.random() < 0.55) { const g = gearPool[Math.floor(Math.random() * gearPool.length)]; G.inventory.add(g, 1); parts.push('✨ ' + ITEMS[g].name); }
+    if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xffe066, { n: 24, spread: 3, up: 4, life: 1.2 });
+    G.ui.levelBanner('✦ Treasure!'); G.ui.toast(`Dug up a casket — ${parts.join(', ')}`, 'gold', 4400); G.audio.sfx('ach');
+    G.activeClue = null; if (G.ach) G.ach.evaluate(); G.save.save();
   };
 
   G.buyItem = (key) => {
@@ -807,6 +836,7 @@ try {
     G.audio.sfx('kill');
     G.ui.toast(`Defeated ${def.name} · +${names.join(', ')}`, 'gold', 2200);
     G.quests.notifyKill(e.enemyKey);
+    if (!G.activeClue && Math.random() < 0.04) { G.inventory.add('clue_scroll', 1); G.ui.toast('📜 A clue scroll dropped!', 'gold', 2800); }
     G.ach.evaluate(); checkQuestReady(); G.save.save();
   };
   G.onQuestAccepted = (id, def) => { G.ui.toast(`Quest accepted: ${def.name}`, 'good', 2600); G.save.save(); };
@@ -889,6 +919,7 @@ try {
     else if (t.kind === 'shortcut') G.useShortcut(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
     else if (t.kind === 'discovery') G.findDiscovery(t.ref);
+    else if (t.kind === 'dig') G.digClue();
     else if (t.kind === 'enemy') { G.combatTarget = t.ref; G.attackEnemy(t.ref); }   // lock on + auto-attack
   }
 
