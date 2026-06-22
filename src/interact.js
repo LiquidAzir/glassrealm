@@ -4,7 +4,7 @@ import { dist2D } from './util.js';
 // equipped weapon (a bow/staff lets you target far foes), and ranged/magic styles
 // prioritise enemies so nearby trees/NPCs don't steal a tap mid-fight.
 export function createInteraction(G) {
-  const RANGE = { tree: 3.4, bush: 3.0, ore: 3.2, fish: 4.6, station: 3.8, plot: 3.2, stall: 3.2, shortcut: 3.2, npc: 3.8, enemy: 2.7 };
+  const RANGE = { tree: 3.4, bush: 3.0, ore: 3.2, fish: 4.6, station: 3.8, plot: 3.2, stall: 3.2, shortcut: 3.2, npc: 3.8, discovery: 3.8, enemy: 2.7 };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   function nearestEnemy(p, range) {

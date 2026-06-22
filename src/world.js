@@ -202,9 +202,12 @@ export function createWorld(scene, seed = 1337) {
     for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = MINE_R * 0.75 + rng() * 3; const x = m.x + Math.cos(a) * rad, z = m.z + Math.sin(a) * rad; rocks.push({ x, z, y: height(x, z), s: 1.5 + rng() * 1.3 }); }
   }
   // hidden discoveries — placed off the beaten path, each snapped to nearby walkable land
+  const CLEAR_R2 = 18;   // clear scattered props so each discovery sits in its own clearing (and wins the tap)
+  const clearNear = (arr, x, z) => { for (let i = arr.length - 1; i >= 0; i--) { const dx = arr[i].x - x, dz = arr[i].z - z; if (dx * dx + dz * dz < CLEAR_R2) arr.splice(i, 1); } };
   const discoveries = DISCOVERIES.map((d) => {
     let x = d.x, z = d.z;
     if (!isWalkable(x, z)) { outer: for (let r = 4; r <= 56; r += 4) for (let a = 0; a < TAU; a += TAU / 18) { const nx = d.x + Math.cos(a) * r, nz = d.z + Math.sin(a) * r; if (isWalkable(nx, nz)) { x = nx; z = nz; break outer; } } }
+    clearNear(trees, x, z); clearNear(bushes, x, z); clearNear(rocks, x, z);
     const y = height(x, z);
     const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.y = rng() * TAU;
     buildDiscovery(grp, d.kind); group.add(grp);
