@@ -60,6 +60,7 @@ try {
       player.group.position.z = saved.player.z;
       player.state.heading = saved.player.heading;
       player.state.hp = Math.max(1, saved.player.hp || player.state.maxHp);
+      if (saved.player.prayer != null) player.state.prayer = saved.player.prayer;
       if (saved.player.equipment) { const e = saved.player.equipment; player.state.equipment = { weapon: e.weapon || null, armor: e.armor || null, amulet: e.amulet || null, ring: e.ring || null, shield: e.shield || null }; }
       player.refreshEquipment();
     }
@@ -108,7 +109,7 @@ try {
   // ---------- gameplay verbs ----------
   G.gainXp = (key, amt) => {
     const r = G.skills.addXp(key, amt);
-    G.ui.xpDrop(`+${amt} ${skillName(key)}`);
+    G.ui.xpDrop(`+${r.amount} ${skillName(key)}`);   // show the prestige-boosted amount actually granted
     if (r.leveled) { G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`); if (G.audio) G.audio.sfx('level'); if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, 0xffd45f, { n: 14, spread: 3.2, up: 4.2, life: 0.8 }); if (G.ach) G.ach.evaluate(); }
   };
 
@@ -344,7 +345,9 @@ try {
   const bankCfg = {
     title: 'Bank', hint: '↑ ↓ select · tap deposit/withdraw all · ↑↓↑↓ leave', empty: 'Your pack and bank are empty.',
     rows: () => {
-      const rows = G.inventory.list().map((it) => ({ section: 'Deposit (all)', icon: it.def.icon, title: it.def.name, sub: 'tap to bank', right: `×${it.count}`, data: { op: 'dep', key: it.key } }));
+      const eq = player.state.equipment;
+      const equipped = new Set([eq.weapon, eq.armor, eq.amulet, eq.ring, eq.shield].filter(Boolean));   // don't let equipped gear be banked away (would vanish from the Gear list)
+      const rows = G.inventory.list().filter((it) => !equipped.has(it.key)).map((it) => ({ section: 'Deposit (all)', icon: it.def.icon, title: it.def.name, sub: 'tap to bank', right: `×${it.count}`, data: { op: 'dep', key: it.key } }));
       Object.keys(G.bankItems).filter((k) => G.bankItems[k] > 0).forEach((k) => rows.push({ section: 'Withdraw (all)', icon: ITEMS[k].icon, title: ITEMS[k].name, sub: 'tap to take', right: `×${G.bankItems[k]}`, data: { op: 'wd', key: k } }));
       return rows;
     },
@@ -382,10 +385,10 @@ try {
     onSelect: (r) => { G.startClass(r.data.key); G.closePicker(); },
   };
   G.openClassPicker = () => { setMode('picker'); G.ui.openPicker(classCfg); };
-  let restartArmed = 0;
+  let restartArmed = 0, wiping = false;   // wiping guards the unload/interval autosave so Restart & Import can't be clobbered
   G.requestRestart = () => {
     const now = performance.now();
-    if (restartArmed && now - restartArmed < 5000) { G.save.clear(); location.reload(); }
+    if (restartArmed && now - restartArmed < 5000) { wiping = true; G.save.clear(); location.reload(); }
     else { restartArmed = now; G.ui.toast('Tap Restart again to confirm — this wipes your save!', 'bad', 4500); }
   };
 
@@ -401,7 +404,7 @@ try {
   G.importSave = () => {
     const code = window.prompt('Paste a GlassRealm save code from another device:');
     if (!code) return;
-    if (G.save.importCode(code)) { G.ui.toast('Save loaded — reloading…', 'good', 1500); setTimeout(() => location.reload(), 700); }
+    if (G.save.importCode(code)) { wiping = true; G.ui.toast('Save loaded — reloading…', 'good', 1500); setTimeout(() => location.reload(), 700); }
     else G.ui.toast('That save code was invalid.', 'bad', 3200);
   };
 
@@ -437,6 +440,7 @@ try {
     player.state.heading = r.heading;
     player.snapCamera();
     setMode('world');
+    curLoc = '';   // force the HUD to re-show the outdoor location (was stuck on the building name)
     G.audio.sfx('ui');
   };
 
@@ -539,16 +543,17 @@ try {
 
   // ---------- mode state machine ----------
   let mode = 'world';
-  function setMode(m) { mode = m; if (m !== 'world') G.ui.hidePrompt(); }
+  let backSeq = [];                                    // ↑↓↑↓ open/close gesture buffer
+  function setMode(m) { mode = m; backSeq = []; if (m !== 'world') G.ui.hidePrompt(); }   // reset gesture history across overlays
   function openMenu() { cancelChannel(); setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
   function closeMenu() { G.ui.closeMenu(); setMode(G.inInterior ? 'interior' : 'world'); }
 
-  // Universal "back" — an up-down-up-down swipe wiggle (double-tap doesn't register
-  // on-device). Tracked only in overlays; the swipes still navigate as normal.
-  let backSeq = [];
+  // Universal open/close — a deliberate fast ↑↓↑↓ swipe "shake" (double-tap doesn't
+  // register on-device). The tight 1.1s window keeps it distinct from paced list
+  // navigation (which has read-pauses between swipes), so it won't steal menu nav.
   function backGesture(a) {
     const now = performance.now();
-    backSeq = backSeq.filter((e) => now - e.t < 2200);
+    backSeq = backSeq.filter((e) => now - e.t < 1100);
     backSeq.push({ a, t: now });
     if (backSeq.length > 4) backSeq = backSeq.slice(-4);
     return backSeq.length === 4 && backSeq.map((e) => e.a).join() === 'up,down,up,down';
@@ -623,6 +628,7 @@ try {
   function cancelChannel() { if (G.channel) { G.channel = null; G.ui.hideChannel(); } }
   function updateChannel(dt) {
     const c = G.channel; if (!c) return;
+    if (player.state.moving) { cancelChannel(); return; }   // any motion (incl. a held touch d-pad) stops gathering
     c.t += dt; channelAnimT += dt;
     if (channelAnimT >= 0.55) { channelAnimT = 0; player.playGather(c.anim); G.audio.sfx(c.anim === 'fish' ? 'cast' : 'hit'); }   // keep the tool swinging
     G.ui.setChannel(Math.min(1, c.t / c.dur), c.label);
@@ -779,15 +785,15 @@ try {
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { running = false; input.clearHeld(); G.save.save(); }
+    if (document.hidden) { running = false; input.clearHeld(); if (!wiping) G.save.save(); }
     else if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); }
   });
-  setInterval(() => G.save.save(), 15000);
+  setInterval(() => { if (!wiping) G.save.save(); }, 15000);
 
   // initial HUD + reveal
   applyMaxHp();
   player.state.maxPrayer = maxPrayer();
-  if (!player.state.prayer || player.state.prayer > player.state.maxPrayer) player.state.prayer = player.state.maxPrayer;
+  if (player.state.prayer == null || player.state.prayer > player.state.maxPrayer) player.state.prayer = player.state.maxPrayer;
   G.ui.setHealth(player.state.hp, player.state.maxHp);
   G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
   G.ach.evaluate();

@@ -541,7 +541,7 @@ export const QUESTS = {
 
   // ===== Saga: The Amber Blight (Loreseeker Wynn) — ties Amberfell to the glade + snow =====
   q_saga_a1: { name: 'The Amber Blight', saga: true, giver: 'loreseeker', startsAvailable: true, desc: 'A rot creeps through Amberfell. Climb the Moonspire for moonlit herbs to read the omen.', objectives: [{ id: 'spire', type: 'visit', x: -34, z: -124, r: 14, name: 'the Moonspire' }, { id: 'wolf', type: 'kill', enemy: 'blight_wolf', count: 4 }, { id: 'herb', type: 'have', item: 'herb', count: 4 }], rewards: { xp: { combat: 320, herblore: 180 }, items: { gold: 190 } } },
-  q_saga_a2: { name: 'The Amber Blight — Fading Light', saga: true, giver: 'loreseeker', requires: 'q_saga_a1', desc: 'The blight is fae-born. Counsel Oona in the glade, and bring coal to ward the groves.', objectives: [{ id: 'frost', type: 'visit', x: 98, z: -92, r: 14, name: 'Frostpeak' }, { id: 'oona', type: 'talk', npc: 'faewarden', name: 'Oona the Fae' }, { id: 'coal', type: 'have', item: 'coal', count: 5 }], rewards: { xp: { combat: 360, mining: 150 }, items: { gold: 250 } } },
+  q_saga_a2: { name: 'The Amber Blight — Fading Light', saga: true, giver: 'loreseeker', requires: 'q_saga_a1', desc: 'The blight is fae-born. Read the old frost-wards atop Frostpeak, counsel Oona in the glade, and bring coal to ward the groves.', objectives: [{ id: 'frost', type: 'visit', x: 98, z: -92, r: 14, name: 'Frostpeak' }, { id: 'oona', type: 'talk', npc: 'faewarden', name: 'Oona the Fae' }, { id: 'coal', type: 'have', item: 'coal', count: 5 }], rewards: { xp: { combat: 360, mining: 150 }, items: { gold: 250 } } },
   q_saga_a3: { name: 'The Amber Blight — The Crowned Dead', saga: true, giver: 'loreseeker', requires: 'q_saga_a2', desc: 'The blight’s heart is the Barrow Wight. End it, then return to Wynn.', objectives: [{ id: 'boss', type: 'kill', enemy: 'barrow_wight', count: 1 }, { id: 'wynn', type: 'talk', npc: 'loreseeker', name: 'Loreseeker Wynn' }], rewards: { xp: { combat: 1120, herblore: 240 }, items: { gold: 480, verdant_charm: 1 } } },
 };
 
@@ -1087,7 +1087,7 @@ export const DIALOGUE = {
   ], 'You gave my crew their grave and me my peace. Fair winds, captain — always.'),
   saga_amber: sagaDialogue('Loreseeker Wynn', [
     { id: 'q_saga_a1', intro: 'This amber rot is no ordinary blight — it thinks. Climb the Moonspire for moonlit herbs; under their light I can read the shape of the thing. Mind the blight wolves on the way.', accept: 'I’ll climb the Moonspire.', active: 'Moonlit herbs grow only on the Moonspire’s heights, where the veil is thin.', done: 'Fae-script — woven into the rot’s own veins. This was sent. Something willed the blight into being.' },
-    { id: 'q_saga_a2', intro: 'Only the fae understand fae-craft. Oona of the Moonlit Glade owes the woods a debt; seek her counsel. And bring coal — the wardfires must stay lit while you’re away.', accept: 'I’ll counsel Oona.', active: 'Oona keeps to the glade. The wardfires hunger for coal while you travel.', done: 'A barrow-king, crowned by the blight to spread it root and branch. Of course. The dead make such willing gardeners.' },
+    { id: 'q_saga_a2', intro: 'The oldest wards against this rot lie frozen atop Frostpeak, far to the north — read them first. Then seek Oona of the Moonlit Glade, who owes the woods a debt. And bring coal — the wardfires must stay lit while you’re away.', accept: 'I’ll read the wards.', active: 'The frost-wards wait atop Frostpeak; Oona keeps to the glade; the wardfires hunger for coal.', done: 'A barrow-king, crowned by the blight to spread it root and branch. Of course. The dead make such willing gardeners.' },
     { id: 'q_saga_a3', intro: 'Cut the blight at its root — the Barrow Wight itself. End the crowned dead, and the amber rot withers with him.', accept: 'I’ll end the Wight.', active: 'The Wight holds the heart of the Hollow Barrow, west of here.', done: 'The leaves… look, they’re greening at the very tips. You’ve given Amberfell a spring it had forgotten. Take this charm — the woods wove it for you.' },
   ], 'The woods remember their healer. Rest beneath the amber leaves whenever the road wearies you.'),
 };
@@ -1153,7 +1153,7 @@ export const ACHIEVEMENTS = [
   { id: 'emberfang',   name: 'Emberbane',        desc: 'Defeat Emberfang.',            cond: (G) => G.stats.bosses.has('ember_boss') },
   { id: 'wyrmslayer',  name: 'Wyrmslayer',       desc: 'Defeat the Sandwyrm.',         cond: (G) => G.stats.bosses.has('sandwyrm') },
   { id: 'thaw',        name: 'Thaw the Warden',  desc: 'Defeat the Frost Warden.',     cond: (G) => G.stats.bosses.has('frost_warden') },
-  { id: 'globetrotter',name: 'Globetrotter',     desc: 'Set foot in every region.',    cond: (G) => G.stats.regions.size >= 11 },
+  { id: 'globetrotter',name: 'Globetrotter',     desc: 'Set foot in every region.',    cond: (G) => G.stats.regions.size >= (G.world ? G.world.regions.length : 13) },
   { id: 'jeweller',    name: 'Jeweller',         desc: 'Craft a piece of jewelry.',    cond: (G) => G.stats.crafted >= 1 },
   { id: 'suited',      name: 'Suited Up',        desc: 'Wear a full armour set.',      cond: (G) => !!(G.fullSet && G.fullSet()) },
   { id: 'tycoon',      name: 'Tycoon',           desc: 'Hold 1000 gold at once.',      cond: (G) => G.inventory.count('gold') >= 1000 },

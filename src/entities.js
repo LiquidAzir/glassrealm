@@ -116,14 +116,24 @@ export function createEntities(scene, world, G) {
           if (e.attackCd <= 0) { e.attackCd = 1.3; e.atkAnim = ATK_ANIM; G.damagePlayer(e.def.dmg, e); }
         }
       } else {
-        e.wanderT -= dt;
-        if (e.wanderT <= 0) { e.wanderT = 1 + Math.random() * 2.5; e.heading = Math.random() * TAU; e.moving = Math.random() > 0.45; }
-        if (e.moving) {
-          const sp = e.def.speed * 0.4;
-          const nx = e.pos.x + Math.sin(e.heading) * sp * dt;
-          const nz = e.pos.z + Math.cos(e.heading) * sp * dt;
-          if (world.isWalkable(nx, nz) && dist2D(nx, nz, e.home.x, e.home.z) < e.leash) { e.group.position.x = nx; e.group.position.z = nz; moving = true; }
-          else e.wanderT = 0;
+        const homeDist = dist2D(e.pos.x, e.pos.z, e.home.x, e.home.z);
+        if (homeDist > e.leash) {
+          // beyond leash (e.g. kited out of its arena) — walk straight back toward home
+          e.heading = Math.atan2(e.home.x - e.pos.x, e.home.z - e.pos.z);
+          const nx = e.pos.x + Math.sin(e.heading) * e.def.speed * 0.6 * dt;
+          const nz = e.pos.z + Math.cos(e.heading) * e.def.speed * 0.6 * dt;
+          if (world.isWalkable(nx, nz)) { e.group.position.x = nx; e.group.position.z = nz; moving = true; }
+          e.wanderT = 0;
+        } else {
+          e.wanderT -= dt;
+          if (e.wanderT <= 0) { e.wanderT = 1 + Math.random() * 2.5; e.heading = Math.random() * TAU; e.moving = Math.random() > 0.45; }
+          if (e.moving) {
+            const sp = e.def.speed * 0.4;
+            const nx = e.pos.x + Math.sin(e.heading) * sp * dt;
+            const nz = e.pos.z + Math.cos(e.heading) * sp * dt;
+            if (world.isWalkable(nx, nz) && dist2D(nx, nz, e.home.x, e.home.z) < e.leash) { e.group.position.x = nx; e.group.position.z = nz; moving = true; }
+            else e.wanderT = 0;
+          }
         }
       }
       e.group.position.y = world.height(e.pos.x, e.pos.z);

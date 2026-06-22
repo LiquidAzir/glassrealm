@@ -45,7 +45,8 @@ export function createInteraction(G) {
     // else is in reach, or when a foe is in melee range and at least as close — so a
     // station/NPC/chest you're standing on still wins with a weapon equipped.
     const enemy = nearestEnemy(p, Math.max(RANGE.enemy, w.range));
-    if (enemy && (!bestC || (enemy.dist <= RANGE.enemy && enemy.dist * enemy.dist <= bestD2))) return enemy;
+    const enemyReach = (w.style === 'ranged' || w.style === 'magic') ? w.range : RANGE.enemy;   // bow/staff can attack far foes, not just melee-range
+    if (enemy && (!bestC || (enemy.dist <= enemyReach && enemy.dist * enemy.dist <= bestD2))) return enemy;
     return bestC;
   }
   return { best, RANGE };
