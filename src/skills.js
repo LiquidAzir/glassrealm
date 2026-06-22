@@ -2,6 +2,9 @@ import { clamp } from './util.js';
 
 const DEFS = [
   { key: 'combat',      name: 'Combat',      icon: '⚔️' },
+  { key: 'ranged',      name: 'Ranged',      icon: '🏹' },
+  { key: 'magic',       name: 'Magic',       icon: '🪄' },
+  { key: 'defence',     name: 'Defence',     icon: '🛡️' },
   { key: 'woodcutting', name: 'Woodcutting', icon: '🪓' },
   { key: 'mining',      name: 'Mining',      icon: '⛏️' },
   { key: 'fishing',     name: 'Fishing',     icon: '🎣' },
@@ -15,7 +18,7 @@ const xpForLevel = (l) => Math.round(8 * Math.pow(l - 1, 1.85));
 function levelForXp(xp) { let l = 1; while (l < 99 && xpForLevel(l + 1) <= xp) l++; return l; }
 
 export function createSkills(saved) {
-  const xp = { combat: 0, woodcutting: 0, mining: 0, fishing: 0, foraging: 0, cooking: 0, smithing: 0, ...(saved || {}) };
+  const xp = { combat: 0, ranged: 0, magic: 0, defence: 0, woodcutting: 0, mining: 0, fishing: 0, foraging: 0, cooking: 0, smithing: 0, ...(saved || {}) };
   return {
     DEFS,
     xp,

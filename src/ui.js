@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ITEMS, SHOP } from './content.js';
 
-const TABS = ['Inventory', 'Skills', 'Quests', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Quests', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -93,9 +93,13 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Skills: renderSkills, Quests: renderQuests, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Quests: renderQuests, Map: renderMap })[TABS[tab]]();
   }
-  function rowCount() { return TABS[tab] === 'Inventory' ? G.inventory.list().length : 0; }
+  function rowCount() {
+    if (TABS[tab] === 'Inventory') return G.inventory.list().length;
+    if (TABS[tab] === 'Gear') return gearRows().length;
+    return 0;
+  }
   function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); }
   function closeMenu() { api.menuOpen = false; els.menu.classList.add('hidden'); }
   function menuTab(dir) { tab = (tab + dir + TABS.length) % TABS.length; row = 0; renderMenu(); }
@@ -108,7 +112,34 @@ export function createUI(G) {
     if (TABS[tab] === 'Inventory') {
       const it = G.inventory.list()[row];
       if (it && it.def.type === 'consumable') { G.useItem(it.key); renderMenu(); }
+    } else if (TABS[tab] === 'Gear') {
+      const r = gearRows()[row]; if (r) { G.equipChoice(r); renderMenu(); }
     }
+  }
+  function gearRows() {
+    const rows = [{ kind: 'unequipW', label: 'Unarmed (fists)' }];
+    G.inventory.list().filter((it) => it.def.type === 'weapon').forEach((it) => rows.push({ kind: 'weapon', key: it.key }));
+    rows.push({ kind: 'unequipA', label: 'No armor' });
+    G.inventory.list().filter((it) => it.def.type === 'armor').forEach((it) => rows.push({ kind: 'armor', key: it.key }));
+    return rows;
+  }
+  function renderGear() {
+    const eq = G.player.state.equipment;
+    const wname = eq.weapon ? ITEMS[eq.weapon].name : 'Fists';
+    const wstyle = eq.weapon ? ITEMS[eq.weapon].style : 'unarmed';
+    const aname = eq.armor ? ITEMS[eq.armor].name : 'None';
+    const adef = eq.armor ? ITEMS[eq.armor].defense : 0;
+    const rows = gearRows();
+    let html = `<div class="section-head">Wielding ${wname} (${wstyle}) &nbsp;·&nbsp; Armor ${aname} (-${adef})</div>`;
+    rows.forEach((r, i) => {
+      const d = r.key ? ITEMS[r.key] : null;
+      const equipped = (r.kind === 'weapon' && eq.weapon === r.key) || (r.kind === 'armor' && eq.armor === r.key) || (r.kind === 'unequipW' && !eq.weapon) || (r.kind === 'unequipA' && !eq.armor);
+      const icon = d ? d.icon : (r.kind === 'unequipW' ? '✊' : '🚫');
+      const title = d ? d.name : r.label;
+      const sub = d ? (d.type === 'weapon' ? `${d.style} · +${d.bonus} dmg` : `armor · -${d.defense} dmg`) : 'tap to unequip';
+      html += `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${icon}</span><div class="row-main"><div class="row-title">${title}${equipped ? ' <span style="color:var(--gold)">✓</span>' : ''}</div><div class="row-sub">${sub}</div></div></div>`;
+    });
+    els.menuBody.innerHTML = html;
   }
 
   function renderInventory() {
@@ -125,7 +156,8 @@ export function createUI(G) {
       return `<div class="row"><span class="row-icon">${d.icon}</span><div class="row-main"><div class="row-title">${d.name} <span style="color:var(--gold)">Lv ${lv}</span></div><div class="skillbar"><span style="width:${pr}%"></span></div><div class="row-sub">${tn} xp to next level</div></div></div>`;
     }).join('');
     const wn = G.weaponName ? G.weaponName() : '';
-    els.menuBody.innerHTML = `<div class="section-head">Total Lv ${G.skills.total()} &nbsp;·&nbsp; ⚔️ Combat ${G.skills.level('combat')} &nbsp;·&nbsp; 🗡️ ${wn}</div>` + html;
+    const L = (k) => G.skills.level(k);
+    els.menuBody.innerHTML = `<div class="section-head">Total ${G.skills.total()} &nbsp;·&nbsp; ⚔️${L('combat')} 🏹${L('ranged')} 🪄${L('magic')} 🛡️${L('defence')} &nbsp;·&nbsp; 🗡️ ${wn}</div>` + html;
   }
   function npcName(key) { const n = G.entities.npcs.find((x) => x.def.key === key); return n ? n.def.name : key; }
   function renderQuests() {
@@ -163,31 +195,32 @@ export function createUI(G) {
     ctx.restore();
   }
 
-  // ---- shop ----
-  const shopEl = document.createElement('div'); shopEl.id = 'shop'; shopEl.className = 'overlay hidden';
-  shopEl.innerHTML = '<div class="panel"><div class="tabs"><div class="tab sel" style="flex:2">Trader Pell</div><div class="tab" id="shopGold">🪙 0</div></div><div class="menu-body" id="shopBody"></div><div class="hint">↑ ↓ select &nbsp;·&nbsp; tap buy / sell &nbsp;·&nbsp; double-tap leave</div></div>';
-  app.appendChild(shopEl);
-  const shopGoldEl = shopEl.querySelector('#shopGold');
-  const shopBodyEl = shopEl.querySelector('#shopBody');
-  let shopRow = 0, shopRows = [];
-  function renderShop() {
-    shopGoldEl.textContent = '🪙 ' + G.inventory.count('gold');
-    shopRows = SHOP.stock.map((s) => ({ type: 'buy', key: s.key, price: s.price }));
-    G.inventory.list().filter((it) => SHOP.sell[it.key]).forEach((it) => shopRows.push({ type: 'sell', key: it.key, price: SHOP.sell[it.key], count: it.count }));
-    if (shopRow >= shopRows.length) shopRow = Math.max(0, shopRows.length - 1);
-    let html = '<div class="section-head">Buy</div>';
-    shopRows.forEach((r, i) => {
-      if (r.type === 'sell' && (i === 0 || shopRows[i - 1].type === 'buy')) html += '<div class="section-head">Sell (one)</div>';
-      const d = ITEMS[r.key];
-      const right = r.type === 'buy' ? `🪙 ${r.price}` : `🪙 ${r.price} · ×${r.count}`;
-      html += `<div class="row ${i === shopRow ? 'sel' : ''}"><span class="row-icon">${d.icon}</span><div class="row-main"><div class="row-title">${d.name}</div><div class="row-sub">${r.type === 'buy' ? 'tap to buy' : 'tap to sell'}</div></div><div class="row-trail">${right}</div></div>`;
+  // ---- picker (shop / forge / bank) — generic list overlay ----
+  const pickerEl = document.createElement('div'); pickerEl.id = 'shop'; pickerEl.className = 'overlay hidden';
+  pickerEl.innerHTML = '<div class="panel"><div class="tabs"><div class="tab sel" style="flex:2" id="pickerTitle">Shop</div><div class="tab" id="pickerGold">🪙 0</div></div><div class="menu-body" id="pickerBody"></div><div class="hint" id="pickerHint">↑ ↓ select &nbsp;·&nbsp; tap &nbsp;·&nbsp; double-tap leave</div></div>';
+  app.appendChild(pickerEl);
+  const pickerTitleEl = pickerEl.querySelector('#pickerTitle');
+  const pickerGoldEl = pickerEl.querySelector('#pickerGold');
+  const pickerBodyEl = pickerEl.querySelector('#pickerBody');
+  const pickerHintEl = pickerEl.querySelector('#pickerHint');
+  let pickerCfg = null, pickerRow = 0, pickerRows = [];
+  function renderPicker() {
+    if (!pickerCfg) return;
+    pickerTitleEl.textContent = pickerCfg.title;
+    pickerGoldEl.textContent = '🪙 ' + G.inventory.count('gold');
+    pickerRows = pickerCfg.rows();
+    if (pickerRow >= pickerRows.length) pickerRow = Math.max(0, pickerRows.length - 1);
+    let html = '', lastSection = null;
+    pickerRows.forEach((r, i) => {
+      if (r.section && r.section !== lastSection) { html += `<div class="section-head">${r.section}</div>`; lastSection = r.section; }
+      html += `<div class="row ${i === pickerRow ? 'sel' : ''}"><span class="row-icon">${r.icon || ''}</span><div class="row-main"><div class="row-title">${r.title}</div><div class="row-sub">${r.sub || ''}</div></div><div class="row-trail">${r.right || ''}</div></div>`;
     });
-    shopBodyEl.innerHTML = html;
+    pickerBodyEl.innerHTML = pickerRows.length ? html : `<div class="empty-note">${pickerCfg.empty || 'Nothing here.'}</div>`;
   }
-  function openShop() { shopRow = 0; shopEl.classList.remove('hidden'); renderShop(); }
-  function closeShop() { shopEl.classList.add('hidden'); }
-  function shopMove(dir) { if (!shopRows.length) return; shopRow = (shopRow + dir + shopRows.length) % shopRows.length; renderShop(); const s = shopBodyEl.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
-  function shopSelect() { const r = shopRows[shopRow]; if (!r) return; if (r.type === 'buy') G.buyItem(r.key); else G.sellItem(r.key); renderShop(); }
+  function openPicker(cfg) { pickerCfg = cfg; pickerRow = 0; pickerHintEl.textContent = cfg.hint || '↑ ↓ select · tap · double-tap leave'; pickerEl.classList.remove('hidden'); renderPicker(); }
+  function closePicker() { pickerEl.classList.add('hidden'); pickerCfg = null; }
+  function pickerMove(dir) { if (!pickerRows.length) return; pickerRow = (pickerRow + dir + pickerRows.length) % pickerRows.length; renderPicker(); const s = pickerBodyEl.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
+  function pickerSelect() { const r = pickerRows[pickerRow]; if (r && pickerCfg) pickerCfg.onSelect(r); renderPicker(); }
 
   // ---- dialogue ----
   function showDialogue() { els.dialogue.classList.remove('hidden'); }
@@ -208,7 +241,7 @@ export function createUI(G) {
     setCompass, setHealth, setLocation, showPrompt, hidePrompt, toast, updateMarkers,
     hitsplat, xpDrop, levelBanner,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
-    openShop, closeShop, shopMove, shopSelect,
+    openPicker, closePicker, pickerMove, pickerSelect,
     showDialogue, hideDialogue, renderDialogue,
   };
   return api;

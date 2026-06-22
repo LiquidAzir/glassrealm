@@ -22,6 +22,17 @@ export const ITEMS = {
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   cooked_shrimp: { name: 'Shrimp',     icon: '🍤', type: 'consumable', heal: 14, desc: 'Cooked. Restores 14 HP.' },
   cooked_trout:  { name: 'Trout',      icon: '🍤', type: 'consumable', heal: 26, desc: 'Cooked. Restores 26 HP.' },
+
+  bronze_sword: { name: 'Bronze Sword', icon: '🗡️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 4,  range: 2.7, speed: 0.5,  desc: 'A sturdy bronze blade. +4 melee.' },
+  iron_sword:   { name: 'Iron Sword',   icon: '🗡️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 9,  range: 2.7, speed: 0.5,  desc: 'A keen iron blade. +9 melee.' },
+  steel_sword:  { name: 'Steel Sword',  icon: '⚔️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 15, range: 2.8, speed: 0.45, desc: 'A fearsome steel blade. +15 melee.' },
+  oak_bow:      { name: 'Oak Bow',      icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 7,  range: 14,  speed: 0.7,  desc: 'Looses arrows from afar. +7 ranged.' },
+  yew_bow:      { name: 'Yew Bow',      icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 13, range: 15,  speed: 0.65, desc: 'A powerful longbow. +13 ranged.' },
+  apprentice_staff: { name: 'Apprentice Staff', icon: '🪄', type: 'weapon', style: 'magic', skill: 'magic', bonus: 9,  range: 13, speed: 0.8,  desc: 'Hurls arcane bolts. +9 magic.' },
+  ember_staff:  { name: 'Ember Staff',  icon: '🔥', type: 'weapon', style: 'magic',  skill: 'magic',  bonus: 17, range: 14,  speed: 0.75, desc: 'Channels Emberpeak fire. +17 magic.' },
+  leather_armor: { name: 'Leather Armor', icon: '🥋', type: 'armor', defense: 4,  desc: 'Light hide. Reduces damage taken by 4.' },
+  iron_armor:   { name: 'Iron Armor',   icon: '🛡️', type: 'armor', defense: 9,  desc: 'Solid plate. Reduces damage taken by 9.' },
+  steel_armor:  { name: 'Steel Armor',  icon: '🛡️', type: 'armor', defense: 16, desc: 'Heavy plate. Reduces damage taken by 16.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -30,11 +41,19 @@ export const SMELT = [
   { in: { iron_ore: 1, coal: 1 }, out: 'iron_bar', xp: 26 },
 ];
 export const COOK = { raw_shrimp: 'cooked_shrimp', raw_trout: 'cooked_trout' };
-export const WEAPONS = [
-  { tier: 0, name: 'Fists',        bonus: 0 },
-  { tier: 1, name: 'Bronze Sword', bonus: 4,  cost: { bronze_bar: 3 }, xp: 50 },
-  { tier: 2, name: 'Iron Sword',   bonus: 9,  cost: { iron_bar: 4 },   xp: 90 },
-  { tier: 3, name: 'Steel Sword',  bonus: 15, cost: { iron_bar: 6, coal: 4 }, xp: 160 },
+
+// Default unarmed weapon, and a resolver for an equipped weapon key.
+export const FISTS = { name: 'Fists', icon: '✊', style: 'unarmed', skill: 'combat', bonus: 0, range: 2.7, speed: 0.5 };
+export const weaponOf = (key) => (key ? ITEMS[key] : FISTS);
+
+// Anvil forge recipes (bars / pelts -> gear).
+export const FORGE = [
+  { out: 'bronze_sword', cost: { bronze_bar: 3 }, xp: 50 },
+  { out: 'iron_sword',   cost: { iron_bar: 4 }, xp: 90 },
+  { out: 'steel_sword',  cost: { iron_bar: 6, coal: 4 }, xp: 160 },
+  { out: 'leather_armor', cost: { pelt: 4 }, xp: 45 },
+  { out: 'iron_armor',   cost: { iron_bar: 5 }, xp: 120 },
+  { out: 'steel_armor',  cost: { iron_bar: 8, coal: 5 }, xp: 210 },
 ];
 
 // NPC anchor positions are relative to the village; entities.js drops them to ground.
@@ -58,6 +77,7 @@ export const ENEMY_SPAWNS = [
   { enemy: 'boar', x: -22, z: 4 }, { enemy: 'boar', x: -28, z: 14 }, { enemy: 'boar', x: 24, z: 10 }, { enemy: 'boar', x: -10, z: 26 },
   { enemy: 'wolf', x: 70, z: 18 }, { enemy: 'wolf', x: 88, z: -8 }, { enemy: 'wolf', x: 60, z: -6 },
   { enemy: 'bandit', x: 120, z: 26 }, { enemy: 'bandit', x: 136, z: 8 }, { enemy: 'bandit', x: 104, z: 32 },
+  { enemy: 'bandit', x: 134, z: -16 }, { enemy: 'bandit', x: 142, z: -12 }, { enemy: 'wolf', x: 140, z: -22 },
   { enemy: 'ember_boss', x: 122, z: -4 },
 ];
 
@@ -99,10 +119,22 @@ export const QUESTS = {
     rewards: { xp: { smithing: 200 }, items: { gold: 60, iron_bar: 2 } },
   },
   q_boss: {
-    name: 'The Ember Beast', giver: 'smith', requires: 'q_smith',
+    name: 'The Ember Beast', giver: 'smith', requires: 'q_supply',
     desc: 'Slay Emberfang prowling the Emberpeak — bring a real weapon.',
     objectives: [{ id: 'boss', type: 'kill', enemy: 'ember_boss', count: 1 }],
     rewards: { xp: { combat: 650 }, items: { gold: 220 } },
+  },
+  q_supply: {
+    name: 'Hardwood Hafts', giver: 'smith', requires: 'q_smith',
+    desc: 'Smith Dorrin needs Verdant driftwood for tool hafts — chop it back on the Verdant Isle.',
+    objectives: [{ id: 'wood', type: 'have', item: 'wood', count: 5 }],
+    rewards: { xp: { smithing: 160 }, items: { gold: 70 } },
+  },
+  q_relic: {
+    name: 'The Tide Relic', giver: 'elder', requires: 'q_boss',
+    desc: 'Carry the Tide Relic from Emberfang back to Elder Maren on the Verdant Isle.',
+    objectives: [{ id: 'relic', type: 'have', item: 'relic', count: 1 }],
+    rewards: { xp: { combat: 400 }, items: { gold: 300 } },
   },
 };
 
@@ -137,6 +169,16 @@ export const DIALOGUE = {
           [end('On it.')]);
       }
       if (st === 'complete') {
+        const rq = G.quests.status('q_relic');
+        if (rq === 'available') return node('Elder Maren', 'You felled Emberfang! It guarded the Tide Relic — recover it and carry it home to me.',
+          [{ label: 'I will.', action: (g) => g.quests.accept('q_relic'), to: null }, end('Later.')]);
+        if (rq === 'active') {
+          if (G.inventory.count('relic') >= 1) return node('Elder Maren', 'The Tide Relic — home at last. The isles owe you everything.',
+            [{ label: 'Hand it over.', action: (g) => g.quests.complete('q_relic'), to: 'relicDone' }]);
+          return node('Elder Maren', 'The relic Emberfang guarded — carry it back to me from the Ember Isle.', [end('On it.')]);
+        }
+        if (rq === 'complete') return node('Elder Maren', 'A hero of the Verdant Isle. The hearth-hall is forever yours.',
+          [{ label: 'Tell me of the isle.', to: 'lore' }, end('Farewell.')]);
         return node('Elder Maren', 'The hearth burns bright because of you. Chop freely — and mind the boars in the wood.',
           [{ label: 'Tell me of the isle.', to: 'lore' }, end('Farewell.')]);
       }
@@ -145,6 +187,7 @@ export const DIALOGUE = {
     accepted: node('Elder Maren', 'Walk up to any tree and tap to fell it. Three Driftwood should rekindle the hearth.', [end('Understood.')]),
     lore: node('Elder Maren', 'This is the Verdant Isle, last of the Tide Reaches. The northern peak hides an old relic — but that is a tale for braver days.', [end('Interesting.')]),
     thanks: node('Elder Maren', 'Take this salve for your travels. And seek Ranger Coyle by the eastern hut — the boars grow bold.', [end('I will.')]),
+    relicDone: node('Elder Maren', 'The relic hums safe in the hearth-hall. Sung of for generations, you’ll be.', [end('Farewell.')]),
   },
 
   ranger: {
@@ -220,6 +263,14 @@ export const DIALOGUE = {
           [{ label: 'Hand them over.', action: (g) => g.quests.complete('q_smith'), to: 't1' }]);
         return node('Smith Dorrin', `Mine copper, smelt it at the furnace yonder. ${3 - G.inventory.count('bronze_bar')} bronze bars to go.`, [end('Right.')]);
       }
+      const sup = G.quests.status('q_supply');
+      if (sup === 'available') return node('Smith Dorrin', 'Before the real work — fetch me five Driftwood from the Verdant Isle, west across the isthmus. Good hafts need good wood.',
+        [{ label: 'I’ll bring it.', action: (g) => g.quests.accept('q_supply'), to: 'as' }, end('Later.')]);
+      if (sup === 'active') {
+        if (G.inventory.count('wood') >= 5) return node('Smith Dorrin', 'Five staves of Verdant driftwood — that’ll do nicely.',
+          [{ label: 'Hand it over.', action: (g) => g.quests.complete('q_supply'), to: 'ts' }]);
+        return node('Smith Dorrin', `${5 - G.inventory.count('wood')} more Driftwood — chop the trees back on the Verdant Isle.`, [end('On it.')]);
+      }
       const s2 = G.quests.status('q_boss');
       if (s2 === 'available') return node('Smith Dorrin', 'You can smith — now prove your steel. Emberfang stalks the Emberpeak. Slay the beast.',
         [{ label: 'I’ll hunt it.', action: (g) => g.quests.accept('q_boss'), to: 'a2' }, end('Not yet.')]);
@@ -235,6 +286,8 @@ export const DIALOGUE = {
     t1: node('Smith Dorrin', 'Take these iron bars — forge a finer sword at the anvil. You’ll want it for what’s coming.', [end('Thanks.')]),
     a2: node('Smith Dorrin', 'The anvil upgrades your blade: bronze, then iron, then steel. Go well armed.', [end('Understood.')]),
     t2: node('Smith Dorrin', 'A true islandbane. The whole of Emberhold is in your debt.', [end('Ha!')]),
+    as: node('Smith Dorrin', 'The isthmus runs west to the Verdant Isle. Chop its trees and bring the driftwood back.', [end('Understood.')]),
+    ts: node('Smith Dorrin', 'Sturdy hafts at last. Now — about that beast on the peak...', [end('Aye.')]),
   },
 
   fisher: {
@@ -260,11 +313,16 @@ export const SHOP = {
   stock: [
     { key: 'potion', price: 25 },
     { key: 'cooked_trout', price: 9 },
+    { key: 'oak_bow', price: 60 },
+    { key: 'apprentice_staff', price: 70 },
+    { key: 'leather_armor', price: 45 },
     { key: 'bronze_bar', price: 16 },
     { key: 'iron_bar', price: 34 },
   ],
   sell: {
     wood: 3, berry: 2, herb: 6, pelt: 8, meat: 5, copper_ore: 6, iron_ore: 11, coal: 5,
     raw_shrimp: 3, raw_trout: 6, cooked_shrimp: 5, cooked_trout: 9, bronze_bar: 14, iron_bar: 28, relic: 600,
+    bronze_sword: 20, iron_sword: 45, steel_sword: 80, oak_bow: 30, yew_bow: 70,
+    apprentice_staff: 35, ember_staff: 80, leather_armor: 20, iron_armor: 55, steel_armor: 95,
   },
 };

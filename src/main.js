@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { createEngine } from './engine.js';
 import { createInput } from './input.js';
 import { createWorld } from './world.js';
@@ -10,7 +11,8 @@ import { createInventory } from './inventory.js';
 import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
 import { loadSave, createSave } from './save.js';
-import { ITEMS, QUESTS, SMELT, COOK, WEAPONS, SHOP } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP } from './content.js';
+import { createProjectiles } from './projectiles.js';
 import { dist2D } from './util.js';
 
 const boot = document.getElementById('boot');
@@ -34,6 +36,8 @@ try {
   G.entities = createEntities(engine.scene, world, G);
   G.interact = createInteraction(G);
   G.dialogue = createDialogue(G);
+  G.projectiles = createProjectiles(engine.scene);
+  G.bankItems = (saved && saved.bank) || {};
   G.save = createSave(G);
 
   // restore saved world edits + player
@@ -45,7 +49,8 @@ try {
       player.group.position.z = saved.player.z;
       player.state.heading = saved.player.heading;
       player.state.hp = Math.max(1, saved.player.hp || player.state.maxHp);
-      player.state.weaponTier = saved.player.weaponTier || 0;
+      if (saved.player.equipment) player.state.equipment = { weapon: saved.player.equipment.weapon || null, armor: saved.player.equipment.armor || null };
+      player.refreshEquipment();
     }
   }
 
@@ -125,35 +130,43 @@ try {
       }
       G.ui.toast(bars ? `Smelted ${bars} bar${bars > 1 ? 's' : ''}` : 'Need ore to smelt (mine, then smelt)', bars ? 'good' : '', 2000);
     } else if (s.kind === 'anvil') {
-      const next = WEAPONS[player.state.weaponTier + 1];
-      if (!next) { G.ui.toast('Your blade is already the finest', '', 1800); return; }
-      if (Object.keys(next.cost).every((k) => G.inventory.has(k, next.cost[k]))) {
-        for (const k in next.cost) G.inventory.remove(k, next.cost[k]);
-        player.state.weaponTier = next.tier;
-        G.gainXp('smithing', next.xp);
-        G.ui.toast(`Forged a ${next.name}!`, 'good', 3200);
-      } else {
-        const need = Object.keys(next.cost).map((k) => `${next.cost[k]} ${ITEMS[k].name}`).join(', ');
-        G.ui.toast(`${next.name} needs ${need}`, '', 2600);
-      }
+      G.openForge(); return;
+    } else if (s.kind === 'bank') {
+      G.openBank(); return;
+    } else if (s.kind === 'chest') {
+      if (s.looted) { G.ui.toast('The chest is empty.', '', 1500); return; }
+      s.looted = true;
+      G.inventory.add('gold', 120); G.inventory.add('iron_bar', 3); G.inventory.add('coal', 4);
+      G.ui.toast('You loot the cave chest! +120g, iron, coal', 'gold', 3200); G.save.save(); return;
     }
     G.save.save();
   };
 
-  G.weaponName = () => (WEAPONS[player.state.weaponTier] || WEAPONS[0]).name;
+  G.weaponName = () => player.weapon().name;
   G.attackEnemy = (e) => {
     if (player.state.attackCd > 0 || !e.alive) return;
-    player.state.attackCd = 0.5;
-    const wb = (WEAPONS[player.state.weaponTier] || WEAPONS[0]).bonus;
-    const dmg = Math.round(5 + G.skills.level('combat') * 1.2 + wb);
-    G.ui.hitsplat(e.pos.x, e.pos.y + 1.5 * (e.baseScale || 1), e.pos.z, dmg, 'enemy');
-    G.entities.damageEnemy(e, dmg);
+    const w = player.weapon();
+    const dd = dist2D(player.position.x, player.position.z, e.pos.x, e.pos.z);
+    if (dd > w.range + 0.6) return;            // out of range for this weapon
+    player.state.attackCd = w.speed;
+    player.playAttack(w.style);
+    const dmg = Math.round(4 + G.skills.level(w.skill) * 1.2 + w.bonus);
+    const hitY = e.pos.y + 1.5 * (e.baseScale || 1);
+    e._lastSkill = w.skill;
+    if (w.style === 'ranged' || w.style === 'magic') {
+      const from = player.handPosition().clone();
+      const to = new THREE.Vector3(e.pos.x, hitY, e.pos.z);
+      G.projectiles.spawn(w.style, from, to, () => { if (e.alive) { G.ui.hitsplat(e.pos.x, hitY, e.pos.z, dmg, 'enemy'); G.entities.damageEnemy(e, dmg); } });
+    } else {
+      G.ui.hitsplat(e.pos.x, hitY, e.pos.z, dmg, 'enemy');
+      G.entities.damageEnemy(e, dmg);
+    }
   };
   function quickAttack() {
     const t = G.currentTarget;
     if (t && t.kind === 'enemy') { G.attackEnemy(t.ref); return; }
-    // otherwise hit the nearest living enemy within reach
-    let near = null, nd = G.interact.RANGE.enemy;
+    const range = player.weapon().range + 0.6;
+    let near = null, nd = range;
     for (const e of G.entities.enemies) {
       if (!e.alive) continue;
       const d = dist2D(player.position.x, player.position.z, e.pos.x, e.pos.z);
@@ -183,15 +196,70 @@ try {
     G.inventory.remove(key, 1); G.inventory.add('gold', p);
     G.ui.toast(`Sold ${ITEMS[key].name}  +${p}g`, 'gold', 1300); G.save.save();
   };
-  G.openShop = () => { setMode('shop'); G.ui.openShop(); };
-  G.closeShop = () => { G.ui.closeShop(); setMode('world'); };
+  const shopCfg = {
+    title: 'Trader Pell', hint: '↑ ↓ select · tap buy/sell · double-tap leave',
+    rows: () => {
+      const rows = SHOP.stock.map((s) => ({ section: 'Buy', icon: ITEMS[s.key].icon, title: ITEMS[s.key].name, sub: ITEMS[s.key].desc, right: `🪙 ${s.price}`, data: { t: 'buy', key: s.key } }));
+      G.inventory.list().filter((it) => SHOP.sell[it.key]).forEach((it) => rows.push({ section: 'Sell (one)', icon: it.def.icon, title: it.def.name, sub: 'tap to sell', right: `🪙 ${SHOP.sell[it.key]} · ×${it.count}`, data: { t: 'sell', key: it.key } }));
+      return rows;
+    },
+    onSelect: (r) => { if (r.data.t === 'buy') G.buyItem(r.data.key); else G.sellItem(r.data.key); },
+  };
+  const forgeCfg = {
+    title: 'Anvil — Forge', hint: '↑ ↓ select · tap forge · double-tap leave', empty: 'Smelt bars at the furnace first.',
+    rows: () => FORGE.map((rec) => {
+      const cost = Object.keys(rec.cost).map((k) => `${rec.cost[k]} ${ITEMS[k].name}`).join(', ');
+      const can = Object.keys(rec.cost).every((k) => G.inventory.has(k, rec.cost[k]));
+      return { section: ITEMS[rec.out].type === 'armor' ? 'Armor' : 'Weapons', icon: ITEMS[rec.out].icon, title: ITEMS[rec.out].name, sub: cost, right: can ? 'forge' : '—', data: { out: rec.out } };
+    }),
+    onSelect: (r) => G.forgeItem(r.data.out),
+  };
+  const bankCfg = {
+    title: 'Bank', hint: '↑ ↓ select · tap deposit/withdraw all · double-tap leave', empty: 'Your pack and bank are empty.',
+    rows: () => {
+      const rows = G.inventory.list().map((it) => ({ section: 'Deposit (all)', icon: it.def.icon, title: it.def.name, sub: 'tap to bank', right: `×${it.count}`, data: { op: 'dep', key: it.key } }));
+      Object.keys(G.bankItems).filter((k) => G.bankItems[k] > 0).forEach((k) => rows.push({ section: 'Withdraw (all)', icon: ITEMS[k].icon, title: ITEMS[k].name, sub: 'tap to take', right: `×${G.bankItems[k]}`, data: { op: 'wd', key: k } }));
+      return rows;
+    },
+    onSelect: (r) => { if (r.data.op === 'dep') G.bankDeposit(r.data.key); else G.bankWithdraw(r.data.key); },
+  };
+  G.openShop = () => { setMode('picker'); G.ui.openPicker(shopCfg); };
+  G.openForge = () => { setMode('picker'); G.ui.openPicker(forgeCfg); };
+  G.openBank = () => { setMode('picker'); G.ui.openPicker(bankCfg); };
+  G.closePicker = () => { G.ui.closePicker(); setMode('world'); };
+
+  G.forgeItem = (out) => {
+    const rec = FORGE.find((r) => r.out === out); if (!rec) return;
+    if (Object.keys(rec.cost).every((k) => G.inventory.has(k, rec.cost[k]))) {
+      for (const k in rec.cost) G.inventory.remove(k, rec.cost[k]);
+      G.inventory.add(out, 1); G.gainXp('smithing', rec.xp);
+      G.ui.toast(`Forged ${ITEMS[out].name}`, 'good', 2200); G.save.save();
+    } else {
+      G.ui.toast(`Needs ${Object.keys(rec.cost).map((k) => `${rec.cost[k]} ${ITEMS[k].name}`).join(', ')}`, 'bad', 2400);
+    }
+  };
+  G.equipChoice = (r) => {
+    const eq = player.state.equipment;
+    if (r.kind === 'unequipW') eq.weapon = null;
+    else if (r.kind === 'unequipA') eq.armor = null;
+    else if (r.kind === 'weapon') eq.weapon = r.key;
+    else if (r.kind === 'armor') eq.armor = r.key;
+    player.refreshEquipment();
+    G.ui.toast(r.key ? `Equipped ${ITEMS[r.key].name}` : 'Unequipped', 'good', 1200); G.save.save();
+  };
+  G.bankDeposit = (key) => { const n = G.inventory.count(key); if (n <= 0) return; G.inventory.remove(key, n); G.bankItems[key] = (G.bankItems[key] || 0) + n; G.save.save(); };
+  G.bankWithdraw = (key) => { const n = G.bankItems[key] || 0; if (n <= 0) return; G.bankItems[key] = 0; G.inventory.add(key, n); G.save.save(); };
 
   let hurtFlash = 0;
   G.damagePlayer = (amount) => {
     if (player.state.hp <= 0) return;
-    player.state.hp -= amount;
+    const eq = player.state.equipment;
+    const defv = eq.armor ? (ITEMS[eq.armor].defense || 0) : 0;
+    const taken = Math.max(1, Math.round(amount - defv * 0.6));
+    player.state.hp -= taken;
     hurtFlash = 0.25;
-    G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, amount, 'player');
+    G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, taken, 'player');
+    G.gainXp('defence', Math.max(1, Math.round(taken * 0.6)));
     G.ui.setHealth(player.state.hp, player.state.maxHp);
     if (player.state.hp <= 0) {
       player.state.hp = player.state.maxHp;
@@ -208,7 +276,7 @@ try {
     const def = e.def;
     const names = [];
     for (const k in def.loot) { G.inventory.add(k, def.loot[k]); names.push(ITEMS[k].name); }
-    G.gainXp('combat', def.xp);
+    G.gainXp(e._lastSkill || 'combat', def.xp);
     G.ui.toast(`Defeated ${def.name} · +${names.join(', ')}`, 'gold', 2200);
     G.quests.notifyKill(e.enemyKey);
     checkQuestReady(); G.save.save();
@@ -242,11 +310,11 @@ try {
       else if (a === 'right' || a === 'down') G.dialogue.move(1);
       else if (a === 'tap') G.dialogue.select();
       else if (a === 'doubletap') G.dialogue.close();
-    } else if (mode === 'shop') {
-      if (a === 'up') G.ui.shopMove(-1);
-      else if (a === 'down') G.ui.shopMove(1);
-      else if (a === 'tap') G.ui.shopSelect();
-      else if (a === 'doubletap') G.closeShop();
+    } else if (mode === 'picker') {
+      if (a === 'up') G.ui.pickerMove(-1);
+      else if (a === 'down') G.ui.pickerMove(1);
+      else if (a === 'tap') G.ui.pickerSelect();
+      else if (a === 'doubletap') G.closePicker();
     }
   });
 
@@ -309,6 +377,7 @@ try {
       player.update(dt, input);
       G.entities.update(dt, player);
       world.tick(dt);
+      G.projectiles.update(dt);
       G.currentTarget = G.interact.best();
       updatePrompt();
       updateLocation();
@@ -355,7 +424,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

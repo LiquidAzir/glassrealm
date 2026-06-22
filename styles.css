@@ -257,8 +257,8 @@ html, body {
 }
 
 /* Menu */
-#menu { align-items: stretch; justify-content: center; }
-#menu .panel {
+#menu, #shop { align-items: stretch; justify-content: center; }
+#menu .panel, #shop .panel {
   margin: var(--safe);
   width: 584px;
   display: flex;
@@ -302,7 +302,7 @@ html, body {
 }
 .menu-body::-webkit-scrollbar { display: none; }
 /* scrim cue that more content exists */
-#menu .panel::after {
+#menu .panel::after, #shop .panel::after {
   content: '';
   position: absolute;
   left: 0; right: 0; bottom: 46px;

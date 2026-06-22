@@ -15,6 +15,7 @@ const PEAK_A = { x: 0, z: -36, r: 20, h: 9 };
 const PEAK_B = { x: 122, z: -4, r: 17, h: 11 };
 const VILLAGE_A = { x: 6, z: -12 };
 const VILLAGE_B = { x: 110, z: 18 };
+const CAVE = { x: 138, z: -14, r: 11 };
 
 export function createWorld(scene, seed = 1337) {
   const rng = mulberry32(seed);
@@ -158,6 +159,11 @@ export function createWorld(scene, seed = 1337) {
   const oreNodes = [];
   scatterIn(ISLES[0], 6, 0.8, 7.0, 3.0, true, (x, z, y) => oreNodes.push({ x, z, y, type: 'copper', alive: true, respawn: 0 }));
   scatterIn(ISLES[1], 9, 0.8, 10.0, 2.8, true, (x, z, y) => oreNodes.push({ x, z, y, type: rng() > 0.45 ? 'iron' : 'coal', alive: true, respawn: 0 }));
+  for (let i = 0; i < 6; i++) {   // rich ore inside the Emberdeep cave
+    const a = rng() * TAU, rad = 2 + rng() * (CAVE.r - 4);
+    const x = CAVE.x + Math.cos(a) * rad, z = CAVE.z + Math.sin(a) * rad;
+    oreNodes.push({ x, z, y: height(x, z), type: rng() > 0.4 ? 'iron' : 'coal', alive: true, respawn: 0 });
+  }
   const oreCol = { copper: 0xc87a3a, iron: 0xb9a99a, coal: 0x6c6f7a };
   const oreIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshLambertMaterial({ flatShading: true }), Math.max(oreNodes.length, 1));
   oreNodes.forEach((o, i) => {
@@ -219,6 +225,36 @@ export function createWorld(scene, seed = 1337) {
     stations.push({ kind: 'anvil', label: 'Anvil', x: ax, z: az, y: ay });
   })();
 
+  function bankChest(x, z) {
+    const y = height(x, z);
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0x5b7cff, flatShading: true }));
+    chest.position.set(x, y + 0.5, z);
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 1.0), new THREE.MeshLambertMaterial({ color: 0x9bb0ff, flatShading: true }));
+    lid.position.set(x, y + 1.05, z);
+    group.add(chest, lid);
+    stations.push({ kind: 'bank', label: 'Bank', x, z, y });
+  }
+  bankChest(VILLAGE_A.x + 4, VILLAGE_A.z - 1);
+  bankChest(VILLAGE_B.x - 2, VILLAGE_B.z + 5);
+
+  // Emberdeep cave: a ring of rock spires with a south-west entrance gap + a loot chest.
+  (function cave() {
+    const cols = 16;
+    for (let i = 0; i < cols; i++) {
+      const a = (i / cols) * TAU;
+      if (a > 3.3 && a < 4.3) continue;   // entrance gap
+      const x = CAVE.x + Math.cos(a) * CAVE.r, z = CAVE.z + Math.sin(a) * CAVE.r;
+      const hh = 4 + rng() * 2;
+      const col = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), new THREE.MeshLambertMaterial({ color: 0x6a6358, flatShading: true }));
+      col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.3, hh, 1.3); col.rotation.y = rng() * TAU;
+      group.add(col);
+    }
+    const cy = height(CAVE.x, CAVE.z);
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true }));
+    chest.position.set(CAVE.x, cy + 0.5, CAVE.z); group.add(chest);
+    stations.push({ kind: 'chest', label: 'Cave Chest', x: CAVE.x, z: CAVE.z, y: cy, looted: false });
+  })();
+
   scene.add(group);
 
   const locations = [
@@ -229,6 +265,7 @@ export function createWorld(scene, seed = 1337) {
     { name: 'Emberhold', x: VILLAGE_B.x, z: VILLAGE_B.z },
     { name: 'Emberpeak', x: PEAK_B.x, z: PEAK_B.z },
     { name: 'Ashen Shore', x: 146, z: 10 },
+    { name: 'Emberdeep Cave', x: CAVE.x, z: CAVE.z },
   ];
 
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
@@ -241,7 +278,7 @@ export function createWorld(scene, seed = 1337) {
     group, height, isWalkable, WATER_Y, onEmber,
     village: VILLAGE_A,
     villages: [{ name: 'Hearth Village', x: VILLAGE_A.x, z: VILLAGE_A.z }, { name: 'Emberhold', x: VILLAGE_B.x, z: VILLAGE_B.z }],
-    isles: ISLES, bridge: BRIDGE, peaks: [PEAK_A, PEAK_B], locations,
+    isles: ISLES, bridge: BRIDGE, peaks: [PEAK_A, PEAK_B], cave: CAVE, locations,
     trees, rocks, bushes, oreNodes, fishingSpots, stations,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
