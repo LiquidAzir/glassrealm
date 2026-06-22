@@ -43,6 +43,14 @@ export const ITEMS = {
   bronze_arrow:  { name: 'Bronze Arrows',  icon: '🏹', type: 'ammo', bonus: 3,  desc: 'Tipped with bronze. +3 ranged damage per shot.' },
   iron_arrow:    { name: 'Iron Arrows',    icon: '🏹', type: 'ammo', bonus: 6,  desc: 'Tipped with iron. +6 ranged damage per shot.' },
   mithril_arrow: { name: 'Mithril Arrows', icon: '🏹', type: 'ammo', bonus: 11, desc: 'Tipped with mithril. +11 ranged damage per shot.' },
+  // Runecrafting + Enchanting — Magic's resource chain: mine essence, bind runes, enchant jewelry.
+  rune_essence: { name: 'Rune Essence', icon: '🔮', type: 'material', desc: 'Raw essence; bind it into runes at a rune altar.' },
+  air_rune:     { name: 'Air Runes',    icon: '🌀', type: 'rune', bonus: 2, desc: 'Spell ammo. +2 magic damage per cast.' },
+  earth_rune:   { name: 'Earth Runes',  icon: '🪨', type: 'rune', bonus: 3, desc: 'Spell ammo. +3 magic damage per cast.' },
+  water_rune:   { name: 'Water Runes',  icon: '💧', type: 'rune', bonus: 4, desc: 'Spell ammo. +4 magic damage per cast.' },
+  fire_rune:    { name: 'Fire Runes',   icon: '🔥', type: 'rune', bonus: 6, desc: 'Spell ammo. +6 magic damage per cast.' },
+  rune_ring:    { name: 'Runed Ring',   icon: '💍', type: 'ring',   bonus: { magic: 6, def: 4 }, desc: 'Enchanted. +6 magic, +4 defence.' },
+  rune_amulet:  { name: 'Runed Amulet', icon: '📿', type: 'amulet', bonus: { magic: 10 },        desc: 'Enchanted. +10 magic.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -234,6 +242,19 @@ export const FLETCH = [
   { out: 'bronze_arrow',  cost: { arrow_shaft: 8, feather: 4, bronze_bar: 1 }, xp: 24, qty: 8, level: 1 },
   { out: 'iron_arrow',    cost: { arrow_shaft: 8, feather: 4, iron_bar: 1 },   xp: 42, qty: 8, level: 15 },
   { out: 'mithril_arrow', cost: { arrow_shaft: 8, feather: 4, mithril_bar: 1 }, xp: 80, qty: 8, level: 35 },
+];
+
+// Runecrafting (rune altar): essence -> elemental runes. qty per essence; level gates the tier.
+export const RUNECRAFT = [
+  { out: 'air_rune',   cost: { rune_essence: 1 }, qty: 4, xp: 14, level: 1 },
+  { out: 'earth_rune', cost: { rune_essence: 1 }, qty: 4, xp: 18, level: 5 },
+  { out: 'water_rune', cost: { rune_essence: 1 }, qty: 3, xp: 24, level: 10 },
+  { out: 'fire_rune',  cost: { rune_essence: 1 }, qty: 3, xp: 32, level: 16 },
+];
+// Enchanting (rune altar): gem + runes -> enchanted jewelry (awards Magic xp).
+export const ENCHANT = [
+  { out: 'rune_ring',   cost: { sapphire: 1, water_rune: 8, earth_rune: 8 }, xp: 80,  level: 1 },
+  { out: 'rune_amulet', cost: { ruby: 1, fire_rune: 12, air_rune: 8 },       xp: 150, level: 12 },
 ];
 
 // NPC anchor positions are relative to the village; entities.js drops them to ground.

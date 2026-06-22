@@ -14,7 +14,7 @@ import { createDialogue } from './dialogue.js';
 import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -193,10 +193,10 @@ try {
     G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else setMode(G.inInterior ? 'interior' : 'world'); });
   };
 
-  const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal', mithril: 'mithril_ore' };
-  const ORE_XP = { copper: 18, iron: 26, coal: 16, mithril: 60, gem_rock: 40 };
-  const ORE_LEVEL = { copper: 1, coal: 1, iron: 10, gem_rock: 20, mithril: 30 };
-  const ORE_FX = { mithril: 0x6fa8d8, gem_rock: 0x6fe0ff };
+  const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal', mithril: 'mithril_ore', essence: 'rune_essence' };
+  const ORE_XP = { copper: 18, iron: 26, coal: 16, mithril: 60, gem_rock: 40, essence: 35 };
+  const ORE_LEVEL = { copper: 1, coal: 1, iron: 10, gem_rock: 20, mithril: 30, essence: 1 };
+  const ORE_FX = { mithril: 0x6fa8d8, gem_rock: 0x6fe0ff, essence: 0xb98fff };
   G.mineOre = (o) => {
     world.depleteOre(o);
     player.playGather('mine');
@@ -235,6 +235,8 @@ try {
       G.openCraft(); return;
     } else if (s.kind === 'fletch') {
       G.openFletch(); return;
+    } else if (s.kind === 'rune') {
+      G.openRune(); return;
     } else if (s.kind === 'bed') {
       player.state.hp = player.state.maxHp; player.state.prayer = player.state.maxPrayer;
       G.ui.setHealth(player.state.hp, player.state.maxHp); G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
@@ -286,6 +288,7 @@ try {
     const gb = gearBonus(); const sk = w.style === 'ranged' ? 'ranged' : w.style === 'magic' ? 'magic' : 'melee';
     let dmg = Math.round(4 + G.skills.level(w.skill) * 1.2 + w.bonus + (gb[sk] || 0));
     if (w.style === 'ranged') { let arrow = null; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'ammo' && (!arrow || d.bonus > arrow.def.bonus)) arrow = it; } if (arrow) { G.inventory.remove(arrow.key, 1); dmg += arrow.def.bonus; } }   // fire your best arrows for bonus damage
+    if (w.style === 'magic') { let rune = null; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'rune' && (!rune || d.bonus > rune.def.bonus)) rune = it; } if (rune) { G.inventory.remove(rune.key, 1); dmg += rune.def.bonus; } }   // channel your strongest runes
     const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
     const hitY = e.pos.y + 1.5 * (e.baseScale || 1);
@@ -469,6 +472,44 @@ try {
       let made = 0;
       while (Object.keys(r.cost).every((k) => G.inventory.has(k, r.cost[k])) && made < 40) { for (const k in r.cost) G.inventory.remove(k, r.cost[k]); G.inventory.add(out, r.qty || 1); G.gainXp('fletching', r.xp); made++; }
       if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xd8c08a, { n: 10, spread: 2, up: 2.6, life: 0.8 }); G.ui.toast(`Fletched ${made * (r.qty || 1)} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
+    });
+  };
+
+  // ---------- rune altar: bind essence into runes (Runecrafting) + enchant jewelry (Magic) ----------
+  const maxMake = (cost) => { let m = Infinity; for (const k in cost) m = Math.min(m, Math.floor(G.inventory.count(k) / cost[k])); return m; };
+  const runeCfg = {
+    title: 'Rune Altar', hint: '↑ ↓ select · tap · ↑↓↑↓ leave', empty: 'Mine rune essence in the fae glade, then bind it here.',
+    rows: () => {
+      const rows = [];
+      for (const r of RUNECRAFT) { const locked = G.skills.level('runecraft') < (r.level || 1), n = maxMake(r.cost); if (n < 1 && !locked) continue; rows.push({ section: 'Bind runes (Runecrafting)', icon: ITEMS[r.out].icon, title: ITEMS[r.out].name + (r.qty > 1 ? ` ×${r.qty}` : ''), sub: Object.keys(r.cost).map((k) => `${r.cost[k]}× ${ITEMS[k].name}`).join(' + ') + (locked ? ` · needs Runecrafting ${r.level}` : ''), right: locked ? '🔒' : `×${n}`, data: { kind: 'rc', out: r.out } }); }
+      for (const r of ENCHANT) { const locked = G.skills.level('magic') < (r.level || 1), n = maxMake(r.cost); if (n < 1 && !locked) continue; rows.push({ section: 'Enchant jewelry (Magic)', icon: ITEMS[r.out].icon, title: ITEMS[r.out].name, sub: Object.keys(r.cost).map((k) => `${r.cost[k]}× ${ITEMS[k].name}`).join(' + ') + (locked ? ` · needs Magic ${r.level}` : ''), right: locked ? '🔒' : `×${n}`, data: { kind: 'en', out: r.out } }); }
+      return rows;
+    },
+    onSelect: (r) => { G.closePicker(); if (r.data.kind === 'rc') G.runecraftItem(r.data.out); else G.enchantItem(r.data.out); },
+  };
+  G.openRune = () => { setMode('picker'); G.ui.openPicker(runeCfg); };
+  G.runecraftItem = (out) => {
+    if (G.channel) return;
+    const r = RUNECRAFT.find((x) => x.out === out); if (!r) return;
+    if (G.skills.level('runecraft') < (r.level || 1)) { G.ui.toast(`Needs Runecrafting level ${r.level}`, 'bad', 2000); return; }
+    if (maxMake(r.cost) < 1) return;
+    const dur = Math.max(1.4, Math.min(5, maxMake(r.cost) * 0.5));
+    startChannel(dur, 'forage', `Binding ${ITEMS[out].name}…`, () => {
+      let made = 0;
+      while (Object.keys(r.cost).every((k) => G.inventory.has(k, r.cost[k])) && made < 60) { for (const k in r.cost) G.inventory.remove(k, r.cost[k]); G.inventory.add(out, r.qty || 1); G.gainXp('runecraft', r.xp); made++; }
+      if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0xb98fff, { n: 14, spread: 2.4, up: 3.2, life: 1 }); G.ui.toast(`Bound ${made * (r.qty || 1)} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('cast'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
+    });
+  };
+  G.enchantItem = (out) => {
+    if (G.channel) return;
+    const r = ENCHANT.find((x) => x.out === out); if (!r) return;
+    if (G.skills.level('magic') < (r.level || 1)) { G.ui.toast(`Needs Magic level ${r.level}`, 'bad', 2000); return; }
+    if (maxMake(r.cost) < 1) return;
+    startChannel(2.4, 'forage', `Enchanting ${ITEMS[out].name}…`, () => {
+      if (maxMake(r.cost) < 1) return;
+      for (const k in r.cost) G.inventory.remove(k, r.cost[k]); G.inventory.add(out, 1); G.gainXp('magic', r.xp);
+      if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0x8af0ff, { n: 16, spread: 2.4, up: 3.4, life: 1.1 });
+      G.ui.toast(`Enchanted ${ITEMS[out].name}!`, 'gold', 2600); G.audio.sfx('level'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
     });
   };
 

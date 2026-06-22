@@ -247,6 +247,8 @@ export function createWorld(scene, seed = 1337) {
     for (const [type, n] of m.rocks) for (let i = 0; i < n; i++) { const a = rng() * TAU, rad = rng() * MINE_R; const x = m.x + Math.cos(a) * rad, z = m.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type, alive: true, respawn: 0 }); }
     for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = MINE_R * 0.75 + rng() * 3; const x = m.x + Math.cos(a) * rad, z = m.z + Math.sin(a) * rad; rocks.push({ x, z, y: height(x, z), s: 1.5 + rng() * 1.3 }); }
   }
+  // rune essence outcrop in the fae glade — feeds Runecrafting (mine essence here, bind it at a rune altar)
+  if (byKey.glade) { const g = byKey.glade; for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU, rad = g.r * 0.42; const x = g.x + Math.cos(a) * rad, z = g.z + Math.sin(a) * rad; if (isWalkable(x, z)) oreNodes.push({ x, z, y: height(x, z), type: 'essence', alive: true, respawn: 0 }); } }
   // hidden discoveries — placed off the beaten path, each snapped to nearby walkable land
   const CLEAR_R2 = 18;   // clear scattered props so each discovery sits in its own clearing (and wins the tap)
   const clearNear = (arr, x, z) => { for (let i = arr.length - 1; i >= 0; i--) { const dx = arr[i].x - x, dz = arr[i].z - z; if (dx * dx + dz * dz < CLEAR_R2) arr.splice(i, 1); } };
@@ -297,7 +299,7 @@ export function createWorld(scene, seed = 1337) {
   group.add(bushIM);
 
   // ore
-  const oreCol = { copper: 0xc87a3a, iron: 0xb9a99a, coal: 0x6c6f7a, mithril: 0x5a8fc0, gem_rock: 0x6fe0ff };
+  const oreCol = { copper: 0xc87a3a, iron: 0xb9a99a, coal: 0x6c6f7a, mithril: 0x5a8fc0, gem_rock: 0x6fe0ff, essence: 0xb98fff };
   const oreIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshLambertMaterial({ flatShading: true }), Math.max(oreNodes.length, 1));
   oreNodes.forEach((o, i) => { dummy.position.set(o.x, o.y + 0.5, o.z); dummy.scale.set(1, 1.2, 1); dummy.rotation.set(rng(), rng() * TAU, rng()); dummy.updateMatrix(); oreIM.setMatrixAt(i, dummy.matrix); oreIM.setColorAt(i, tmpC.setHex(oreCol[o.type] || 0x999999)); o.idx = i; });
   group.add(oreIM);
@@ -473,6 +475,13 @@ export function createWorld(scene, seed = 1337) {
     const glow = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshBasicMaterial({ color: 0xbf9bff })); glow.position.set(x, y + 1.35, z);
     group.add(base, glow); stations.push({ kind: 'altar', label: 'Altar', x, z, y });
   }
+  function runeAltar(x, z) {
+    const y = height(x, z);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.15, 1.1, 6), lmat(0x4a3a6a)); base.position.set(x, y + 0.55, z); group.add(base);
+    const rune = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.09, 6, 16), new THREE.MeshBasicMaterial({ color: 0xb98fff })); rune.position.set(x, y + 1.5, z); rune.rotation.x = Math.PI / 2; group.add(rune);
+    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: 0x8af0ff })); orb.position.set(x, y + 1.5, z); group.add(orb);
+    stations.push({ kind: 'rune', label: 'Rune Altar', x, z, y });
+  }
   function cauldron(x, z) {
     const y = height(x, z);
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.5, 0.9, 8), new THREE.MeshLambertMaterial({ color: 0x40454d, flatShading: true })); pot.position.set(x, y + 0.5, z);
@@ -540,6 +549,7 @@ export function createWorld(scene, seed = 1337) {
     altar(v.x + 3.5, v.z + 3.5);
     stall(v.x - 4, v.z - 3.5);
     fletchBench(v.x + 5, v.z - 3);
+    runeAltar(v.x - 5.5, v.z + 1);
     lampPost(v.x + 4.6, v.z - 4.6); lampPost(v.x - 4.6, v.z + 4.6);
     plot(v.x + 12, v.z + 2); plot(v.x + 13.4, v.z + 3.2); plot(v.x + 12.6, v.z + 4.6);
     { const lx = v.x - 2.4, lz = v.z - 5.0; signpost(lx, lz, 0xffd45f); stations.push({ kind: 'ledger', label: 'Merchants’ Guild', x: lx, z: lz, y: height(lx, lz) }); }
