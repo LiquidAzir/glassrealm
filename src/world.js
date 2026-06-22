@@ -27,6 +27,12 @@ const REGIONS = [
 ];
 const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow']];
 const CAVE = { x: 138, z: -14, r: 11 };
+const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
+const SHORTCUT_LINKS = [
+  { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
+  { name: 'Tangle Vines',    a: { x: 16, z: 42 },  b: { x: 24, z: 86 },  level: 1 },
+  { name: 'Forest Climb',    a: { x: -40, z: 8 },  b: { x: -86, z: 14 }, level: 3 },
+];
 
 export function createWorld(scene, seed = 1337) {
   const rng = mulberry32(seed);
@@ -123,6 +129,7 @@ export function createWorld(scene, seed = 1337) {
     for (const [type, n] of (reg.ore || [])) scatterIn(reg, n, 0.8, 10.0, 2.8, (x, z, y) => oreNodes.push({ x, z, y, type, alive: true, respawn: 0 }));
   }
   for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = 2 + rng() * (CAVE.r - 4); const x = CAVE.x + Math.cos(a) * rad, z = CAVE.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type: rng() > 0.4 ? 'iron' : 'coal', alive: true, respawn: 0 }); }
+  for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = 2 + rng() * (CAVE2.r - 4); const x = CAVE2.x + Math.cos(a) * rad, z = CAVE2.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type: rng() > 0.5 ? 'iron' : 'coal', alive: true, respawn: 0 }); }
 
   // trees (instanced, per-instance colour)
   const N = Math.max(trees.length, 1);
@@ -210,6 +217,13 @@ export function createWorld(scene, seed = 1337) {
     const brew = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.12, 8), new THREE.MeshBasicMaterial({ color: 0x7cffb0 })); brew.position.set(x, y + 0.96, z);
     group.add(pot, brew); stations.push({ kind: 'cauldron', label: 'Cauldron', x, z, y });
   }
+  function craftBench(x, z) {
+    const y = height(x, z);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.25, 1.1), new THREE.MeshLambertMaterial({ color: 0x8a6a44, flatShading: true })); top.position.set(x, y + 0.95, z);
+    for (const lx of [-0.7, 0.7]) for (const lz of [-0.35, 0.35]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.95, 0.14), new THREE.MeshLambertMaterial({ color: 0x6e4a2b, flatShading: true })); leg.position.set(x + lx, y + 0.48, z + lz); group.add(leg); }
+    const gem = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0x9bf2ff })); gem.position.set(x, y + 1.2, z);
+    group.add(top, gem); stations.push({ kind: 'craft', label: 'Crafting Bench', x, z, y });
+  }
   function smithy(x, z) {
     const fy = height(x, z);
     const furnace = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.0, 1.8), new THREE.MeshLambertMaterial({ color: 0x7a6f66, flatShading: true })); furnace.position.set(x, fy + 1.0, z);
@@ -254,6 +268,7 @@ export function createWorld(scene, seed = 1337) {
     cauldron(v.x + 9, v.z + 3);
     stall(v.x - 9, v.z + 4);
     plot(v.x + 11, v.z - 6); plot(v.x + 13, v.z - 6); plot(v.x + 12, v.z - 8);
+    craftBench(v.x - 4, v.z + 9);
     if (v.smithy) smithy(v.x + 4, v.z - 1);
   }
 
@@ -270,6 +285,32 @@ export function createWorld(scene, seed = 1337) {
     const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true })); chest.position.set(CAVE.x, cy + 0.5, CAVE.z); group.add(chest);
     stations.push({ kind: 'chest', label: 'Cave Chest', x: CAVE.x, z: CAVE.z, y: cy, looted: false });
   })();
+
+  // Frost Cavern (snow) — icy spires + a frozen chest (the Frost Warden lurks here).
+  (function frostCavern() {
+    const cols = 16;
+    for (let i = 0; i < cols; i++) {
+      const a = (i / cols) * TAU; if (a > 3.3 && a < 4.3) continue;
+      const x = CAVE2.x + Math.cos(a) * CAVE2.r, z = CAVE2.z + Math.sin(a) * CAVE2.r, hh = 4 + rng() * 2.5;
+      const col = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), new THREE.MeshLambertMaterial({ color: 0xbcd0e6, flatShading: true }));
+      col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.2, hh, 1.2); col.rotation.y = rng() * TAU; group.add(col);
+    }
+    const cy = height(CAVE2.x, CAVE2.z);
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0x9bd0ff, flatShading: true })); chest.position.set(CAVE2.x, cy + 0.5, CAVE2.z); group.add(chest);
+    stations.push({ kind: 'chest2', label: 'Frozen Chest', x: CAVE2.x, z: CAVE2.z, y: cy, looted: false });
+  })();
+
+  // Agility shortcut pads (two per link, one at each end → bidirectional hop).
+  const shortcuts = [];
+  const padMat = new THREE.MeshBasicMaterial({ color: 0x9bf2ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+  function pad(x, z, toX, toZ, level, name) {
+    const y = height(x, z);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.6, 1.1, 14).rotateX(-Math.PI / 2), padMat); ring.position.set(x, y + 0.08, z);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.4, 6), new THREE.MeshLambertMaterial({ color: 0x9bf2ff, flatShading: true })); post.position.set(x, y + 0.7, z);
+    group.add(ring, post);
+    shortcuts.push({ x, z, toX, toZ, level, name, cooldown: 0 });
+  }
+  for (const s of SHORTCUT_LINKS) { pad(s.a.x, s.a.z, s.b.x, s.b.z, s.level, s.name); pad(s.b.x, s.b.z, s.a.x, s.a.z, s.level, s.name); }
 
   scene.add(group);
 
@@ -290,8 +331,8 @@ export function createWorld(scene, seed = 1337) {
     village: VILLAGE_A,
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
-    peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls,
+    peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, locations,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);
@@ -314,6 +355,7 @@ export function createWorld(scene, seed = 1337) {
       for (const o of oreNodes) if (!o.alive) { o.respawn -= dt; if (o.respawn <= 0) { o.alive = true; setOreScale(o, 1); } }
       for (const pl of plots) if (pl.state === 'growing') { pl.grow -= dt; if (pl.grow <= 0) { pl.state = 'grown'; plotVisual(pl); } }
       for (const s of stalls) if (s.cooldown > 0) s.cooldown -= dt;
+      for (const s of shortcuts) if (s.cooldown > 0) s.cooldown -= dt;
     },
   };
 }

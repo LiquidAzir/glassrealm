@@ -68,7 +68,7 @@ export function createPlayer(scene, world) {
     coastFwd: 0, coastTurn: 0, coastTurnDir: 0,
     moving: false, bob: 0,
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed',
-    equipment: { weapon: null, armor: null },
+    equipment: { weapon: null, armor: null, amulet: null, ring: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
   };
 

@@ -11,7 +11,7 @@ import { createInventory } from './inventory.js';
 import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
 import { loadSave, createSave } from './save.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { dist2D } from './util.js';
 
@@ -49,7 +49,7 @@ try {
       player.group.position.z = saved.player.z;
       player.state.heading = saved.player.heading;
       player.state.hp = Math.max(1, saved.player.hp || player.state.maxHp);
-      if (saved.player.equipment) player.state.equipment = { weapon: saved.player.equipment.weapon || null, armor: saved.player.equipment.armor || null };
+      if (saved.player.equipment) { const e = saved.player.equipment; player.state.equipment = { weapon: e.weapon || null, armor: e.armor || null, amulet: e.amulet || null, ring: e.ring || null }; }
       player.refreshEquipment();
     }
   }
@@ -58,11 +58,40 @@ try {
   const npcName = (key) => { const n = G.entities.npcs.find((x) => x.def.key === key); return n ? n.def.name : key; };
   const maxPrayer = () => 20 + G.skills.level('prayer') * 2;
 
+  // ---- gear stats, set bonuses, run stats, achievements ----
+  function fullSet() {
+    const eq = player.state.equipment;
+    const a = eq.armor && ITEMS[eq.armor].set, m = eq.amulet && ITEMS[eq.amulet].set, r = eq.ring && ITEMS[eq.ring].set;
+    return (a && a === m && a === r) ? a : null;
+  }
+  G.fullSet = fullSet;
+  function gearBonus() {
+    const eq = player.state.equipment, b = { def: 0, melee: 0, ranged: 0, magic: 0, maxhp: 0 };
+    for (const slot of ['armor', 'amulet', 'ring']) { const it = eq[slot] ? ITEMS[eq[slot]] : null; if (!it) continue; if (it.defense) b.def += it.defense; if (it.bonus) for (const k in it.bonus) b[k] += it.bonus[k]; }
+    const s = fullSet(); if (s && SETS[s]) for (const k in SETS[s]) if (k !== 'name') b[k] += SETS[s][k];
+    return b;
+  }
+  G.gearBonus = gearBonus;
+  function applyMaxHp() { const mh = 100 + gearBonus().maxhp; player.state.maxHp = mh; if (player.state.hp > mh) player.state.hp = mh; G.ui.setHealth(player.state.hp, mh); }
+
+  G.stats = { kills: 0, crafted: 0, regions: new Set(), bosses: new Set() };
+  if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); }
+  G.ach = {
+    unlocked: new Set((saved && saved.achievements) || []),
+    evaluate() {
+      for (const a of ACHIEVEMENTS) {
+        if (this.unlocked.has(a.id)) continue;
+        let ok = false; try { ok = a.cond(G); } catch (e) { ok = false; }
+        if (ok) { this.unlocked.add(a.id); G.ui.toast(`🏆 ${a.name}`, 'good', 3000); G.ui.levelBanner(`Achievement: ${a.name}`); }
+      }
+    },
+  };
+
   // ---------- gameplay verbs ----------
   G.gainXp = (key, amt) => {
     const r = G.skills.addXp(key, amt);
     G.ui.xpDrop(`+${amt} ${skillName(key)}`);
-    if (r.leveled) G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`);
+    if (r.leveled) { G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`); if (G.ach) G.ach.evaluate(); }
   };
 
   const readyToasted = new Set();
@@ -132,6 +161,8 @@ try {
     G.inventory.add(item, 1);
     G.ui.toast('Mined ' + ITEMS[item].name, 'gold', 1400);
     G.gainXp('mining', 18);
+    const gr = Math.random(); const gem = gr < 0.04 ? 'ruby' : gr < 0.10 ? 'emerald' : gr < 0.20 ? 'sapphire' : null;
+    if (gem) { G.inventory.add(gem, 1); G.ui.toast('Found a ' + ITEMS[gem].name + '!', 'gold', 1900); }
     checkQuestReady(); G.save.save();
   };
   G.fishSpot = () => {
@@ -165,6 +196,8 @@ try {
       G.openForge(); return;
     } else if (s.kind === 'bank') {
       G.openBank(); return;
+    } else if (s.kind === 'craft') {
+      G.openCraft(); return;
     } else if (s.kind === 'altar') {
       const b = G.inventory.count('bones');
       if (b > 0) { G.inventory.remove('bones', b); G.gainXp('prayer', 20 * b); }
@@ -185,6 +218,11 @@ try {
       s.looted = true;
       G.inventory.add('gold', 120); G.inventory.add('iron_bar', 3); G.inventory.add('coal', 4);
       G.ui.toast('You loot the cave chest! +120g, iron, coal', 'gold', 3200); G.save.save(); return;
+    } else if (s.kind === 'chest2') {
+      if (s.looted) { G.ui.toast('The chest is empty.', '', 1500); return; }
+      s.looted = true;
+      G.inventory.add('gold', 160); G.inventory.add('sapphire', 2); G.inventory.add('emerald', 1);
+      G.ui.toast('You loot the frozen chest! +160g, gems', 'gold', 3200); G.save.save(); return;
     }
     G.save.save();
   };
@@ -197,7 +235,8 @@ try {
     if (dd > w.range + 0.6) return;            // out of range for this weapon
     player.state.attackCd = w.speed;
     player.playAttack(w.style);
-    let dmg = Math.round(4 + G.skills.level(w.skill) * 1.2 + w.bonus);
+    const gb = gearBonus(); const sk = w.style === 'ranged' ? 'ranged' : w.style === 'magic' ? 'magic' : 'melee';
+    let dmg = Math.round(4 + G.skills.level(w.skill) * 1.2 + w.bonus + (gb[sk] || 0));
     const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
     const hitY = e.pos.y + 1.5 * (e.baseScale || 1);
@@ -291,19 +330,49 @@ try {
     const eq = player.state.equipment;
     if (r.kind === 'unequipW') eq.weapon = null;
     else if (r.kind === 'unequipA') eq.armor = null;
+    else if (r.kind === 'unequipAm') eq.amulet = null;
+    else if (r.kind === 'unequipR') eq.ring = null;
     else if (r.kind === 'weapon') eq.weapon = r.key;
     else if (r.kind === 'armor') eq.armor = r.key;
-    player.refreshEquipment();
-    G.ui.toast(r.key ? `Equipped ${ITEMS[r.key].name}` : 'Unequipped', 'good', 1200); G.save.save();
+    else if (r.kind === 'amulet') eq.amulet = r.key;
+    else if (r.kind === 'ring') eq.ring = r.key;
+    player.refreshEquipment(); applyMaxHp();
+    G.ui.toast(r.key ? `Equipped ${ITEMS[r.key].name}` : 'Unequipped', 'good', 1200); G.ach.evaluate(); G.save.save();
   };
   G.bankDeposit = (key) => { const n = G.inventory.count(key); if (n <= 0) return; G.inventory.remove(key, n); G.bankItems[key] = (G.bankItems[key] || 0) + n; G.save.save(); };
   G.bankWithdraw = (key) => { const n = G.bankItems[key] || 0; if (n <= 0) return; G.bankItems[key] = 0; G.inventory.add(key, n); G.save.save(); };
 
+  const craftCfg = {
+    title: 'Crafting Bench', hint: '↑ ↓ select · tap craft · double-tap leave', empty: 'Mine gems first (sapphire/emerald/ruby).',
+    rows: () => CRAFT.map((rec) => {
+      const cost = Object.keys(rec.cost).map((k) => `${rec.cost[k]} ${ITEMS[k].name}`).join(', ');
+      const can = Object.keys(rec.cost).every((k) => G.inventory.has(k, rec.cost[k]));
+      const it = ITEMS[rec.out];
+      return { section: it.set ? `${SETS[it.set].name} set` : 'Trinkets', icon: it.icon, title: it.name, sub: cost, right: can ? 'craft' : '—', data: { out: rec.out } };
+    }),
+    onSelect: (r) => G.craftItem(r.data.out),
+  };
+  G.openCraft = () => { setMode('picker'); G.ui.openPicker(craftCfg); };
+  G.craftItem = (out) => {
+    const rec = CRAFT.find((r) => r.out === out); if (!rec) return;
+    if (Object.keys(rec.cost).every((k) => G.inventory.has(k, rec.cost[k]))) {
+      for (const k in rec.cost) G.inventory.remove(k, rec.cost[k]);
+      G.inventory.add(out, 1); G.gainXp('crafting', rec.xp); G.stats.crafted++;
+      G.ui.toast(`Crafted ${ITEMS[out].name}`, 'good', 2200); G.ach.evaluate(); G.save.save();
+    } else G.ui.toast(`Needs ${Object.keys(rec.cost).map((k) => `${rec.cost[k]} ${ITEMS[k].name}`).join(', ')}`, 'bad', 2400);
+  };
+  G.useShortcut = (s) => {
+    if (s.cooldown > 0) return;
+    if (G.skills.level('agility') < s.level) { G.ui.toast(`Needs Agility level ${s.level}`, 'bad', 1800); return; }
+    s.cooldown = 1.5;
+    player.group.position.set(s.toX, world.height(s.toX, s.toZ), s.toZ);
+    G.gainXp('agility', 16); G.ui.toast(s.name, 'good', 1200);
+  };
+
   let hurtFlash = 0;
   G.damagePlayer = (amount) => {
     if (player.state.hp <= 0) return;
-    const eq = player.state.equipment;
-    const defv = eq.armor ? (ITEMS[eq.armor].defense || 0) : 0;
+    const defv = gearBonus().def;
     let taken = Math.max(1, Math.round(amount - defv * 0.6));
     const apT = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apT && apT.dmgTaken) taken = Math.max(1, Math.round(taken * apT.dmgTaken));
@@ -328,9 +397,10 @@ try {
     const names = [];
     for (const k in def.loot) { G.inventory.add(k, def.loot[k]); names.push(ITEMS[k].name); }
     G.gainXp(e._lastSkill || 'combat', def.xp);
+    G.stats.kills++; if (def.boss) G.stats.bosses.add(e.enemyKey);
     G.ui.toast(`Defeated ${def.name} · +${names.join(', ')}`, 'gold', 2200);
     G.quests.notifyKill(e.enemyKey);
-    checkQuestReady(); G.save.save();
+    G.ach.evaluate(); checkQuestReady(); G.save.save();
   };
   G.onQuestAccepted = (id, def) => { G.ui.toast(`Quest accepted: ${def.name}`, 'good', 2600); G.save.save(); };
   G.onQuestComplete = (id, def) => { G.ui.toast(`Quest complete: ${def.name}!`, 'good', 3400); readyToasted.delete(id); G.save.save(); };
@@ -379,6 +449,7 @@ try {
     else if (t.kind === 'station') G.useStation(t.ref);
     else if (t.kind === 'plot') G.plotAction(t.ref);
     else if (t.kind === 'stall') G.thieveStall(t.ref);
+    else if (t.kind === 'shortcut') G.useShortcut(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
     else if (t.kind === 'enemy') G.attackEnemy(t.ref);
   }
@@ -392,6 +463,9 @@ try {
       if (d < best) { best = d; name = l.name; }
     }
     if (name !== curLoc) { curLoc = name; G.ui.setLocation(name); }
+    let rk = null, rb = Infinity;
+    for (const rg of world.regions) { const d = Math.hypot(player.position.x - rg.x, player.position.z - rg.z); if (d < rg.r && d < rb) { rb = d; rk = rg.key; } }
+    if (rk && !G.stats.regions.has(rk)) { G.stats.regions.add(rk); if (G.ach) G.ach.evaluate(); }
   }
 
   function updatePrompt() {
@@ -469,10 +543,12 @@ try {
   setInterval(() => G.save.save(), 15000);
 
   // initial HUD + reveal
+  applyMaxHp();
   player.state.maxPrayer = maxPrayer();
   if (!player.state.prayer || player.state.prayer > player.state.maxPrayer) player.state.prayer = player.state.maxPrayer;
   G.ui.setHealth(player.state.hp, player.state.maxHp);
   G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
+  G.ach.evaluate();
   updateLocation();
   boot.classList.add('out');
   setTimeout(() => boot.classList.add('hidden'), 700);

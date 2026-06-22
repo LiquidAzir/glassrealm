@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { ITEMS, SHOP, PRAYERS } from './content.js';
+import { ITEMS, SHOP, PRAYERS, ACHIEVEMENTS } from './content.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -99,7 +99,7 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Diary: renderDiary, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
@@ -130,24 +130,36 @@ export function createUI(G) {
     G.inventory.list().filter((it) => it.def.type === 'weapon').forEach((it) => rows.push({ kind: 'weapon', key: it.key }));
     rows.push({ kind: 'unequipA', label: 'No armor' });
     G.inventory.list().filter((it) => it.def.type === 'armor').forEach((it) => rows.push({ kind: 'armor', key: it.key }));
+    rows.push({ kind: 'unequipAm', label: 'No amulet' });
+    G.inventory.list().filter((it) => it.def.type === 'amulet').forEach((it) => rows.push({ kind: 'amulet', key: it.key }));
+    rows.push({ kind: 'unequipR', label: 'No ring' });
+    G.inventory.list().filter((it) => it.def.type === 'ring').forEach((it) => rows.push({ kind: 'ring', key: it.key }));
     return rows;
   }
   function renderGear() {
     const eq = G.player.state.equipment;
-    const wname = eq.weapon ? ITEMS[eq.weapon].name : 'Fists';
-    const wstyle = eq.weapon ? ITEMS[eq.weapon].style : 'unarmed';
-    const aname = eq.armor ? ITEMS[eq.armor].name : 'None';
-    const adef = eq.armor ? ITEMS[eq.armor].defense : 0;
+    const gb = G.gearBonus ? G.gearBonus() : { def: 0, melee: 0, ranged: 0, magic: 0, maxhp: 0 };
+    const set = G.fullSet && G.fullSet();
     const rows = gearRows();
-    let html = `<div class="section-head">Wielding ${wname} (${wstyle}) &nbsp;·&nbsp; Armor ${aname} (-${adef})</div>`;
+    let html = `<div class="section-head">⚔️${gb.melee} 🏹${gb.ranged} 🪄${gb.magic} 🛡️${gb.def} ❤️+${gb.maxhp}${set ? ` &nbsp;·&nbsp; <span style="color:var(--gold)">${set} set!</span>` : ''}</div>`;
     rows.forEach((r, i) => {
       const d = r.key ? ITEMS[r.key] : null;
-      const equipped = (r.kind === 'weapon' && eq.weapon === r.key) || (r.kind === 'armor' && eq.armor === r.key) || (r.kind === 'unequipW' && !eq.weapon) || (r.kind === 'unequipA' && !eq.armor);
+      const equipped = (r.kind === 'weapon' && eq.weapon === r.key) || (r.kind === 'armor' && eq.armor === r.key) || (r.kind === 'amulet' && eq.amulet === r.key) || (r.kind === 'ring' && eq.ring === r.key) || (r.kind === 'unequipW' && !eq.weapon) || (r.kind === 'unequipA' && !eq.armor) || (r.kind === 'unequipAm' && !eq.amulet) || (r.kind === 'unequipR' && !eq.ring);
       const icon = d ? d.icon : (r.kind === 'unequipW' ? '✊' : '🚫');
       const title = d ? d.name : r.label;
-      const sub = d ? (d.type === 'weapon' ? `${d.style} · +${d.bonus} dmg` : `armor · -${d.defense} dmg`) : 'tap to unequip';
+      let sub;
+      if (!d) sub = 'tap to unequip';
+      else if (d.type === 'weapon') sub = `${d.style} · +${d.bonus} dmg`;
+      else if (d.type === 'armor') sub = `armor · -${d.defense} dmg${d.set ? ' · ' + d.set : ''}`;
+      else sub = Object.keys(d.bonus || {}).map((k) => `+${d.bonus[k]} ${k}`).join(', ') + (d.set ? ' · ' + d.set : '');
       html += `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${icon}</span><div class="row-main"><div class="row-title">${title}${equipped ? ' <span style="color:var(--gold)">✓</span>' : ''}</div><div class="row-sub">${sub}</div></div></div>`;
     });
+    els.menuBody.innerHTML = html;
+  }
+  function renderDiary() {
+    const done = G.ach.unlocked;
+    let html = `<div class="section-head">Achievements · ${done.size}/${ACHIEVEMENTS.length}</div>`;
+    html += ACHIEVEMENTS.map((a) => { const u = done.has(a.id); return `<div class="row" style="${u ? '' : 'opacity:.55'}"><span class="row-icon">${u ? '🏆' : '🔒'}</span><div class="row-main"><div class="row-title">${a.name}</div><div class="row-sub">${a.desc}</div></div></div>`; }).join('');
     els.menuBody.innerHTML = html;
   }
 

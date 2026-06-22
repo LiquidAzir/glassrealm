@@ -12,12 +12,14 @@ export function createSave(G) {
       player: {
         x: G.player.position.x, z: G.player.position.z,
         heading: G.player.state.heading, hp: G.player.state.hp,
-        equipment: { weapon: G.player.state.equipment.weapon, armor: G.player.state.equipment.armor },
+        equipment: { ...G.player.state.equipment },
       },
       skills: G.skills.serialize(),
       inventory: G.inventory.serialize(),
       bank: { ...G.bankItems },
       quests: G.quests.serialize(),
+      stats: G.stats ? { kills: G.stats.kills, crafted: G.stats.crafted, regions: [...G.stats.regions], bosses: [...G.stats.bosses] } : undefined,
+      achievements: G.ach ? [...G.ach.unlocked] : undefined,
       world: {
         choppedTrees: G.world.trees.filter((t) => !t.alive).map((t) => t.idx),
         harvestedBushes: G.world.bushes.filter((b) => !b.alive).map((b) => b.idx),
