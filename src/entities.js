@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { NPCS, ENEMIES, ENEMY_SPAWNS } from './content.js';
+import { NPCS, ENEMIES, ENEMY_SPAWNS, WANDERERS } from './content.js';
 import { TAU, dist2D } from './util.js';
 
 const DEATH_DUR = 0.55;   // topple/shrink/sink before the corpse vanishes
@@ -12,7 +12,7 @@ const mkBox = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.Box
 
 // A proper bipedal person: hip-pivoted legs + shoulder-pivoted arms (with skin hands),
 // a clothed torso, a head, and hair — limb pivots exposed via userData.anim for walking.
-function buildPerson({ cloth, skin, hair, weaponMat, seed = 0 }) {
+function buildPerson({ cloth, skin, hair, weaponMat, helm = null, seed = 0 }) {
   const g = new THREE.Group();
   const clothM = lmat(cloth), skinM = lmat(skin), darkM = lmat(0x2a2330);
   const mkLeg = (x) => { const p = new THREE.Group(); p.position.set(x, 0.72, 0); p.add(mkBox(0.2, 0.72, 0.2, darkM, 0, -0.36, 0)); g.add(p); return p; };
@@ -23,8 +23,16 @@ function buildPerson({ cloth, skin, hair, weaponMat, seed = 0 }) {
   const armL = mkArm(-0.45), armR = mkArm(0.45);
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), skinM); head.position.set(0, 1.82, 0); g.add(head);
   if (hair != null) g.add(mkBox(0.42, 0.18, 0.42, lmat(hair), 0, 2.0, 0));   // hair cap
+  if (helm != null) { g.add(mkBox(0.44, 0.32, 0.44, lmat(helm), 0, 2.02, 0)); g.add(mkBox(0.12, 0.36, 0.5, lmat(0xb0452e), 0, 2.34, 0)); }   // helmet + red crest
   if (weaponMat) armR.add(mkBox(0.1, 0.85, 0.1, weaponMat, 0, -0.78, 0));     // weapon held in the right hand
   g.userData.anim = { legL, legR, armL, armR, biped: true };
+  return g;
+}
+
+// An ambient mobile NPC (a soldier with helm + spear, or a plain wanderer).
+function makeMob(def) {
+  const g = buildPerson({ cloth: def.color, skin: SKIN[def.seed % SKIN.length], hair: def.soldier ? null : HAIR[def.seed % HAIR.length], helm: def.soldier ? def.helm : null, seed: def.seed });
+  if (def.soldier) { const arm = g.userData.anim.armR; arm.add(mkBox(0.09, 1.6, 0.09, lmat(0xa9b2bc), 0, -0.05, 0.05)); arm.add(mkBox(0.16, 0.28, 0.16, lmat(0xeaf2ff), 0, 0.73, 0.05)); }   // spear + tip
   return g;
 }
 
@@ -67,6 +75,24 @@ export function createEntities(scene, world, G) {
     const group = makeNpc(def, world);
     scene.add(group);
     return { def, group, kind: 'npc', baseRot: group.rotation.y, phase: Math.random() * TAU, get pos() { return group.position; } };
+  });
+
+  // ambient mobile NPCs — patrolling guard squads (formation) + lone wanderers
+  const mobs = [];
+  WANDERERS.forEach((def, di) => {
+    if (def.kind === 'squad') {
+      const squad = { loop: def.loop, members: [] };
+      for (let k = 0; k < def.count; k++) {
+        const g = makeMob({ color: def.color, helm: def.helm, soldier: true, seed: di * 7 + k });
+        const s0 = def.loop[0]; g.position.set(s0.x, world.height(s0.x, s0.z), s0.z); scene.add(g);
+        const m = { def, group: g, squad, idx: k, heading: 0, walkPhase: Math.random() * TAU, speed: def.speed, loopI: 0, get pos() { return g.position; } };
+        squad.members.push(m); mobs.push(m);
+      }
+    } else {
+      const g = makeMob({ color: def.color, soldier: !!def.soldier, helm: def.helm, seed: di * 5 });
+      g.position.set(def.home.x, world.height(def.home.x, def.home.z), def.home.z); scene.add(g);
+      mobs.push({ def, group: g, heading: Math.random() * TAU, walkPhase: Math.random() * TAU, speed: def.speed, home: def.home, radius: def.radius, target: null, pauseT: 0, get pos() { return g.position; } });
+    }
   });
 
   const enemies = [];
@@ -186,6 +212,44 @@ export function createEntities(scene, world, G) {
       const a = n.group.userData.anim;   // gentle idle arm sway so they feel alive
       if (a) { const s = Math.sin(T * 1.3 + n.phase) * 0.09; a.armL.rotation.x = s; a.armR.rotation.x = -s; }
     }
+    // ambient mobs — squads patrol a loop in formation, wanderers stroll near home; all walk-cycle
+    for (const m of mobs) {
+      if (dist2D(m.pos.x, m.pos.z, player.position.x, player.position.z) > 75) continue;   // freeze when far (perf)
+      let tx, tz, stop = 1.2;
+      if (m.squad) {
+        if (m.idx === 0) {
+          const wp = m.squad.loop[m.loopI]; tx = wp.x; tz = wp.z;
+          if (dist2D(m.pos.x, m.pos.z, tx, tz) < 2.2) m.loopI = (m.loopI + 1) % m.squad.loop.length;
+        } else {
+          const L = m.squad.members[0], lh = L.heading, back = 2.2 * Math.ceil(m.idx / 2), side = (m.idx % 2 ? 1.4 : -1.4);
+          tx = L.pos.x - Math.sin(lh) * back + Math.cos(lh) * side;
+          tz = L.pos.z - Math.cos(lh) * back - Math.sin(lh) * side;
+          stop = 0.7;
+        }
+      } else {
+        if (!m.target || dist2D(m.pos.x, m.pos.z, m.target.x, m.target.z) < 1.4) {
+          m.pauseT -= dt;
+          if (m.pauseT <= 0) { const ang = Math.random() * TAU, r = Math.random() * m.radius; m.target = { x: m.home.x + Math.cos(ang) * r, z: m.home.z + Math.sin(ang) * r }; m.pauseT = 1.5 + Math.random() * 3; }
+        }
+        tx = m.target ? m.target.x : m.pos.x; tz = m.target ? m.target.z : m.pos.z;
+      }
+      const dx = tx - m.pos.x, dz = tz - m.pos.z, dd = Math.hypot(dx, dz);
+      let moving = false;
+      if (dd > stop) {
+        m.heading = Math.atan2(dx, dz);
+        const nx = m.pos.x + Math.sin(m.heading) * m.speed * dt, nz = m.pos.z + Math.cos(m.heading) * m.speed * dt;
+        if (world.isWalkable(nx, nz)) { m.group.position.x = nx; m.group.position.z = nz; moving = true; }
+      }
+      m.group.position.y = world.height(m.pos.x, m.pos.z);
+      m.group.rotation.y = m.heading;
+      if (moving) m.walkPhase += dt * 9;
+      const a = m.group.userData.anim;
+      if (a) {
+        const gait = moving ? Math.sin(m.walkPhase) * 0.5 : 0, k = Math.min(1, dt * 10);
+        a.legL.rotation.x += (gait - a.legL.rotation.x) * k; a.legR.rotation.x += (-gait - a.legR.rotation.x) * k;
+        a.armL.rotation.x += (-gait - a.armL.rotation.x) * k; a.armR.rotation.x += (gait - a.armR.rotation.x) * k;
+      }
+    }
   }
 
   function damageEnemy(e, amount) {
@@ -204,8 +268,9 @@ export function createEntities(scene, world, G) {
   // Hide/show all entity meshes (used while indoors to skip ~300 draw calls).
   function setHidden(flag) {
     for (const n of npcs) n.group.visible = !flag;
+    for (const m of mobs) m.group.visible = !flag;
     for (const e of enemies) e.group.visible = flag ? false : e.alive;
   }
 
-  return { npcs, enemies, update, damageEnemy, spawnEnemy, setHidden };
+  return { npcs, mobs, enemies, update, damageEnemy, spawnEnemy, setHidden };
 }

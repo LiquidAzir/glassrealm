@@ -226,6 +226,17 @@ export const NPCS = [
   { key: 'loreseeker',   name: 'Loreseeker Wynn',    color: 0xc6a8ff, pos: { x: 44, z: -160 }, dialogue: 'saga_amber' },
 ];
 
+// Ambient mobile NPCs (not quest-givers): patrolling guard squads + lone wanderers
+// that walk around to make the world feel alive. Spawned + driven in entities.js.
+export const WANDERERS = [
+  { kind: 'squad',  name: 'Hearth Watch', color: 0x8a93ad, helm: 0xc2ccd6, count: 4, speed: 2.3, loop: [{ x: -16, z: -8 }, { x: -16, z: -30 }, { x: 20, z: -30 }, { x: 20, z: -8 }] },
+  { kind: 'squad',  name: 'Harbor Guard', color: 0x3a6a8a, helm: 0x2a4a5a, count: 3, speed: 2.2, loop: [{ x: 66, z: 178 }, { x: 66, z: 196 }, { x: 94, z: 196 }, { x: 94, z: 178 }] },
+  { kind: 'wander', name: 'Villager',  color: 0x9a6a3a, home: { x: 12, z: -22 }, radius: 12, speed: 1.5 },
+  { kind: 'wander', name: 'Monk',      color: 0x6a6a78, home: { x: -2, z: -6 },  radius: 9,  speed: 1.2 },
+  { kind: 'wander', name: 'Merchant',  color: 0xc8a23a, home: { x: 32, z: 100 }, radius: 11, speed: 1.4 },
+  { kind: 'wander', name: 'Dockhand',  color: 0x4a8f7a, home: { x: 88, z: 180 }, radius: 9,  speed: 1.5 },
+];
+
 export const ENEMIES = {
   boar:   { name: 'Wild Boar',    hp: 24,  dmg: 6,  speed: 3.4, xp: 55,  color: 0x9a5a38, aggro: 10, shape: 'beast',    loot: { meat: 1, pelt: 1, bones: 1 } },
   wolf:   { name: 'Grey Wolf',    hp: 36,  dmg: 9,  speed: 4.6, xp: 85,  color: 0x9aa0a8, aggro: 13, shape: 'beast',    loot: { pelt: 1, meat: 1, bones: 1 } },
