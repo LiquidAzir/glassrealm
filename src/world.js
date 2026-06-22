@@ -597,6 +597,25 @@ export function createWorld(scene, seed = 1337) {
     }
   })();
 
+  // Your buyable Farmstead, just west of Hearth Village — fenced fields, a barn, and animal
+  // pens. Crops use the normal plot system; livestock + workers are managed at the Foreman.
+  (function farmstead() {
+    const vA = byKey.verdant.village, cx = vA.x - 42, cz = vA.z + 4, R = 13;
+    const post = (x, z, h) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.22, h || 1.2, 0.22), lmat(0x6e4a2b)); m.position.set(x, height(x, z) + (h || 1.2) / 2, z); group.add(m); };
+    const rail = (x, z, len, ang) => { const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.13, 0.09), lmat(0x9a7a52)); m.position.set(x, height(x, z) + 0.85, z); m.rotation.y = ang; group.add(m); };
+    for (let i = -R; i <= R; i += 2.4) { post(cx + i, cz - R); post(cx + i, cz + R); post(cx - R, cz + i); post(cx + R, cz + i); }
+    for (let i = -R + 1.2; i < R; i += 2.4) { rail(cx + i, cz - R, 2.4, 0); rail(cx + i, cz + R, 2.4, 0); rail(cx - R, cz + i, 2.4, Math.PI / 2); rail(cx + R, cz + i, 2.4, Math.PI / 2); }
+    { const bx = cx - 6.5, bz = cz - 7.5, by = height(bx, bz); const wall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 5), lmat(0x9a3a2e)); wall.position.set(bx, by + 2, bz); const roof = new THREE.Mesh(new THREE.ConeGeometry(4.8, 2.6, 4), lmat(0x6a2a22)); roof.position.set(bx, by + 5.2, bz); roof.rotation.y = Math.PI / 4; const door = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.6, 0.2), lmat(0x4a2018)); door.position.set(bx, by + 1.3, bz + 2.5); group.add(wall, roof, door); solids.push({ x: bx, z: bz, r: 3 }); }
+    const animal = (x, z, body, head, big) => { const s = big ? 1.4 : 0.8, y = height(x, z); const b = new THREE.Mesh(new THREE.BoxGeometry(1.0 * s, 0.7 * s, 0.6 * s), lmat(body)); b.position.set(x, y + 0.45 * s, z); const h = new THREE.Mesh(new THREE.BoxGeometry(0.5 * s, 0.5 * s, 0.5 * s), lmat(head)); h.position.set(x + 0.6 * s, y + 0.6 * s, z); group.add(b, h); };
+    animal(cx + 4, cz - 6, 0xf2efe6, 0xe0584a, false); animal(cx + 6, cz - 5, 0xf2efe6, 0xe0584a, false); animal(cx + 5, cz - 7.5, 0xf2efe6, 0xe0584a, false);   // chickens
+    animal(cx + 9, cz + 5, 0xe79ab0, 0xd07a92, false); animal(cx + 7, cz + 7, 0xe79ab0, 0xd07a92, false);   // pigs
+    animal(cx - 5, cz + 7, 0xf4f4f4, 0x3a2e2a, true); animal(cx - 2, cz + 8, 0xf4f4f4, 0x3a2e2a, true);   // cows
+    for (let i = 0; i < 6; i++) plot(cx - 1 + (i % 3) * 2.2, cz - 1 + Math.floor(i / 3) * 2.2);
+    const dx = cx + R, dz = cz; signpost(dx, dz, 0x8ae06a); stations.push({ kind: 'farmdeed', label: 'Farm Deed', x: dx, z: dz, y: height(dx, dz) });
+    const ox = cx - 4, oz = cz - 3; { const fp = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.0, 6), lmat(0x6e4a2b)); fp.position.set(ox, height(ox, oz) + 1.0, oz); const bd = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.12), lmat(0xc8a24a)); bd.position.set(ox, height(ox, oz) + 1.9, oz); group.add(fp, bd); }
+    stations.push({ kind: 'foreman', label: 'Farm Foreman', x: ox, z: oz, y: height(ox, oz) });
+  })();
+
   // Emberdeep cave: ring of rock spires with a SW entrance gap + a loot chest.
   (function cave() {
     const cols = 16;

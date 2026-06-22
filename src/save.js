@@ -35,6 +35,7 @@ export function createSave(G) {
       inventory: G.inventory.serialize(),
       bank: { ...G.bankItems },
       economy: G.economy ? G.economy.serialize() : undefined,
+      farm: G.farm ? G.farm.serialize() : undefined,
       quests: G.quests.serialize(),
       slayer: G.slayer ? { ...G.slayer } : undefined,
       tracked: G.trackedQuest || undefined,

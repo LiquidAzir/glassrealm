@@ -62,6 +62,10 @@ export const ITEMS = {
   venom_flask:     { name: 'Venom Flask',     icon: '🧪', type: 'potion', buff: 'venom',     mult: 1, dur: 60, col: 0x6ad06a, desc: 'Drink: your hits poison foes for 60s.' },
   prayer_potion:   { name: 'Prayer Potion',   icon: '🧪', type: 'potion', restorePrayer: 40, col: 0xffe066, desc: 'Drink: restore 40 prayer.' },
   clue_scroll:     { name: 'Clue Scroll',      icon: '📜', type: 'clue', desc: 'Tap to read — a treasure trail to a hidden reward casket.' },
+  // Farm produce — collected from your livestock, sold at the Farm Foreman.
+  egg:  { name: 'Egg',  icon: '🥚', type: 'material', desc: 'Fresh from your hens. Sell at the farm.' },
+  milk: { name: 'Milk', icon: '🥛', type: 'material', desc: 'From your dairy cows. Sell at the farm.' },
+  wool: { name: 'Wool', icon: '🧶', type: 'material', desc: 'Shorn from your sheep. Sell at the farm.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -356,6 +360,18 @@ export const CLUE_SPOTS = [
   { x: 196,  z: 36,   hint: 'Deep in the Kytari jungle, dig.' },
   { x: 50,   z: -160, hint: 'Beneath the amber leaves of Amberfell, dig.' },
 ];
+
+// Farmstead livestock — buy young, they mature over real time (offline too), produce goods
+// you collect (eggs/milk/wool), and sell mature for profit. growMin = minutes to mature;
+// ppm = produce/min per mature animal; sellPrice = gold per produce unit sold.
+export const LIVESTOCK = [
+  { key: 'chicken', name: 'Chicken', icon: '🐔', cost: 40,  sell: 75,  growMin: 6,  produce: 'egg',  ppm: 0.5,  sellPrice: 4 },
+  { key: 'pig',     name: 'Pig',     icon: '🐷', cost: 120, sell: 250, growMin: 16, produce: null,   ppm: 0,    sellPrice: 0 },
+  { key: 'sheep',   name: 'Sheep',   icon: '🐑', cost: 150, sell: 290, growMin: 22, produce: 'wool', ppm: 0.25, sellPrice: 10 },
+  { key: 'cow',     name: 'Cow',     icon: '🐄', cost: 240, sell: 470, growMin: 30, produce: 'milk', ppm: 0.3,  sellPrice: 8 },
+];
+// Farmstead economy constants. Workers run the farm passively (net gold/min); cap = offline hours.
+export const FARM = { cost: 1500, workerCost: 200, workerWage: 3, workerOutput: 9, maxWorkers: 5, capMin: 240 };
 
 export const ENEMIES = {
   boar:   { name: 'Wild Boar',    hp: 24,  dmg: 6,  speed: 3.4, xp: 55,  color: 0x9a5a38, aggro: 10, shape: 'beast',    loot: { meat: 1, pelt: 1, bones: 1 } },

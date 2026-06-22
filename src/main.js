@@ -13,8 +13,9 @@ import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
 import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
+import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -66,6 +67,8 @@ try {
   G.save = createSave(G);
   G.economy = createEconomy(saved && saved.economy);
   G.economy.tick();   // offline catch-up from the last saved tick
+  G.farm = createFarm(saved && saved.farm);
+  G.farm.tick();      // offline catch-up: grow livestock + accrue produce/earnings
 
   // restore saved world edits + player
   if (saved) {
@@ -249,6 +252,8 @@ try {
       G.openSawmill(); return;
     } else if (s.kind === 'workbench') {
       G.openConstruct(); return;
+    } else if (s.kind === 'farmdeed' || s.kind === 'foreman') {
+      G.openFarm(); return;
     } else if (s.kind === 'bed') {
       player.state.hp = player.state.maxHp; player.state.prayer = player.state.maxPrayer;
       G.ui.setHealth(player.state.hp, player.state.maxHp); G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
@@ -464,6 +469,40 @@ try {
     G.save.save();
   };
   G.workJob = (j) => { if (!j || G.channel) return; startChannel(j.dur, j.anim, 'Working: ' + j.name, () => { G.inventory.add('gold', j.pay); G.ui.toast(`Shift done · +${j.pay}g`, 'gold', 2200); G.gainXp(j.skill, j.xp); G.audio.sfx('pickup'); checkQuestReady(); G.save.save(); }); };
+
+  // ---------- your farmstead: buy the land, raise + sell livestock, collect produce, hire hands ----------
+  const farmCfg = {
+    title: 'Farm Foreman', hint: '↑ ↓ select · tap · ↑↓↑↓ leave',
+    rows: () => {
+      if (!G.farm.owned()) return [{ section: 'For sale', icon: '🚜', title: 'Buy Meadowbrook Farmstead', sub: 'Own the land — raise livestock & hire hands', right: `${FARM.cost}g`, data: { op: 'buy' } }];
+      const rows = [];
+      for (const def of LIVESTOCK) {
+        const c = G.farm.countOf(def.key), m = G.farm.matureOf(def.key);
+        const sect = `${def.icon} ${def.name}: ${c} owned · ${m} grown${def.produce ? ` · ${ITEMS[def.produce].name.toLowerCase()}` : ''}`;
+        rows.push({ section: sect, icon: def.icon, title: `Buy a young ${def.name.toLowerCase()}`, sub: `matures in ~${def.growMin} min`, right: `${def.cost}g`, data: { op: 'buyAnimal', key: def.key } });
+        if (m > 0) rows.push({ section: sect, icon: '🪙', title: `Sell a grown ${def.name.toLowerCase()}`, sub: `${m} ready to sell`, right: `+${def.sell}g`, data: { op: 'sellAnimal', key: def.key } });
+      }
+      const prod = G.farm.produceAccrued(), pk = Object.keys(prod);
+      if (pk.length) rows.push({ section: 'Harvest', icon: '🧺', title: 'Collect produce', sub: pk.map((k) => `${prod[k]}× ${ITEMS[k].name}`).join(', '), right: 'take', data: { op: 'collectProduce' } });
+      rows.push({ section: 'Farmhands', icon: '🧑‍🌾', title: G.farm.canHire() ? `Hire a farmhand (${G.farm.workerCount()}/${FARM.maxWorkers})` : `Farmhands ${G.farm.workerCount()}/${FARM.maxWorkers} — full`, sub: `they run the farm: +${FARM.workerOutput - FARM.workerWage}g/min each`, right: G.farm.canHire() ? `${G.farm.hireCost()}g` : '—', data: { op: 'hire' } });
+      rows.push({ section: 'Farmhands', icon: '💰', title: 'Collect earnings', sub: `${Math.round(G.farm.netGoldPerMin())}g/min from your hands`, right: `${G.farm.goldAccrued()}g`, data: { op: 'collectGold' } });
+      for (const def of LIVESTOCK) if (def.produce && G.inventory.count(def.produce) > 0) rows.push({ section: 'Sell produce', icon: ITEMS[def.produce].icon, title: `Sell ${ITEMS[def.produce].name}`, sub: `${G.inventory.count(def.produce)} in your pack`, right: `+${def.sellPrice}g ea`, data: { op: 'sellProduce', key: def.produce, price: def.sellPrice } });
+      return rows;
+    },
+    onSelect: (r) => G.farmAction(r.data),
+  };
+  G.openFarm = () => { setMode('picker'); G.ui.openPicker(farmCfg); };
+  G.farmAction = (d) => {
+    const gold = () => G.inventory.count('gold');
+    if (d.op === 'buy') { if (gold() < FARM.cost) return G.ui.toast('Not enough gold', 'bad', 1600); G.inventory.remove('gold', FARM.cost); G.farm.buyFarm(); G.ui.toast('🚜 You bought the farmstead!', 'gold', 2800); G.audio.sfx('level'); if (G.ach) G.ach.evaluate(); }
+    else if (d.op === 'buyAnimal') { const def = LIVESTOCK.find((l) => l.key === d.key); if (gold() < def.cost) return G.ui.toast('Not enough gold', 'bad', 1600); G.inventory.remove('gold', def.cost); G.farm.buyAnimal(d.key); G.ui.toast(`Bought a young ${def.name.toLowerCase()}`, 'gold', 2000); G.audio.sfx('pickup'); }
+    else if (d.op === 'sellAnimal') { const g = G.farm.sellMature(d.key); if (g <= 0) return G.ui.toast('None grown yet', '', 1500); G.inventory.add('gold', g); G.ui.toast(`Sold a grown ${LIVESTOCK.find((l) => l.key === d.key).name.toLowerCase()} · +${g}g`, 'gold', 2200); G.audio.sfx('pickup'); }
+    else if (d.op === 'collectProduce') { const o = G.farm.collectProduce(); const parts = []; for (const k in o) { G.inventory.add(k, o[k]); parts.push(`${o[k]}× ${ITEMS[k].name}`); } G.ui.toast(parts.length ? `Collected ${parts.join(', ')}` : 'Nothing to collect', parts.length ? 'gold' : '', 2200); if (parts.length) G.audio.sfx('pickup'); }
+    else if (d.op === 'hire') { if (!G.farm.canHire()) return; const c = G.farm.hireCost(); if (gold() < c) return G.ui.toast('Not enough gold', 'bad', 1600); G.inventory.remove('gold', c); G.farm.hireWorker(); G.ui.toast('Hired a farmhand!', 'gold', 2000); G.audio.sfx('ui'); }
+    else if (d.op === 'collectGold') { const g = G.farm.collectGold(); if (g <= 0) return G.ui.toast('No earnings yet', '', 1500); G.inventory.add('gold', g); G.ui.toast(`Collected ${g}g from the farm`, 'gold', 2200); G.audio.sfx('pickup'); }
+    else if (d.op === 'sellProduce') { const n = G.inventory.count(d.key); if (n <= 0) return; G.inventory.remove(d.key, n); G.inventory.add('gold', n * d.price); G.ui.toast(`Sold ${n}× ${ITEMS[d.key].name} · +${n * d.price}g`, 'gold', 2200); G.audio.sfx('pickup'); }
+    G.save.save();
+  };
 
   // ---------- interactive cooking: pick a raw food at the stove, watch it cook (progress bar + stir) ----------
   const cookCfg = {
@@ -1072,7 +1111,7 @@ try {
   function frame() {
     if (!running) return;
     const dt = Math.min(engine.clock.getDelta(), 0.05);
-    if (++econTick % 90 === 0) G.economy.tick();   // accrue passive business income (~1.5s)
+    if (++econTick % 90 === 0) { G.economy.tick(); G.farm.tick(); }   // accrue passive business + farm income (~1.5s)
     // day/night cycle (~180s) — kept bright enough to stay readable on the display
     tod = (tod + dt / 180) % 1;
     const day = (Math.sin(tod * Math.PI * 2 - Math.PI / 2) + 1) / 2;
