@@ -82,7 +82,6 @@ export function createInteriors(scene) {
     box(seg, WALL_H, 0.4, M.wall, -(1.6 + seg / 2), WALL_H / 2, HD);
     box(seg, WALL_H, 0.4, M.wall, (1.6 + seg / 2), WALL_H / 2, HD);
     box(3.4, 1.3, 0.4, M.wall, 0, WALL_H - 0.65, HD);
-    for (let i = -3; i <= 3; i++) box(RW, 0.22, 0.22, M.beam, 0, WALL_H - 0.15, i * 2);
     box(2.4, 1.8, 0.12, M.win, -4, 3, -HD + 0.3);
     box(2.4, 1.8, 0.12, M.win, 4, 3, -HD + 0.3);
     box(3, 0.06, 1.4, M.cloth, 0, 0.2, HD - 1.5);

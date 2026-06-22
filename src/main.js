@@ -30,7 +30,9 @@ try {
   const engine = createEngine(canvas);
   // cloud save sync (if configured): pull the latest before loading so any device shares one save
   const cloud = createCloud(); G.cloud = cloud;
-  if (cloud.enabled) { try { const remote = await cloud.pull(); if (remote) mergeRemoteSave(remote); } catch (e) {} }
+  // a Restart sets this flag so we DON'T re-pull the just-wiped save from the cloud (which would skip the class picker)
+  let freshStart = false; try { freshStart = !!sessionStorage.getItem('glassrealm.fresh'); if (freshStart) sessionStorage.removeItem('glassrealm.fresh'); } catch (e) {}
+  if (cloud.enabled && !freshStart) { try { const remote = await cloud.pull(); if (remote) mergeRemoteSave(remote); } catch (e) {} }
   const saved = loadSave();
 
   const world = createWorld(engine.scene);
@@ -450,7 +452,7 @@ try {
   let restartArmed = 0, wiping = false;   // wiping guards the unload/interval autosave so Restart & Import can't be clobbered
   G.requestRestart = () => {
     const now = performance.now();
-    if (restartArmed && now - restartArmed < 5000) { wiping = true; G.save.clear(); location.reload(); }
+    if (restartArmed && now - restartArmed < 5000) { wiping = true; try { sessionStorage.setItem('glassrealm.fresh', '1'); } catch (e) {} G.save.clear(); location.reload(); }
     else { restartArmed = now; G.ui.toast('Tap Restart again to confirm — this wipes your save!', 'bad', 4500); }
   };
 

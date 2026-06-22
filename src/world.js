@@ -242,19 +242,49 @@ export function createWorld(scene, seed = 1337) {
   // coloured sign, and a 'door' station out front that opens its interior.
   const SIGN_COL = { home: 0x9a4f3a, store: 0xffd45f, bank: 0x5b7cff, workshop: 0x9bf2ff, tavern: 0xc9742e, forge: 0xff7a33 };
   const BLD_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge' };
+  // per-type size + roof so each building reads distinctly (bank tall w/ columns, tavern wide, forge w/ chimney, …)
+  const BLD = {
+    home:     { roof: 0x8a4a36, roofH: 2.0, h: 3.6 },
+    store:    { roof: 0xb8863a, roofH: 2.0, h: 3.8 },
+    bank:     { roof: 0x46568a, roofH: 1.8, h: 4.8 },
+    workshop: { roof: 0x3f7a8a, roofH: 2.0, h: 3.8 },
+    tavern:   { roof: 0x8a5a2e, roofH: 2.4, h: 4.4 },
+    forge:    { roof: 0x55585f, roofH: 1.8, h: 4.0 },
+  };
   function building(bx, bz, vcx, vcz, type, pal) {
     const y = height(bx, bz);
     const faceA = Math.atan2(vcx - bx, vcz - bz);                 // face the plaza
     const fx = Math.sin(faceA), fz = Math.cos(faceA), rx = Math.cos(faceA), rz = -Math.sin(faceA);
-    const W = 4.6, H = 3.0, D = 4.6;
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), lmat(pal[0])); wall.position.set(bx, y + H / 2, bz); wall.rotation.y = faceA; group.add(wall);
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 2.1, 4), lmat(pal[1])); roof.position.set(bx, y + H + 0.95, bz); roof.rotation.y = faceA + Math.PI / 4; group.add(roof);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.0, 0.25), lmat(0x3a2a1c)); door.position.set(bx + fx * (D / 2 - 0.02), y + 1.0, bz + fz * (D / 2 - 0.02)); door.rotation.y = faceA; group.add(door);
-    for (const s of [-1.6, 1.6]) { const win = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 0.12), new THREE.MeshBasicMaterial({ color: 0xffd47a })); win.position.set(bx + fx * (D / 2) + rx * s, y + 1.75, bz + fz * (D / 2) + rz * s); win.rotation.y = faceA; group.add(win); }
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 0.12), lmat(SIGN_COL[type] || 0xcaa878)); sign.position.set(bx + fx * (D / 2 + 0.08), y + 2.4, bz + fz * (D / 2 + 0.08)); sign.rotation.y = faceA; group.add(sign);
-    const sx = bx + fx * (D / 2 + 1.0), sz = bz + fz * (D / 2 + 1.0);
+    const cfg = BLD[type] || BLD.home, W = 5.2, D = 5.2, H = cfg.h;
+    // place at building-local coords: side = right offset, oy = height, fwd = toward the plaza
+    const put = (geo, mat, side, oy, fwd, rotX) => { const m = new THREE.Mesh(geo, mat); m.position.set(bx + fx * fwd + rx * side, y + oy, bz + fz * fwd + rz * side); m.rotation.y = faceA; if (rotX) m.rotation.x = rotX; group.add(m); return m; };
+    put(new THREE.BoxGeometry(W, H, D), lmat(pal[0]), 0, H / 2, 0);                                                   // walls
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(W * 0.82, cfg.roofH, 4), lmat(cfg.roof)); roof.position.set(bx, y + H + cfg.roofH / 2 - 0.1, bz); roof.rotation.y = faceA + Math.PI / 4; group.add(roof);
+    put(new THREE.BoxGeometry(1.5, 2.3, 0.25), lmat(0x3a2a1c), 0, 1.15, D / 2 - 0.02);                                // door
+    for (const s of [-W * 0.3, W * 0.3]) put(new THREE.BoxGeometry(1.0, 1.0, 0.12), new THREE.MeshBasicMaterial({ color: 0xffd47a }), s, H * 0.58, D / 2);   // lit windows
+    put(new THREE.BoxGeometry(2.0, 0.6, 0.12), lmat(SIGN_COL[type] || 0xcaa878), 0, H - 0.5, D / 2 + 0.08);           // sign
+    if (type === 'tavern') {
+      put(new THREE.CylinderGeometry(0.5, 0.5, 1.0, 10), lmat(0x6e4a2b), W * 0.42, 0.5, D / 2 + 0.7);                 // barrel
+      put(new THREE.BoxGeometry(0.18, 2.4, 0.18), lmat(0x4a3526), -W * 0.42, 1.2, D / 2 + 0.7);                       // sign post
+      put(new THREE.BoxGeometry(1.1, 0.6, 0.1), lmat(0xc9742e), -W * 0.42, 2.0, D / 2 + 1.05);                        // hanging sign
+    } else if (type === 'bank') {
+      for (const s of [-W * 0.34, W * 0.34]) put(new THREE.CylinderGeometry(0.3, 0.34, H, 8), lmat(0xdfe4ee), s, H / 2, D / 2 - 0.1);   // columns
+    } else if (type === 'forge') {
+      put(new THREE.BoxGeometry(0.9, H + 1.8, 0.9), lmat(0x4a4d54), W * 0.32, (H + 1.8) / 2, -D * 0.25);              // chimney
+      put(new THREE.BoxGeometry(0.7, 0.4, 0.7), new THREE.MeshBasicMaterial({ color: 0xff7a33 }), W * 0.32, H + 1.7, -D * 0.25);   // ember top
+    } else if (type === 'store') {
+      put(new THREE.BoxGeometry(W * 0.7, 0.16, 1.5), lmat(0xc0452e), 0, H - 0.55, D / 2 + 0.55, -0.4);                // tilted awning
+      put(new THREE.BoxGeometry(0.9, 0.9, 0.9), lmat(0x8a6a44), W * 0.42, 0.45, D / 2 + 0.7);                         // crate
+    } else if (type === 'workshop') {
+      put(new THREE.BoxGeometry(0.7, H + 1.2, 0.7), lmat(0x6a6f78), W * 0.32, (H + 1.2) / 2, -D * 0.25);              // chimney
+      put(new THREE.CylinderGeometry(0.5, 0.5, 1.0, 8), lmat(0x6e4a2b), W * 0.42, 0.5, D / 2 + 0.7);                  // barrel
+    } else {
+      put(new THREE.BoxGeometry(0.6, H + 0.9, 0.6), lmat(0x7a5a44), W * 0.3, (H + 0.9) / 2, -D * 0.25);               // home chimney
+      put(new THREE.BoxGeometry(1.5, 0.32, 0.32), lmat(0x4a7a3a), 0, H * 0.4, D / 2 + 0.12);                          // flower box
+    }
+    const sx = bx + fx * (D / 2 + 1.2), sz = bz + fz * (D / 2 + 1.2);
     stations.push({ kind: 'door', label: 'Enter ' + (BLD_NAME[type] || 'building'), x: sx, z: sz, y: height(sx, sz), building: type });
-    solids.push({ x: bx, z: bz, r: 2.8 });
+    solids.push({ x: bx, z: bz, r: 2.9 });
   }
   function well(x, z) {
     const y = height(x, z);
@@ -442,6 +472,18 @@ export function createWorld(scene, seed = 1337) {
     shortcuts.push({ x, z, toX, toZ, level, name, cooldown: 0 });
   }
   for (const s of SHORTCUT_LINKS) { pad(s.a.x, s.a.z, s.b.x, s.b.z, s.level, s.name); pad(s.b.x, s.b.z, s.a.x, s.a.z, s.level, s.name); }
+
+  // visible bridge decks + railings so crossings read as solid causeways (not just flat water)
+  for (const b of BRIDGES) {
+    const mx = (b.ax + b.bx) / 2, mz = (b.az + b.bz) / 2;
+    const len = Math.hypot(b.bx - b.ax, b.bz - b.az), ang = Math.atan2(b.bx - b.ax, b.bz - b.az);
+    const ex = Math.cos(ang), ez = -Math.sin(ang);                                  // perpendicular (across the deck)
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.4, len + 2.5), lmat(0x8a6a45)); deck.position.set(mx, 1.66, mz); deck.rotation.y = ang; group.add(deck);
+    for (const s of [-2.5, 2.5]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, len + 2.5), lmat(0x5a4630)); rail.position.set(mx + ex * s, 2.15, mz + ez * s); rail.rotation.y = ang; group.add(rail);
+      for (let t = -len / 2; t <= len / 2 + 0.1; t += 3) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, 0.3), lmat(0x5a4630)); post.position.set(mx + Math.sin(ang) * t + ex * s, 1.95, mz + Math.cos(ang) * t + ez * s); group.add(post); }
+    }
+  }
 
   scene.add(group);
 
