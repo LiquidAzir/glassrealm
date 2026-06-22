@@ -11,6 +11,10 @@ const DEFS = [
   { key: 'foraging',    name: 'Foraging',    icon: '🌿' },
   { key: 'cooking',     name: 'Cooking',     icon: '🍳' },
   { key: 'smithing',    name: 'Smithing',    icon: '🔨' },
+  { key: 'farming',     name: 'Farming',     icon: '🌱' },
+  { key: 'herblore',    name: 'Herblore',    icon: '⚗️' },
+  { key: 'thieving',    name: 'Thieving',    icon: '🎭' },
+  { key: 'prayer',      name: 'Prayer',      icon: '✨' },
 ];
 
 // Gentle curve: L1=0, L2≈8, L3≈29, L5≈90, L10≈430 xp.
@@ -18,7 +22,7 @@ const xpForLevel = (l) => Math.round(8 * Math.pow(l - 1, 1.85));
 function levelForXp(xp) { let l = 1; while (l < 99 && xpForLevel(l + 1) <= xp) l++; return l; }
 
 export function createSkills(saved) {
-  const xp = { combat: 0, ranged: 0, magic: 0, defence: 0, woodcutting: 0, mining: 0, fishing: 0, foraging: 0, cooking: 0, smithing: 0, ...(saved || {}) };
+  const xp = { combat: 0, ranged: 0, magic: 0, defence: 0, woodcutting: 0, mining: 0, fishing: 0, foraging: 0, cooking: 0, smithing: 0, farming: 0, herblore: 0, thieving: 0, prayer: 0, ...(saved || {}) };
   return {
     DEFS,
     xp,

@@ -11,7 +11,7 @@ import { createInventory } from './inventory.js';
 import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
 import { loadSave, createSave } from './save.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { dist2D } from './util.js';
 
@@ -56,6 +56,7 @@ try {
 
   const skillName = (key) => (G.skills.DEFS.find((d) => d.key === key) || { name: key }).name;
   const npcName = (key) => { const n = G.entities.npcs.find((x) => x.def.key === key); return n ? n.def.name : key; };
+  const maxPrayer = () => 20 + G.skills.level('prayer') * 2;
 
   // ---------- gameplay verbs ----------
   G.gainXp = (key, amt) => {
@@ -83,10 +84,41 @@ try {
   };
   G.forageBush = (b) => {
     world.harvestBush(b.idx);
-    G.inventory.add('berry', 1);
-    G.ui.toast('Foraged Sunberries', 'gold', 1400);
+    const herb = Math.random() < 0.3;
+    G.inventory.add(herb ? 'herb' : 'berry', 1);
+    G.ui.toast(herb ? 'Foraged Glimmerleaf' : 'Foraged Sunberries', 'gold', 1400);
     G.gainXp('foraging', 10);
     checkQuestReady(); G.save.save();
+  };
+  G.plotAction = (p) => {
+    if (p.state === 'grown') {
+      const n = 1 + Math.floor(Math.random() * 2);
+      G.inventory.add('crop', n); world.harvestPlot(p); G.gainXp('farming', 24);
+      G.ui.toast(`Harvested ${n} Isle Greens`, 'gold', 1500); checkQuestReady(); G.save.save();
+    } else if (p.state === 'growing') {
+      G.ui.toast('Still growing…', '', 1200);
+    } else if (G.inventory.has('seeds', 1)) {
+      G.inventory.remove('seeds', 1); world.plantPlot(p); G.gainXp('farming', 8); G.ui.toast('Planted seeds', 'good', 1300); G.save.save();
+    } else G.ui.toast('No seeds — buy some from Trader Pell', 'bad', 1800);
+  };
+  G.thieveStall = (s) => {
+    if (s.cooldown > 0) { G.ui.toast('The trader is watching…', '', 1200); return; }
+    s.cooldown = 4;
+    const lvl = G.skills.level('thieving');
+    if (Math.random() < Math.min(0.92, 0.55 + lvl * 0.03)) {
+      const gold = 5 + Math.floor(Math.random() * 12) + lvl;
+      G.inventory.add('gold', gold); G.gainXp('thieving', 18);
+      if (Math.random() < 0.3) G.inventory.add(Math.random() < 0.5 ? 'herb' : 'seeds', 1);
+      G.ui.toast(`Pilfered ${gold} gold`, 'gold', 1500);
+    } else { G.ui.toast('Caught! You take a cuff round the ear.', 'bad', 1800); G.damagePlayer(6); }
+    G.save.save();
+  };
+  G.togglePrayer = (key) => {
+    const pr = PRAYERS.find((p) => p.key === key); if (!pr) return;
+    if (G.skills.level('prayer') < pr.level) { G.ui.toast(`Needs Prayer level ${pr.level}`, 'bad', 1600); return; }
+    if (player.state.activePrayer === key) { player.state.activePrayer = null; G.ui.toast(`${pr.name} off`, '', 1200); }
+    else if (player.state.prayer <= 0) { G.ui.toast('No prayer points — bury bones at an altar', 'bad', 2000); }
+    else { player.state.activePrayer = key; G.ui.toast(`${pr.name} active`, 'good', 1300); }
   };
   G.talkTo = (n) => {
     setMode('dialogue'); G.ui.hidePrompt();
@@ -133,6 +165,21 @@ try {
       G.openForge(); return;
     } else if (s.kind === 'bank') {
       G.openBank(); return;
+    } else if (s.kind === 'altar') {
+      const b = G.inventory.count('bones');
+      if (b > 0) { G.inventory.remove('bones', b); G.gainXp('prayer', 20 * b); }
+      player.state.maxPrayer = maxPrayer();
+      player.state.prayer = player.state.maxPrayer;
+      G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
+      G.ui.toast(b > 0 ? `Buried ${b} bones · prayer restored` : 'Prayer restored', 'good', 2000);
+      G.save.save(); return;
+    } else if (s.kind === 'cauldron') {
+      let n = 0;
+      for (const r of BREW) {
+        while (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k]))) { for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(r.out, 1); G.gainXp('herblore', r.xp); n++; }
+      }
+      G.ui.toast(n ? `Brewed ${n} Strong Salve${n > 1 ? 's' : ''}` : 'Need Glimmerleaf to brew', n ? 'good' : '', 2000);
+      G.save.save(); return;
     } else if (s.kind === 'chest') {
       if (s.looted) { G.ui.toast('The chest is empty.', '', 1500); return; }
       s.looted = true;
@@ -150,7 +197,9 @@ try {
     if (dd > w.range + 0.6) return;            // out of range for this weapon
     player.state.attackCd = w.speed;
     player.playAttack(w.style);
-    const dmg = Math.round(4 + G.skills.level(w.skill) * 1.2 + w.bonus);
+    let dmg = Math.round(4 + G.skills.level(w.skill) * 1.2 + w.bonus);
+    const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
+    if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
     const hitY = e.pos.y + 1.5 * (e.baseScale || 1);
     e._lastSkill = w.skill;
     if (w.style === 'ranged' || w.style === 'magic') {
@@ -255,7 +304,9 @@ try {
     if (player.state.hp <= 0) return;
     const eq = player.state.equipment;
     const defv = eq.armor ? (ITEMS[eq.armor].defense || 0) : 0;
-    const taken = Math.max(1, Math.round(amount - defv * 0.6));
+    let taken = Math.max(1, Math.round(amount - defv * 0.6));
+    const apT = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
+    if (apT && apT.dmgTaken) taken = Math.max(1, Math.round(taken * apT.dmgTaken));
     player.state.hp -= taken;
     hurtFlash = 0.25;
     G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, taken, 'player');
@@ -326,6 +377,8 @@ try {
     else if (t.kind === 'ore') G.mineOre(t.ref);
     else if (t.kind === 'fish') G.fishSpot(t.ref);
     else if (t.kind === 'station') G.useStation(t.ref);
+    else if (t.kind === 'plot') G.plotAction(t.ref);
+    else if (t.kind === 'stall') G.thieveStall(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
     else if (t.kind === 'enemy') G.attackEnemy(t.ref);
   }
@@ -369,15 +422,33 @@ try {
   }
 
   // ---------- loop ----------
-  let running = true;
+  let running = true, tod = 0.32;
   function frame() {
     if (!running) return;
     const dt = Math.min(engine.clock.getDelta(), 0.05);
+    // day/night cycle (~180s) — kept bright enough to stay readable on the display
+    tod = (tod + dt / 180) % 1;
+    const day = (Math.sin(tod * Math.PI * 2 - Math.PI / 2) + 1) / 2;
+    engine.hemi.intensity = 0.32 + 0.40 * day;
+    engine.sun.intensity = 0.25 + 0.70 * day;
+    engine.fill.intensity = 0.10 + 0.15 * day;
+    const ang = tod * Math.PI * 2;
+    engine.sun.position.set(Math.cos(ang) * 60, 25 + 75 * day, Math.sin(ang) * 40);
+    engine.sun.color.setHSL(0.09, 0.55, 0.38 + 0.18 * day);
     if (mode === 'world') {
       player.update(dt, input);
       G.entities.update(dt, player);
       world.tick(dt);
       G.projectiles.update(dt);
+      if (player.state.activePrayer) {
+        const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
+        if (ap) {
+          player.state.prayer -= ap.drain * dt;
+          if (ap.regen && player.state.hp < player.state.maxHp) { player.state.hp = Math.min(player.state.maxHp, player.state.hp + ap.regen * dt); G.ui.setHealth(player.state.hp, player.state.maxHp); }
+          if (player.state.prayer <= 0) { player.state.prayer = 0; player.state.activePrayer = null; G.ui.toast('Prayer depleted', 'bad', 1500); }
+        }
+        G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
+      }
       G.currentTarget = G.interact.best();
       updatePrompt();
       updateLocation();
@@ -398,7 +469,10 @@ try {
   setInterval(() => G.save.save(), 15000);
 
   // initial HUD + reveal
+  player.state.maxPrayer = maxPrayer();
+  if (!player.state.prayer || player.state.prayer > player.state.maxPrayer) player.state.prayer = player.state.maxPrayer;
   G.ui.setHealth(player.state.hp, player.state.maxHp);
+  G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
   updateLocation();
   boot.classList.add('out');
   setTimeout(() => boot.classList.add('hidden'), 700);

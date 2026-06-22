@@ -132,6 +132,8 @@ html, body {
   transition: width 250ms var(--ease-focus-on);
 }
 .bar-fill.health { background: linear-gradient(90deg, #ff6b6b, #ff9d6b); }
+.bar-fill.prayer { background: linear-gradient(90deg, #6b8cff, #b48cff); }
+.prayer-bar { margin-top: 5px; }
 .bar-label {
   position: absolute;
   inset: 0;

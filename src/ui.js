@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { ITEMS, SHOP } from './content.js';
+import { ITEMS, SHOP, PRAYERS } from './content.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Quests', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -29,6 +29,12 @@ export function createUI(G) {
     els.healthLabel.textContent = `${Math.max(0, Math.ceil(hp))} / ${max}`;
   }
   function setLocation(name) { els.loc.textContent = name; }
+  const prayerBar = document.createElement('div'); prayerBar.className = 'bar prayer-bar';
+  prayerBar.innerHTML = '<span class="bar-fill prayer" id="prayerFill"></span><span class="bar-label" id="prayerLabel">✨</span>';
+  document.getElementById('vitals').insertBefore(prayerBar, els.loc);
+  const prayerFill = prayerBar.querySelector('#prayerFill');
+  const prayerLabel = prayerBar.querySelector('#prayerLabel');
+  function setPrayer(cur, mx) { prayerFill.style.width = Math.max(0, Math.min(100, (cur / mx) * 100)) + '%'; prayerLabel.textContent = `✨ ${Math.ceil(cur)}/${mx}`; }
   function showPrompt(t) { els.promptText.textContent = t; els.prompt.classList.remove('hidden'); }
   function hidePrompt() { els.prompt.classList.add('hidden'); }
   function toast(text, type = '', ms = 2400) {
@@ -93,11 +99,12 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Quests: renderQuests, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
     if (TABS[tab] === 'Gear') return gearRows().length;
+    if (TABS[tab] === 'Prayer') return PRAYERS.length;
     return 0;
   }
   function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); }
@@ -114,6 +121,8 @@ export function createUI(G) {
       if (it && it.def.type === 'consumable') { G.useItem(it.key); renderMenu(); }
     } else if (TABS[tab] === 'Gear') {
       const r = gearRows()[row]; if (r) { G.equipChoice(r); renderMenu(); }
+    } else if (TABS[tab] === 'Prayer') {
+      const pr = PRAYERS[row]; if (pr) { G.togglePrayer(pr.key); renderMenu(); }
     }
   }
   function gearRows() {
@@ -158,6 +167,16 @@ export function createUI(G) {
     const wn = G.weaponName ? G.weaponName() : '';
     const L = (k) => G.skills.level(k);
     els.menuBody.innerHTML = `<div class="section-head">Total ${G.skills.total()} &nbsp;·&nbsp; ⚔️${L('combat')} 🏹${L('ranged')} 🪄${L('magic')} 🛡️${L('defence')} &nbsp;·&nbsp; 🗡️ ${wn}</div>` + html;
+  }
+  function renderPrayer() {
+    const lvl = G.skills.level('prayer');
+    const cur = Math.ceil(G.player.state.prayer), mx = G.player.state.maxPrayer;
+    let html = `<div class="section-head">Prayer ${cur}/${mx} &nbsp;·&nbsp; Lv ${lvl} &nbsp;·&nbsp; bury bones at an altar to restore</div>`;
+    html += PRAYERS.map((pr, i) => {
+      const locked = lvl < pr.level, active = G.player.state.activePrayer === pr.key;
+      return `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${active ? '🔆' : '✨'}</span><div class="row-main"><div class="row-title">${pr.name}${active ? ' <span style="color:var(--gold)">active</span>' : ''}${locked ? ` <span style="color:var(--text-mut)">Lv ${pr.level}</span>` : ''}</div><div class="row-sub">${pr.desc} · drains ${pr.drain}/s</div></div></div>`;
+    }).join('');
+    els.menuBody.innerHTML = html;
   }
   function npcName(key) { const n = G.entities.npcs.find((x) => x.def.key === key); return n ? n.def.name : key; }
   function renderQuests() {
@@ -238,7 +257,7 @@ export function createUI(G) {
 
   const api = {
     menuOpen: false,
-    setCompass, setHealth, setLocation, showPrompt, hidePrompt, toast, updateMarkers,
+    setCompass, setHealth, setLocation, setPrayer, showPrompt, hidePrompt, toast, updateMarkers,
     hitsplat, xpDrop, levelBanner,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,

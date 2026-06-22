@@ -237,6 +237,63 @@ export function createWorld(scene, seed = 1337) {
   bankChest(VILLAGE_A.x + 4, VILLAGE_A.z - 1);
   bankChest(VILLAGE_B.x - 2, VILLAGE_B.z + 5);
 
+  // --- Prayer altars + Herblore cauldrons ---
+  function altar(x, z) {
+    const y = height(x, z);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 1.6), new THREE.MeshLambertMaterial({ color: 0xd8d2e6, flatShading: true }));
+    base.position.set(x, y + 0.5, z);
+    const glow = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshBasicMaterial({ color: 0xbf9bff }));
+    glow.position.set(x, y + 1.35, z);
+    group.add(base, glow);
+    stations.push({ kind: 'altar', label: 'Altar', x, z, y });
+  }
+  function cauldron(x, z) {
+    const y = height(x, z);
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.5, 0.9, 8), new THREE.MeshLambertMaterial({ color: 0x40454d, flatShading: true }));
+    pot.position.set(x, y + 0.5, z);
+    const brew = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.12, 8), new THREE.MeshBasicMaterial({ color: 0x7cffb0 }));
+    brew.position.set(x, y + 0.96, z);
+    group.add(pot, brew);
+    stations.push({ kind: 'cauldron', label: 'Cauldron', x, z, y });
+  }
+  altar(VILLAGE_A.x - 6, VILLAGE_A.z - 3); cauldron(VILLAGE_A.x + 8, VILLAGE_A.z - 5);
+  altar(VILLAGE_B.x + 8, VILLAGE_B.z + 2); cauldron(VILLAGE_B.x - 6, VILLAGE_B.z - 4);
+
+  // --- Thieving market stalls ---
+  const stalls = [];
+  const stallMat = new THREE.MeshLambertMaterial({ color: 0xb06a3a, flatShading: true });
+  const goodsMat = new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true });
+  function stall(x, z) {
+    const y = height(x, z);
+    const table = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.2, 1.2), stallMat); table.position.set(x, y + 0.9, z);
+    for (const lx of [-0.8, 0.8]) for (const lz of [-0.4, 0.4]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.9, 0.15), stallMat); leg.position.set(x + lx, y + 0.45, z + lz); group.add(leg); }
+    const goods = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), goodsMat); goods.position.set(x, y + 1.2, z);
+    group.add(table, goods);
+    stalls.push({ x, z, y, cooldown: 0 });
+  }
+  stall(VILLAGE_A.x - 9, VILLAGE_A.z + 2); stall(VILLAGE_B.x + 6, VILLAGE_B.z - 4);
+
+  // --- Farming plots ---
+  const plots = [];
+  const GROW = 22;
+  function plotVisual(p) {
+    const c = p.cropMesh;
+    if (p.state === 'empty') { c.visible = false; }
+    else if (p.state === 'growing') { c.visible = true; c.scale.setScalar(0.4); c.material.color.setHex(0x8a9a5a); }
+    else { c.visible = true; c.scale.setScalar(1.1); c.material.color.setHex(0x57c98a); }
+  }
+  function plot(x, z) {
+    const y = height(x, z);
+    const soil = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 1.6), new THREE.MeshLambertMaterial({ color: 0x6b4a2e, flatShading: true }));
+    soil.position.set(x, y + 0.1, z);
+    const crop = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.0, 6), new THREE.MeshLambertMaterial({ color: 0x57c98a, flatShading: true }));
+    crop.position.set(x, y + 0.6, z); crop.visible = false;
+    group.add(soil, crop);
+    plots.push({ x, z, y, state: 'empty', grow: 0, cropMesh: crop });
+  }
+  plot(VILLAGE_A.x + 12, VILLAGE_A.z + 4); plot(VILLAGE_A.x + 14, VILLAGE_A.z + 4); plot(VILLAGE_A.x + 13, VILLAGE_A.z + 6);
+  plot(VILLAGE_B.x - 10, VILLAGE_B.z + 1); plot(VILLAGE_B.x - 12, VILLAGE_B.z + 2);
+
   // Emberdeep cave: a ring of rock spires with a south-west entrance gap + a loot chest.
   (function cave() {
     const cols = 16;
@@ -279,7 +336,7 @@ export function createWorld(scene, seed = 1337) {
     village: VILLAGE_A,
     villages: [{ name: 'Hearth Village', x: VILLAGE_A.x, z: VILLAGE_A.z }, { name: 'Emberhold', x: VILLAGE_B.x, z: VILLAGE_B.z }],
     isles: ISLES, bridge: BRIDGE, peaks: [PEAK_A, PEAK_B], cave: CAVE, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);
@@ -296,10 +353,16 @@ export function createWorld(scene, seed = 1337) {
       bushIM.setMatrixAt(idx, dummy.matrix); bushIM.instanceMatrix.needsUpdate = true;
     },
     depleteOre(o) { if (!o.alive) return; o.alive = false; o.respawn = 14; setOreScale(o, 0.32); },
+    plantPlot(p) { p.state = 'growing'; p.grow = GROW; plotVisual(p); },
+    harvestPlot(p) { p.state = 'empty'; plotVisual(p); },
     tick(dt) {
       for (const o of oreNodes) {
         if (!o.alive) { o.respawn -= dt; if (o.respawn <= 0) { o.alive = true; setOreScale(o, 1); } }
       }
+      for (const p of plots) {
+        if (p.state === 'growing') { p.grow -= dt; if (p.grow <= 0) { p.state = 'grown'; plotVisual(p); } }
+      }
+      for (const s of stalls) if (s.cooldown > 0) s.cooldown -= dt;
     },
   };
 }

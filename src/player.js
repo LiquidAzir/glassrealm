@@ -69,6 +69,7 @@ export function createPlayer(scene, world) {
     moving: false, bob: 0,
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed',
     equipment: { weapon: null, armor: null },
+    prayer: 30, maxPrayer: 30, activePrayer: null,
   };
 
   function weapon() { return weaponOf(state.equipment.weapon); }
