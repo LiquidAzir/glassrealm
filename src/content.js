@@ -17,6 +17,11 @@ export const ITEMS = {
   coal:       { name: 'Coal',       icon: '🪨', type: 'material', desc: 'Fuel for smelting iron.' },
   bronze_bar: { name: 'Bronze Bar', icon: '🟫', type: 'material', desc: 'Forge it into bronze gear at an anvil.' },
   iron_bar:   { name: 'Iron Bar',   icon: '⬜', type: 'material', desc: 'Forge it into iron or steel gear at an anvil.' },
+  mithril_ore: { name: 'Mithril Ore', icon: '🔷', type: 'material', desc: 'A rare blue ore — smelt with coal into mithril.' },
+  mithril_bar: { name: 'Mithril Bar', icon: '🟦', type: 'material', desc: 'Forge it into mithril gear at an anvil.' },
+  mithril_sword:  { name: 'Mithril Sword',  icon: '⚔️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 19, range: 2.7, speed: 0.42, desc: 'A keen mithril blade. +19 melee.' },
+  mithril_armor:  { name: 'Mithril Armor',  icon: '🛡️', type: 'armor',  defense: 18, desc: 'Light, strong mithril plate. -18 damage taken.' },
+  mithril_shield: { name: 'Mithril Shield', icon: '🛡️', type: 'shield', defense: 18, desc: 'A gleaming mithril shield. Blocks 18 damage.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -137,6 +142,7 @@ export const ITEMS = {
 export const SMELT = [
   { in: { copper_ore: 1 }, out: 'bronze_bar', xp: 18 },
   { in: { iron_ore: 1, coal: 1 }, out: 'iron_bar', xp: 26 },
+  { in: { mithril_ore: 1, coal: 2 }, out: 'mithril_bar', xp: 50 },
 ];
 export const COOK = { raw_shrimp: 'cooked_shrimp', raw_trout: 'cooked_trout', crop: 'cooked_greens' };
 // Herblore brewing (cauldron) and Prayer buffs.
@@ -190,6 +196,9 @@ export const FORGE = [
   { out: 'wooden_shield', cost: { wood: 6 }, xp: 40 },
   { out: 'iron_shield',   cost: { iron_bar: 4 }, xp: 110 },
   { out: 'steel_shield',  cost: { iron_bar: 7, coal: 4 }, xp: 190 },
+  { out: 'mithril_sword',  cost: { mithril_bar: 3 }, xp: 240 },
+  { out: 'mithril_armor',  cost: { mithril_bar: 5 }, xp: 330 },
+  { out: 'mithril_shield', cost: { mithril_bar: 4 }, xp: 270 },
 ];
 
 // NPC anchor positions are relative to the village; entities.js drops them to ground.
@@ -1117,7 +1126,7 @@ export const SHOP = {
     { key: 'iron_bar', price: 34 },
   ],
   sell: {
-    wood: 3, berry: 2, herb: 6, pelt: 8, meat: 5, copper_ore: 6, iron_ore: 11, coal: 5,
+    wood: 3, berry: 2, herb: 6, pelt: 8, meat: 5, copper_ore: 6, iron_ore: 11, coal: 5, mithril_ore: 30, mithril_bar: 70, mithril_sword: 130, mithril_armor: 150, mithril_shield: 120,
     raw_shrimp: 3, raw_trout: 6, cooked_shrimp: 5, cooked_trout: 9, bronze_bar: 14, iron_bar: 28, relic: 600,
     bronze_sword: 20, iron_sword: 45, steel_sword: 80, oak_bow: 30, yew_bow: 70,
     apprentice_staff: 35, ember_staff: 80, leather_armor: 20, iron_armor: 55, steel_armor: 95,

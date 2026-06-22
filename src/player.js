@@ -16,7 +16,7 @@ const WEAPON_MODEL = {
   bronze_sword: ['sword', 0xb87333], iron_sword: ['sword', 0xc2ccd6], steel_sword: ['greatsword', 0xeaf2ff], bronze_dagger: ['dagger', 0xb87333],
   sun_blade: ['greatsword', 0xffd45f], wraithblade: ['greatsword', 0xcfc8b0], ashbringer: ['greatsword', 0xff5a2a],
   cinderforge_axe: ['axe', 0xff7a3a], coilfang_spear: ['spear', 0x4fd06a], tidecaller_trident: ['trident', 0x2bd6cf],
-  corsair_cutlass: ['sword', 0xe0c060], barrow_blade: ['greatsword', 0x9bb0c0],
+  corsair_cutlass: ['sword', 0xe0c060], barrow_blade: ['greatsword', 0x9bb0c0], mithril_sword: ['sword', 0x8fb8d8],
   oak_bow: ['bow', 0x8a5a2e], yew_bow: ['bow', 0x6e4a2b], stormstring_bow: ['longbow', 0x9bdcff], tempest_bow: ['longbow', 0xbfe6ff],
   apprentice_staff: ['staff', 0x9b6bff], ember_staff: ['staff', 0xff7a33], frost_staff: ['staff', 0x9bd0ff], prism_staff: ['staff', 0xc6a8ff], faewild_staff: ['staff', 0xff7af0],
 };
@@ -24,8 +24,9 @@ const WEAPON_MODEL = {
 const ARMOR_MODEL = {
   leather_armor: { color: 0x8a5a2e }, iron_armor: { color: 0x9aa0a8, shoulders: true }, steel_armor: { color: 0xeaf2ff, shoulders: true, helm: true },
   guardian_armor: { color: 0xd8c070, shoulders: true, helm: true }, ranger_armor: { color: 0x4f8f5a, hood: true }, sorcerer_robes: { color: 0x8a6abf, hood: true },
+  mithril_armor: { color: 0x8fb8d8, shoulders: true, helm: true }, mariner_plate: { color: 0x8aa6b6, shoulders: true }, grave_plate: { color: 0x9a8a6a, shoulders: true, helm: true },
 };
-const SHIELD_COL = { wooden_shield: 0x8a5a2e, iron_shield: 0x9aa0a8, steel_shield: 0xeaf2ff, barnacle_shield: 0x3a8a8a };
+const SHIELD_COL = { wooden_shield: 0x8a5a2e, iron_shield: 0x9aa0a8, steel_shield: 0xeaf2ff, barnacle_shield: 0x3a8a8a, mithril_shield: 0x8fb8d8 };
 
 export function createPlayer(scene, world) {
   const group = new THREE.Group();

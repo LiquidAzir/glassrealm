@@ -44,6 +44,17 @@ const REGIONS = [
 const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow'], ['forest', 'mistmoor'], ['desert', 'tideisle'], ['ember', 'jungle'], ['jungle', 'badlands'], ['forest', 'highland'], ['verdant', 'glade'], ['desert', 'saltcrest'], ['badlands', 'saltcrest'], ['glade', 'amberfell'], ['snow', 'amberfell']];
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
+// Dedicated mining sites — ore clustered near the mountains (RuneScape-style), each with a
+// tier mix. mithril is gated to a high Mining level (main.js); gem_rock yields cut gems.
+const MINES = [
+  { name: 'Hearth Quarry',   x: 16,   z: -30, rocks: [['copper', 5], ['iron', 3], ['coal', 3]] },
+  { name: 'Emberforge Lode', x: 118,  z: -2,  rocks: [['iron', 5], ['coal', 5]] },
+  { name: 'Sunspire Dig',    x: 14,   z: 112, rocks: [['copper', 4], ['gem_rock', 3]] },
+  { name: 'Frostpeak Mine',  x: 92,   z: -84, rocks: [['coal', 4], ['mithril', 3]] },
+  { name: 'Stormhold Mine',  x: -158, z: -46, rocks: [['iron', 4], ['coal', 3], ['mithril', 2]] },
+  { name: 'Red Mesa Mine',   x: 150,  z: 116, rocks: [['iron', 4], ['coal', 4], ['gem_rock', 2]] },
+];
+const MINE_R = 6;
 // Modular dungeons — themed spire rings (SW entrance gap) with a loot chest + a
 // boss at the centre. Add one here, drop a boss/trash into ENEMY_SPAWNS, and
 // (optionally) wire a quest chain in content.js. That's the whole extension point.
@@ -162,11 +173,16 @@ export function createWorld(scene, seed = 1337) {
     else if (reg.tree === 'cactus') scatterIn(reg, reg.nTree, 1.0, 6.0, 3.2, (x, z, y) => cacti.push({ x, z, y, s: 0.8 + rng() * 0.5 }));
     scatterIn(reg, reg.nBush, 1.2, 5.0, 2.6, (x, z, y) => bushes.push({ x, z, y, alive: true }));
     scatterIn(reg, reg.nRock, 0.4, 10.5, 2.4, (x, z, y) => rocks.push({ x, z, y, s: 0.5 + rng() * 1.0 }));
-    for (const [type, n] of (reg.ore || [])) scatterIn(reg, n, 0.8, 10.0, 2.8, (x, z, y) => oreNodes.push({ x, z, y, type, alive: true, respawn: 0 }));
+    // ore is no longer scattered across regions — it lives in dedicated MINES (below)
   }
   for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = 2 + rng() * (CAVE.r - 4); const x = CAVE.x + Math.cos(a) * rad, z = CAVE.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type: rng() > 0.4 ? 'iron' : 'coal', alive: true, respawn: 0 }); }
   for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = 2 + rng() * (CAVE2.r - 4); const x = CAVE2.x + Math.cos(a) * rad, z = CAVE2.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type: rng() > 0.5 ? 'iron' : 'coal', alive: true, respawn: 0 }); }
   for (const dg of DUNGEONS) for (const [type, n] of dg.ore) for (let i = 0; i < n; i++) { const a = rng() * TAU, rad = 3 + rng() * (dg.r - 5); const x = dg.x + Math.cos(a) * rad, z = dg.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type, alive: true, respawn: 0 }); }
+  // dedicated mines: ore clustered tight + a ring of big rocks so the site reads as a quarry
+  for (const m of MINES) {
+    for (const [type, n] of m.rocks) for (let i = 0; i < n; i++) { const a = rng() * TAU, rad = rng() * MINE_R; const x = m.x + Math.cos(a) * rad, z = m.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type, alive: true, respawn: 0 }); }
+    for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = MINE_R * 0.75 + rng() * 3; const x = m.x + Math.cos(a) * rad, z = m.z + Math.sin(a) * rad; rocks.push({ x, z, y: height(x, z), s: 1.5 + rng() * 1.3 }); }
+  }
 
   // trees (instanced, per-instance colour)
   const N = Math.max(trees.length, 1);
@@ -205,7 +221,7 @@ export function createWorld(scene, seed = 1337) {
   group.add(bushIM);
 
   // ore
-  const oreCol = { copper: 0xc87a3a, iron: 0xb9a99a, coal: 0x6c6f7a };
+  const oreCol = { copper: 0xc87a3a, iron: 0xb9a99a, coal: 0x6c6f7a, mithril: 0x5a8fc0, gem_rock: 0x6fe0ff };
   const oreIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshLambertMaterial({ flatShading: true }), Math.max(oreNodes.length, 1));
   oreNodes.forEach((o, i) => { dummy.position.set(o.x, o.y + 0.5, o.z); dummy.scale.set(1, 1.2, 1); dummy.rotation.set(rng(), rng() * TAU, rng()); dummy.updateMatrix(); oreIM.setMatrixAt(i, dummy.matrix); oreIM.setColorAt(i, tmpC.setHex(oreCol[o.type] || 0x999999)); o.idx = i; });
   group.add(oreIM);
@@ -495,6 +511,7 @@ export function createWorld(scene, seed = 1337) {
   locations.push({ name: 'The Isthmus', x: 61, z: 4 });
   locations.push({ name: 'Emberdeep Cave', x: CAVE.x, z: CAVE.z });
   locations.push({ name: 'Frost Cavern', x: CAVE2.x, z: CAVE2.z });
+  for (const m of MINES) locations.push({ name: m.name, x: m.x, z: m.z });
   for (const dg of DUNGEONS) locations.push({ name: dg.name, x: dg.x, z: dg.z });
   locations.push({ name: 'The Mistmoor', x: byKey.mistmoor.x, z: byKey.mistmoor.z });
   locations.push({ name: 'Tide Isle', x: byKey.tideisle.x, z: byKey.tideisle.z });
@@ -515,7 +532,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);

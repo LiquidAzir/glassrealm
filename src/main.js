@@ -189,17 +189,25 @@ try {
     G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else setMode(G.inInterior ? 'interior' : 'world'); });
   };
 
-  const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal' };
+  const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal', mithril: 'mithril_ore' };
+  const ORE_XP = { copper: 18, iron: 26, coal: 16, mithril: 60, gem_rock: 40 };
+  const ORE_LEVEL = { copper: 1, coal: 1, iron: 10, gem_rock: 20, mithril: 30 };
+  const ORE_FX = { mithril: 0x6fa8d8, gem_rock: 0x6fe0ff };
   G.mineOre = (o) => {
     world.depleteOre(o);
     player.playGather('mine');
-    G.fx.burst(o.x, o.y + 0.6, o.z, 0x9aa0a8, { n: 9, up: 2.4 });
-    const item = ORE_ITEM[o.type];
-    G.inventory.add(item, 1);
-    G.ui.toast('Mined ' + ITEMS[item].name, 'gold', 1400); G.audio.sfx('pickup');
-    G.gainXp('mining', 18);
-    const gr = Math.random(); const gem = gr < 0.04 ? 'ruby' : gr < 0.10 ? 'emerald' : gr < 0.20 ? 'sapphire' : null;
-    if (gem) { G.inventory.add(gem, 1); G.ui.toast('Found a ' + ITEMS[gem].name + '!', 'gold', 1900); }
+    G.fx.burst(o.x, o.y + 0.6, o.z, ORE_FX[o.type] || 0x9aa0a8, { n: 9, up: 2.4 });
+    if (o.type === 'gem_rock') {
+      const gr = Math.random(); const gem = gr < 0.2 ? 'ruby' : gr < 0.5 ? 'emerald' : 'sapphire';
+      G.inventory.add(gem, 1); G.ui.toast('Mined a ' + ITEMS[gem].name + '!', 'gold', 1700);
+    } else {
+      const item = ORE_ITEM[o.type] || 'copper_ore';
+      G.inventory.add(item, 1); G.ui.toast('Mined ' + ITEMS[item].name, 'gold', 1400);
+      const gr = Math.random(); const gem = gr < 0.03 ? 'ruby' : gr < 0.07 ? 'emerald' : gr < 0.13 ? 'sapphire' : null;   // bonus gem
+      if (gem) { G.inventory.add(gem, 1); G.ui.toast('Found a ' + ITEMS[gem].name + '!', 'gold', 1900); }
+    }
+    G.audio.sfx('pickup');
+    G.gainXp('mining', ORE_XP[o.type] || 18);
     checkQuestReady(); G.save.save();
   };
   G.fishSpot = (f) => {
@@ -214,17 +222,7 @@ try {
   G.useStation = (s) => {
     if (s.kind === 'cook') { G.openCook(); return;
     } else if (s.kind === 'furnace') {
-      let bars = 0, progress = true;
-      while (progress) {
-        progress = false;
-        for (const r of SMELT) {
-          if (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k]))) {
-            for (const k in r.in) G.inventory.remove(k, r.in[k]);
-            G.inventory.add(r.out, 1); G.gainXp('smithing', r.xp); bars++; progress = true;
-          }
-        }
-      }
-      G.ui.toast(bars ? `Smelted ${bars} bar${bars > 1 ? 's' : ''}` : 'Need ore to smelt (mine, then smelt)', bars ? 'good' : '', 2000);
+      G.openSmelt(); return;
     } else if (s.kind === 'anvil') {
       G.openForge(); return;
     } else if (s.kind === 'bank') {
@@ -419,6 +417,25 @@ try {
       if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0xffe2b0, { n: 12, spread: 2.4, up: 3, life: 0.9 });
       G.ui.toast(`Cooked ${have} × ${ITEMS[cooked].name}`, 'good', 2600);
       G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
+    });
+  };
+
+  // ---------- interactive smelting: pick an ore→bar recipe, watch it smelt (progress bar) ----------
+  const maxSmelt = (r) => { let m = Infinity; for (const k in r.in) m = Math.min(m, Math.floor(G.inventory.count(k) / r.in[k])); return m; };
+  const smeltCfg = {
+    title: 'Furnace', hint: '↑ ↓ select · tap to smelt · ↑↓↑↓ leave', empty: 'No ore to smelt — mine some at a quarry first.',
+    rows: () => SMELT.filter((r) => maxSmelt(r) >= 1).map((r) => ({ icon: ITEMS[r.out].icon, title: `Smelt ${ITEMS[r.out].name}`, sub: Object.keys(r.in).map((k) => `${r.in[k]}× ${ITEMS[k].name}`).join(' + '), right: `×${maxSmelt(r)}`, data: { out: r.out } })),
+    onSelect: (r) => { G.closePicker(); G.smeltItem(r.data.out); },
+  };
+  G.openSmelt = () => { setMode('picker'); G.ui.openPicker(smeltCfg); };
+  G.smeltItem = (out) => {
+    if (G.channel) return;
+    const r = SMELT.find((x) => x.out === out); if (!r || maxSmelt(r) < 1) return;
+    const dur = Math.max(1.6, Math.min(6, maxSmelt(r) * 0.9));
+    startChannel(dur, 'mine', `Smelting ${ITEMS[out].name}…`, () => {
+      let made = 0;
+      while (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k]))) { for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(out, 1); G.gainXp('smithing', r.xp); made++; }
+      if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xff7a33, { n: 12, spread: 2.2, up: 3, life: 0.8 }); G.ui.toast(`Smelted ${made} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
     });
   };
 
@@ -678,7 +695,7 @@ try {
     const lvl = (k) => G.skills.level(k);
     if (t.kind === 'tree') startChannel(Math.max(2.8, 4 - lvl('woodcutting') * 0.03), 'chop', 'Chopping…', () => G.chopTree(t.ref));
     else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
-    else if (t.kind === 'ore') startChannel(Math.max(5, 7 - lvl('mining') * 0.04), 'mine', 'Mining…', () => G.mineOre(t.ref));
+    else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(5, 7 - lvl('mining') * 0.04), 'mine', 'Mining…', () => G.mineOre(t.ref)); }
     else if (t.kind === 'fish') startChannel(Math.max(5, 7 - lvl('fishing') * 0.04), 'fish', 'Fishing…', () => G.fishSpot(t.ref));
     else if (t.kind === 'station') G.useStation(t.ref);
     else if (t.kind === 'plot') G.plotAction(t.ref);
@@ -750,7 +767,7 @@ try {
     if (item === 'copper_ore' || item === 'iron_ore' || item === 'coal') { const tp = { copper_ore: 'copper', iron_ore: 'iron', coal: 'coal' }[item]; return nearestNode(world.oreNodes.filter((o) => o.type === tp), true); }
     if (item === 'raw_trout' || item === 'raw_shrimp') return nearestNode(world.fishingSpots, false);
     if (item === 'crop') return world.plots[0];
-    if (item === 'bronze_bar' || item === 'iron_bar') return world.stations.find((s) => s.kind === 'furnace');
+    if (item === 'bronze_bar' || item === 'iron_bar' || item === 'mithril_bar') return world.stations.find((s) => s.kind === 'furnace');
     if (item === 'relic') { const e = nearestEnemyOf('ember_boss'); return e ? { x: e.pos.x, z: e.pos.z, y: e.pos.y } : null; }
     return null;
   }
