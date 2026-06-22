@@ -239,7 +239,7 @@ export function createUI(G) {
     els.menuBody.innerHTML = `<div class="section-head">Verdant Isle</div><canvas id="mapCanvas" width="300" height="300"></canvas>`;
     drawMap(document.getElementById('mapCanvas').getContext('2d'));
   }
-  const BIOME_MAP_COL = { grass: '#2f7d4a', forest: '#1f5a36', desert: '#d6bd72', snow: '#dbe6f2', volcanic: '#9c5a34' };
+  const BIOME_MAP_COL = { grass: '#2f7d4a', forest: '#1f5a36', desert: '#d6bd72', snow: '#dbe6f2', volcanic: '#9c5a34', swamp: '#3a5a3e' };
   function drawMap(ctx) {
     const S = 300, pad = 12, R = G.world.regions;
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -252,6 +252,7 @@ export function createUI(G) {
     for (const r of R) { const [x, y] = to(r.x, r.z); ctx.fillStyle = BIOME_MAP_COL[r.biome] || '#2f7d4a'; ctx.beginPath(); ctx.arc(x, y, r.r * sc, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#aab2bd'; G.world.peaks.forEach((pk) => { const [x, y] = to(pk.x, pk.z); ctx.beginPath(); ctx.arc(x, y, Math.max(3, pk.r * sc * 0.5), 0, 7); ctx.fill(); });
     const cv = G.world.cave; const [cvx, cvy] = to(cv.x, cv.z); ctx.fillStyle = '#5a5550'; ctx.beginPath(); ctx.arc(cvx, cvy, Math.max(3, cv.r * sc), 0, 7); ctx.fill();
+    if (G.world.dungeons) { ctx.fillStyle = '#7a4a8a'; G.world.dungeons.forEach((d) => { const [dx, dy] = to(d.x, d.z); ctx.beginPath(); ctx.arc(dx, dy, Math.max(3, d.r * sc), 0, 7); ctx.fill(); }); }
     ctx.fillStyle = '#ffd45f'; G.world.villages.forEach((v) => { const [x, y] = to(v.x, v.z); ctx.fillRect(x - 3, y - 3, 6, 6); });
     ctx.fillStyle = '#5fe3ff'; G.entities.npcs.forEach((n) => { const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill(); });
     G.entities.enemies.forEach((e) => { if (!e.alive) return; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 5 : 2, 0, 7); ctx.fill(); });

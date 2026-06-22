@@ -79,7 +79,7 @@ try {
   G.stats = { kills: 0, crafted: 0, regions: new Set(), bosses: new Set(), killsByType: {} };
   if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); Object.assign(G.stats.killsByType, saved.stats.killsByType || {}); }
   G.slayer = (saved && saved.slayer) ? { ...saved.slayer } : { active: false, enemy: null, count: 0, progress: 0 };
-  const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf'];
+  const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
   G.slayerAssign = () => { const enemy = SLAYER_POOL[Math.floor(Math.random() * SLAYER_POOL.length)]; const count = 6 + Math.floor(Math.random() * 7); G.slayer = { active: true, enemy, count, progress: 0 }; G.ui.toast(`Slayer task: ${count} ${ENEMIES[enemy].name}s`, 'good', 2600); G.save.save(); };
   G.slayerClaim = () => { const s = G.slayer; if (!s.active || s.progress < s.count) return; const reward = s.count * 8; G.inventory.add('gold', reward); G.gainXp('slayer', s.count * 15); s.active = false; G.ui.toast(`Slayer contract complete! +${reward}g`, 'good', 2800); G.ach.evaluate(); G.save.save(); };
   G.prestigeSkill = (key) => { if (!G.skills.canPrestige(key)) { G.ui.toast('Reach level 20 to prestige', 'bad', 1800); return; } if (G.skills.doPrestige(key)) { G.ui.toast(`⭐ Prestiged ${skillName(key)}!`, 'good', 3000); G.ui.levelBanner(`Prestige — ${skillName(key)}`); G.audio.sfx('ach'); G.ach.evaluate(); G.save.save(); } };
@@ -227,13 +227,11 @@ try {
     } else if (s.kind === 'chest') {
       if (s.looted) { G.ui.toast('The chest is empty.', '', 1500); return; }
       s.looted = true;
-      G.inventory.add('gold', 120); G.inventory.add('iron_bar', 3); G.inventory.add('coal', 4);
-      G.ui.toast('You loot the cave chest! +120g, iron, coal', 'gold', 3200); G.save.save(); return;
-    } else if (s.kind === 'chest2') {
-      if (s.looted) { G.ui.toast('The chest is empty.', '', 1500); return; }
-      s.looted = true;
-      G.inventory.add('gold', 160); G.inventory.add('sapphire', 2); G.inventory.add('emerald', 1);
-      G.ui.toast('You loot the frozen chest! +160g, gems', 'gold', 3200); G.save.save(); return;
+      const parts = [];
+      if (s.gold) { G.inventory.add('gold', s.gold); parts.push('+' + s.gold + 'g'); }
+      for (const k in (s.loot || {})) { G.inventory.add(k, s.loot[k]); parts.push(`${ITEMS[k].name}×${s.loot[k]}`); }
+      G.audio.sfx('pickup');
+      G.ui.toast(`Looted ${s.label}: ${parts.join(', ')}`, 'gold', 3400); G.save.save(); return;
     }
     G.save.save();
   };

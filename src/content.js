@@ -61,6 +61,32 @@ export const ITEMS = {
   emberheart_amulet: { name: 'Emberheart Amulet', icon: '📿', type: 'amulet', bonus: { magic: 10, melee: 6 }, desc: 'Rare drop. +10 magic, +6 melee.' },
   wyrmscale_ring:    { name: 'Wyrmscale Ring',    icon: '💍', type: 'ring',   bonus: { melee: 8, def: 6 },   desc: 'Rare drop. +8 melee, +6 defence.' },
   frostguard_amulet: { name: 'Frostguard Amulet', icon: '📿', type: 'amulet', bonus: { def: 12, maxhp: 30 }, desc: 'Rare drop. +12 defence, +30 max HP.' },
+
+  // --- dungeon materials (drop in caves, used for crafting) ---
+  bone_shard:    { name: 'Bone Shard',    icon: '🦴', type: 'material', desc: 'Necrotic shard from the catacombs. Crafts dark gear.' },
+  goblin_tooth:  { name: 'Goblin Tooth',  icon: '🦷', type: 'material', desc: 'A jagged tooth pried from a goblin.' },
+  crystal_shard: { name: 'Crystal Shard', icon: '💠', type: 'material', desc: 'A humming shard from the Crystal Hollow.' },
+  magma_core:    { name: 'Magma Core',    icon: '🟥', type: 'material', desc: 'A still-molten core from the Magma Depths.' },
+  pearl:         { name: 'Abyss Pearl',   icon: '⚪', type: 'material', desc: 'A luminous pearl from the Sunken Temple.' },
+
+  // --- dungeon boss weapons (best-in-slot, one per style line) ---
+  wraithblade:        { name: 'Wraithblade',          icon: '⚔️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 26, range: 2.9, speed: 0.42, desc: "The Bonelord's blade. +26 melee." },
+  stormstring_bow:    { name: 'Stormstring Bow',      icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 20, range: 16,  speed: 0.6,  desc: "Warchief Gronk's great bow. +20 ranged." },
+  prism_staff:        { name: 'Prism Staff',          icon: '🪄', type: 'weapon', style: 'magic',  skill: 'magic',  bonus: 27, range: 15,  speed: 0.68, desc: 'Refracted arcane fury. +27 magic.' },
+  cinderforge_axe:    { name: 'Cinderforge Greataxe', icon: '🪓', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 30, range: 3.0, speed: 0.6,  desc: 'A molten greataxe. +30 melee, slow.' },
+  tidecaller_trident: { name: 'Tidecaller Trident',   icon: '🔱', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 33, range: 3.2, speed: 0.5,  desc: "The Drowned King's trident. +33 melee." },
+
+  // --- dungeon boss rare drops ---
+  lich_pendant:    { name: 'Lich Pendant',    icon: '📿', type: 'amulet', bonus: { magic: 12, maxhp: 20 }, desc: 'Rare drop. +12 magic, +20 max HP.' },
+  brute_ring:      { name: 'Brute Ring',      icon: '💍', type: 'ring',   bonus: { melee: 10, def: 5 },    desc: 'Rare drop. +10 melee, +5 defence.' },
+  crystal_heart:   { name: 'Crystal Heart',   icon: '📿', type: 'amulet', bonus: { magic: 9, def: 9 },     desc: 'Rare drop. +9 magic, +9 defence.' },
+  ember_core_ring: { name: 'Ember Core Ring', icon: '💍', type: 'ring',   bonus: { melee: 12 },            desc: 'Rare drop. +12 melee.' },
+  pearl_depths:    { name: 'Pearl of Depths', icon: '📿', type: 'amulet', bonus: { def: 10, maxhp: 45 },   desc: 'Rare drop. +10 defence, +45 max HP.' },
+
+  // --- crafted from dungeon materials (Crafting Bench) ---
+  crystalweave_amulet: { name: 'Crystalweave Amulet', icon: '📿', type: 'amulet', bonus: { magic: 11, def: 4 },  desc: 'Crafted. +11 magic, +4 defence.' },
+  bonecharm_ring:      { name: 'Bonecharm Ring',      icon: '💍', type: 'ring',   bonus: { melee: 7, maxhp: 15 }, desc: 'Crafted. +7 melee, +15 max HP.' },
+  tideheart_amulet:    { name: 'Tideheart Amulet',    icon: '📿', type: 'amulet', bonus: { maxhp: 60 },          desc: 'Crafted. +60 max HP.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -89,6 +115,9 @@ export const CRAFT = [
   { out: 'sorcerer_ring',   cost: { ruby: 1, bronze_bar: 1 }, xp: 50 },
   { out: 'sorcerer_robes',  cost: { ruby: 3, iron_bar: 2 }, xp: 165 },
   { out: 'vigor_amulet',    cost: { sapphire: 1, emerald: 1 }, xp: 55 },
+  { out: 'crystalweave_amulet', cost: { crystal_shard: 3, sapphire: 2 }, xp: 180 },
+  { out: 'bonecharm_ring',      cost: { bone_shard: 3, iron_bar: 2 }, xp: 160 },
+  { out: 'tideheart_amulet',    cost: { pearl: 2, emerald: 2 }, xp: 220 },
 ];
 export const SETS = {
   guardian: { name: 'Guardian', def: 10, melee: 8, maxhp: 20 },
@@ -122,6 +151,11 @@ export const NPCS = [
   { key: 'druid',    name: 'Thornwarden Eld',     color: 0x4fae84, pos: { x: -92, z: 18 }, dialogue: 'druid' },
   { key: 'nomad',    name: 'Zara the Nomad',      color: 0xe3c277, pos: { x: 32, z: 100 }, dialogue: 'nomad' },
   { key: 'frostkeeper', name: 'Frostkeeper Nessa', color: 0xbfe0ff, pos: { x: 94, z: -80 }, dialogue: 'frostkeeper' },
+  { key: 'gravekeeper', name: 'Gravekeeper Sael', color: 0x8a7ab0, pos: { x: -80, z: 88 }, dialogue: 'gravekeeper' },
+  { key: 'warden',      name: 'Warden Brakka',    color: 0x9ac46a, pos: { x: -14, z: 16 }, dialogue: 'warden' },
+  { key: 'lapidary',    name: 'Lapidary Sten',    color: 0x9bf2ff, pos: { x: 92, z: -82 }, dialogue: 'lapidary' },
+  { key: 'emberwright', name: 'Emberwright Vol',  color: 0xff7a3a, pos: { x: 122, z: 18 }, dialogue: 'emberwright' },
+  { key: 'oracle',      name: 'Oracle Nerida',    color: 0x2bd6cf, pos: { x: 50, z: 80 }, dialogue: 'oracle' },
 ];
 
 export const ENEMIES = {
@@ -133,6 +167,27 @@ export const ENEMIES = {
   ember_boss: { name: 'Emberfang', hp: 170, dmg: 22, speed: 3.7, xp: 520, color: 0xff5a2a, aggro: 18, shape: 'beast', scale: 1.9, boss: true, loot: { gold: 140, relic: 1, iron_ore: 5, bones: 3 }, rare: { item: 'emberheart_amulet', chance: 0.3 } },
   sandwyrm:     { name: 'Sandwyrm',     hp: 220, dmg: 24, speed: 3.4, xp: 640, color: 0xd8a85a, aggro: 18, shape: 'beast',    scale: 2.1, boss: true, loot: { gold: 180, sun_blade: 1, ruby: 1, bones: 4 }, rare: { item: 'wyrmscale_ring', chance: 0.3 } },
   frost_warden: { name: 'Frost Warden', hp: 240, dmg: 26, speed: 3.6, xp: 700, color: 0xbfe0ff, aggro: 18, shape: 'humanoid', scale: 1.8, boss: true, loot: { gold: 200, frost_staff: 1, sapphire: 2, bones: 4 }, rare: { item: 'frostguard_amulet', chance: 0.3 } },
+
+  // Gloomroot Catacombs (undead)
+  skeleton: { name: 'Skeleton',  hp: 50, dmg: 12, speed: 3.6, xp: 120, color: 0xe8e4d8, aggro: 12, shape: 'humanoid', loot: { bones: 2, bone_shard: 1 } },
+  wraith:   { name: 'Wraith',    hp: 72, dmg: 17, speed: 3.4, xp: 180, color: 0x8a7ab0, aggro: 13, shape: 'humanoid', loot: { bone_shard: 1, bones: 1, gold: 20 } },
+  bonelord: { name: 'Bonelord Mortrax', hp: 270, dmg: 27, speed: 3.4, xp: 760, color: 0xcfc8b0, aggro: 18, shape: 'humanoid', scale: 1.9, boss: true, loot: { gold: 220, wraithblade: 1, bone_shard: 4, bones: 5 }, rare: { item: 'lich_pendant', chance: 0.3 } },
+  // Goblin Warren
+  goblin:       { name: 'Goblin',       hp: 44, dmg: 11, speed: 4.2, xp: 110, color: 0x6f9a4a, aggro: 12, shape: 'humanoid', scale: 0.85, loot: { goblin_tooth: 1, gold: 10 } },
+  goblin_brute: { name: 'Goblin Brute', hp: 86, dmg: 19, speed: 3.6, xp: 210, color: 0x4f7a32, aggro: 13, shape: 'humanoid', scale: 1.3,  loot: { goblin_tooth: 2, iron_ore: 1, gold: 18 } },
+  warchief:     { name: 'Warchief Gronk', hp: 250, dmg: 25, speed: 3.8, xp: 720, color: 0x3f6a28, aggro: 18, shape: 'humanoid', scale: 1.9, boss: true, loot: { gold: 210, stormstring_bow: 1, goblin_tooth: 5, pelt: 3 }, rare: { item: 'brute_ring', chance: 0.3 } },
+  // Crystal Hollow
+  crystal_sprite: { name: 'Crystal Sprite', hp: 64,  dmg: 16, speed: 4.4, xp: 170, color: 0x9bd0ff, aggro: 13, shape: 'beast',    scale: 0.8, loot: { crystal_shard: 1, sapphire: 1 } },
+  crystal_golem:  { name: 'Crystal Golem',  hp: 120, dmg: 22, speed: 3.0, xp: 260, color: 0xb0a0e6, aggro: 12, shape: 'humanoid', scale: 1.5, loot: { crystal_shard: 2, emerald: 1, gold: 24 } },
+  prism_tyrant:   { name: 'The Prism Tyrant', hp: 290, dmg: 28, speed: 3.4, xp: 820, color: 0xc6a8ff, aggro: 18, shape: 'humanoid', scale: 2.0, boss: true, loot: { gold: 240, prism_staff: 1, crystal_shard: 5, ruby: 2 }, rare: { item: 'crystal_heart', chance: 0.3 } },
+  // Magma Depths
+  magma_imp:  { name: 'Magma Imp',  hp: 58,  dmg: 15, speed: 4.6, xp: 150, color: 0xff7a3a, aggro: 13, shape: 'beast', scale: 0.8, loot: { coal: 2, magma_core: 1 } },
+  lava_hound: { name: 'Lava Hound', hp: 100, dmg: 21, speed: 4.4, xp: 240, color: 0xd85a2a, aggro: 14, shape: 'beast', scale: 1.3, loot: { magma_core: 1, coal: 3, iron_ore: 1 } },
+  cinder_colossus: { name: 'Cinder Colossus', hp: 330, dmg: 30, speed: 3.0, xp: 900, color: 0xff5a2a, aggro: 18, shape: 'humanoid', scale: 2.3, boss: true, loot: { gold: 260, cinderforge_axe: 1, magma_core: 4, coal: 8 }, rare: { item: 'ember_core_ring', chance: 0.3 } },
+  // Sunken Temple
+  deep_lurker: { name: 'Deep Lurker', hp: 80, dmg: 18, speed: 3.8, xp: 200, color: 0x2f8f8a, aggro: 13, shape: 'beast',    loot: { pearl: 1, raw_trout: 1 } },
+  tide_priest: { name: 'Tide Priest', hp: 92, dmg: 20, speed: 3.4, xp: 230, color: 0x3aa0b0, aggro: 13, shape: 'humanoid', loot: { pearl: 1, gold: 26 } },
+  drowned_king: { name: 'Drowned King Nautilus', hp: 370, dmg: 32, speed: 3.4, xp: 1000, color: 0x2bd6cf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 320, tidecaller_trident: 1, pearl: 5, relic: 1 }, rare: { item: 'pearl_depths', chance: 0.3 } },
 };
 
 export const ENEMY_SPAWNS = [
@@ -149,6 +204,21 @@ export const ENEMY_SPAWNS = [
   { enemy: 'ember_boss', x: 122, z: -4 },
   { enemy: 'sandwyrm', x: 26, z: 118 },        // deep desert
   { enemy: 'frost_warden', x: 118, z: -98 },   // Frost Cavern (snow)
+  // Gloomroot Catacombs (Mistmoor swamp) — centre (-64, 74)
+  { enemy: 'skeleton', x: -68, z: 72 }, { enemy: 'skeleton', x: -60, z: 76 }, { enemy: 'wraith', x: -66, z: 78 }, { enemy: 'wraith', x: -62, z: 70 },
+  { enemy: 'bonelord', x: -64, z: 74 },
+  // Goblin Warren (Verdant SW) — centre (-24, 24)
+  { enemy: 'goblin', x: -20, z: 22 }, { enemy: 'goblin', x: -28, z: 26 }, { enemy: 'goblin', x: -21, z: 28 }, { enemy: 'goblin_brute', x: -27, z: 20 },
+  { enemy: 'warchief', x: -24, z: 24 },
+  // Crystal Hollow (Snow) — centre (82, -74)
+  { enemy: 'crystal_sprite', x: 78, z: -72 }, { enemy: 'crystal_sprite', x: 86, z: -76 }, { enemy: 'crystal_golem', x: 80, z: -78 }, { enemy: 'crystal_golem', x: 84, z: -70 },
+  { enemy: 'prism_tyrant', x: 82, z: -74 },
+  // Magma Depths (Ember) — centre (130, 28)
+  { enemy: 'magma_imp', x: 126, z: 26 }, { enemy: 'magma_imp', x: 134, z: 30 }, { enemy: 'lava_hound', x: 128, z: 32 }, { enemy: 'lava_hound', x: 132, z: 24 },
+  { enemy: 'cinder_colossus', x: 130, z: 28 },
+  // Sunken Temple (Tide Isle) — centre (60, 70)
+  { enemy: 'deep_lurker', x: 56, z: 68 }, { enemy: 'deep_lurker', x: 64, z: 72 }, { enemy: 'tide_priest', x: 57, z: 74 }, { enemy: 'tide_priest', x: 63, z: 66 },
+  { enemy: 'drowned_king', x: 60, z: 70 },
 ];
 
 export const QUESTS = {
@@ -236,6 +306,72 @@ export const QUESTS = {
     objectives: [{ id: 'boss', type: 'kill', enemy: 'frost_warden', count: 1 }],
     rewards: { xp: { combat: 760, slayer: 220 }, items: { gold: 280 } },
   },
+
+  // --- Gloomroot Catacombs (Mistmoor) ---
+  q_crypt: {
+    name: 'Restless Dead', giver: 'gravekeeper', startsAvailable: true,
+    desc: 'Put down the skeletons stirring in the Gloomroot Catacombs.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'skeleton', count: 4 }],
+    rewards: { xp: { combat: 240, slayer: 80 }, items: { gold: 90 } },
+  },
+  q_bonelord: {
+    name: 'The Bonelord', giver: 'gravekeeper', requires: 'q_crypt',
+    desc: 'Destroy Bonelord Mortrax in the depths of the catacombs.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'bonelord', count: 1 }],
+    rewards: { xp: { combat: 800, slayer: 260 }, items: { gold: 300 } },
+  },
+  // --- Goblin Warren (Verdant) ---
+  q_warren: {
+    name: 'Warren Trouble', giver: 'warden', startsAvailable: true,
+    desc: 'Thin out the goblins raiding from the Goblin Warren.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'goblin', count: 5 }],
+    rewards: { xp: { combat: 220 }, items: { gold: 85 } },
+  },
+  q_warchief: {
+    name: 'Warchief Gronk', giver: 'warden', requires: 'q_warren',
+    desc: 'Slay Warchief Gronk and break the warren for good.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'warchief', count: 1 }],
+    rewards: { xp: { combat: 760, slayer: 240 }, items: { gold: 290 } },
+  },
+  // --- Crystal Hollow (Snow) ---
+  q_crystal: {
+    name: 'Crystal Fever', giver: 'lapidary', startsAvailable: true,
+    desc: 'Shatter the crystal golems guarding the Crystal Hollow.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'crystal_golem', count: 3 }],
+    rewards: { xp: { mining: 200, crafting: 120 }, items: { gold: 100, sapphire: 1 } },
+  },
+  q_prism: {
+    name: 'The Prism Tyrant', giver: 'lapidary', requires: 'q_crystal',
+    desc: 'Defeat the Prism Tyrant deep in the hollow.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'prism_tyrant', count: 1 }],
+    rewards: { xp: { combat: 820, magic: 200 }, items: { gold: 320 } },
+  },
+  // --- Magma Depths (Ember) ---
+  q_magma: {
+    name: 'Into the Depths', giver: 'emberwright', startsAvailable: true,
+    desc: 'Burn back the lava hounds prowling the Magma Depths.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'lava_hound', count: 3 }],
+    rewards: { xp: { combat: 260, smithing: 120 }, items: { gold: 110 } },
+  },
+  q_colossus: {
+    name: 'Cinder Colossus', giver: 'emberwright', requires: 'q_magma',
+    desc: 'Bring down the Cinder Colossus at the heart of the depths.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'cinder_colossus', count: 1 }],
+    rewards: { xp: { combat: 900, smithing: 200 }, items: { gold: 340 } },
+  },
+  // --- Sunken Temple (Tide Isle) ---
+  q_temple: {
+    name: 'Whispers of the Tide', giver: 'oracle', startsAvailable: true,
+    desc: 'Silence the tide priests haunting the Sunken Temple.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'tide_priest', count: 4 }],
+    rewards: { xp: { combat: 280, prayer: 120 }, items: { gold: 120 } },
+  },
+  q_drowned: {
+    name: 'The Drowned King', giver: 'oracle', requires: 'q_temple',
+    desc: 'Confront Drowned King Nautilus in the flooded sanctum.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'drowned_king', count: 1 }],
+    rewards: { xp: { combat: 1000, prayer: 260 }, items: { gold: 400 } },
+  },
 };
 
 export function objectiveText(obj, n) {
@@ -246,6 +382,34 @@ export function objectiveText(obj, n) {
 
 const node = (speaker, text, choices) => ({ speaker, text, choices });
 const end = (label) => ({ label, to: null });
+
+// Factory for a two-quest dungeon NPC: a trash-cull quest (objective id 'k'),
+// then a boss quest (objective id 'boss'). cfg supplies all the flavour text.
+function dungeonChain(name, cfg) {
+  return {
+    root: (G) => {
+      const s1 = G.quests.status(cfg.q1);
+      if (s1 === 'available') return node(name, cfg.intro1, [{ label: cfg.accept1, action: (g) => g.quests.accept(cfg.q1), to: 'a1' }, end('Not now.')]);
+      if (s1 === 'active') {
+        const k = G.quests.progress(cfg.q1, 'k');
+        if (k >= cfg.n1) return node(name, cfg.done1, [{ label: 'Claim reward.', action: (g) => g.quests.complete(cfg.q1), to: 't1' }]);
+        return node(name, `${cfg.n1 - k} ${cfg.foe1} still ${cfg.verb1}. ${cfg.where1}`, [end('On it.')]);
+      }
+      const s2 = G.quests.status(cfg.q2);
+      if (s2 === 'available') return node(name, cfg.intro2, [{ label: cfg.accept2, action: (g) => g.quests.accept(cfg.q2), to: 'a2' }, end('Not yet.')]);
+      if (s2 === 'active') {
+        if (G.quests.progress(cfg.q2, 'boss') >= 1) return node(name, cfg.done2, [{ label: 'Claim reward.', action: (g) => g.quests.complete(cfg.q2), to: 't2' }]);
+        return node(name, cfg.hint2, [end('On the hunt.')]);
+      }
+      if (s2 === 'complete') return node(name, cfg.outro, [end('Farewell.')]);
+      return node(name, cfg.idle, [end('Aye.')]);
+    },
+    a1: node(name, cfg.a1, [end('Understood.')]),
+    t1: node(name, cfg.t1, [end('Thanks.')]),
+    a2: node(name, cfg.a2, [end('Understood.')]),
+    t2: node(name, cfg.t2, [end('Ha!')]),
+  };
+}
 
 export const DIALOGUE = {
   elder: {
@@ -488,6 +652,82 @@ export const DIALOGUE = {
     a2: node('Frostkeeper Nessa', 'The Frost Cavern is ringed with ice spires, east of here. Bring your best.', [end('Understood.')]),
     t2: node('Frostkeeper Nessa', 'A hero of the snows. Shelter with us anytime.', [end('Ha!')]),
   },
+
+  gravekeeper: dungeonChain('Gravekeeper Sael', {
+    q1: 'q_crypt', n1: 4, foe1: 'skeletons', verb1: 'rattle',
+    intro1: 'The dead will not rest. Skeletons claw up through the Gloomroot Catacombs out in the mire. Lay four of them to rest.',
+    accept1: 'I will cleanse them.', where1: 'The catacombs lie in the Mistmoor, ringed in black stone.',
+    done1: 'The clatter of bones grows quiet. Well done.',
+    a1: 'Enter through the southwest gap and shatter the skeletons within.',
+    t1: 'Coin for your courage — but the true horror still stirs below…',
+    q2: 'q_bonelord', accept2: 'I will end it.',
+    intro2: 'Bonelord Mortrax raised them all. Destroy the lich and the mire may sleep at last.',
+    hint2: 'Mortrax broods at the heart of the catacombs. Bring light and steel.',
+    done2: 'Mortrax is dust? You have freed a hundred trapped souls.',
+    a2: 'The Bonelord waits at the catacomb’s core. Go well armed.',
+    t2: 'A truer hero the mire has never known.',
+    outro: 'Rest easy, friend — the dead do now.', idle: 'The graves are quiet, thanks to you.',
+  }),
+  warden: dungeonChain('Warden Brakka', {
+    q1: 'q_warren', n1: 5, foe1: 'goblins', verb1: 'skulk',
+    intro1: 'Goblins pour out of that warren and raid our stores. Cull five and they’ll think twice.',
+    accept1: 'Consider it done.', where1: 'The warren sits in the southwest of the Verdant Isle.',
+    done1: 'Five down already? The raids are easing.',
+    a1: 'The warren’s a stockade of mud and timber. Cut the goblins down.',
+    t1: 'Good coin. But it’s their Warchief who keeps them bold…',
+    q2: 'q_warchief', accept2: 'I’ll take his head.',
+    intro2: 'Warchief Gronk leads the lot. End him and the warren breaks for good.',
+    hint2: 'Gronk holds court at the warren’s heart. Mind his swing.',
+    done2: 'Gronk has fallen?! The warren scatters to the winds.',
+    a2: 'Gronk is twice a man’s size. Strike hard and don’t let up.',
+    t2: 'The Verdant owes you a quiet harvest. Ha!',
+    outro: 'The fields are safe to walk again. My thanks.', idle: 'Keep that blade keen, friend.',
+  }),
+  lapidary: dungeonChain('Lapidary Sten', {
+    q1: 'q_crystal', n1: 3, foe1: 'crystal golems', verb1: 'stand guard',
+    intro1: 'The Crystal Hollow is richer in gems than any mine — but golems of living crystal guard it. Smash three and I can work in peace.',
+    accept1: 'I’ll break them.', where1: 'The hollow glitters in the snowfields, near the camp.',
+    done1: 'Three golems shattered — and look at all that gemstone!',
+    a1: 'The golems are slow but heavy. Crystal shards drop from them — keep those.',
+    t1: 'A sapphire for your trouble. Yet the Tyrant within hoards the deepest gems…',
+    q2: 'q_prism', accept2: 'I’ll face the Tyrant.',
+    intro2: 'The Prism Tyrant rules the hollow’s heart, bending light into blades. Lay it low.',
+    hint2: 'The Tyrant waits deep in the hollow. Strong armour would serve you well.',
+    done2: 'The Tyrant is shattered? The hollow is the richest claim on the isles!',
+    a2: 'The Tyrant splits light into deadly shards. Close the distance fast.',
+    t2: 'You’ve made my fortune — and your own. Ha!',
+    outro: 'Finest gems you ever saw, all thanks to you.', idle: 'Mind the facets — sharp as any blade.',
+  }),
+  emberwright: dungeonChain('Emberwright Vol', {
+    q1: 'q_magma', n1: 3, foe1: 'lava hounds', verb1: 'prowl',
+    intro1: 'Below Emberhold yawns the Magma Depths. Lava hounds boil up and scorch my forge. Put down three.',
+    accept1: 'I’ll cool them off.', where1: 'The depths open in the volcanic rock east of the village.',
+    done1: 'Three hounds doused. The forge can breathe again.',
+    a1: 'The hounds run hot and fast. Magma cores drop from them — useful, those.',
+    t1: 'Coin, well earned. But something vast stirs in the deep heat…',
+    q2: 'q_colossus', accept2: 'I’ll bring it down.',
+    intro2: 'A Cinder Colossus wakes in the depths — molten rock given will. Shatter it before it climbs.',
+    hint2: 'The Colossus looms at the depths’ floor. Hit hard; it hits harder.',
+    done2: 'The Colossus is rubble? Emberhold will stand another age.',
+    a2: 'The Colossus is slow but devastating. Strike between its blows.',
+    t2: 'Forged a legend today, I did. Ha!',
+    outro: 'The depths run cool. The forge is yours anytime.', idle: 'Stay clear of the vents, friend.',
+  }),
+  oracle: dungeonChain('Oracle Nerida', {
+    q1: 'q_temple', n1: 4, foe1: 'tide priests', verb1: 'chant',
+    intro1: 'The Sunken Temple was holy once. Now drowned priests chant to wake what sleeps beneath. Silence four of them.',
+    accept1: 'I’ll quiet them.', where1: 'The temple rises from the Tide Isle, south across the water.',
+    done1: 'The chanting falters. But it may be too late…',
+    a1: 'The priests guard the temple halls. Abyss pearls fall from them.',
+    t1: 'Take this coin — and steel yourself. The King already stirs.',
+    q2: 'q_drowned', accept2: 'I’ll confront the King.',
+    intro2: 'Drowned King Nautilus wakes in the flooded sanctum, oldest of the Tide’s tyrants. Few could face him. Will you?',
+    hint2: 'The King waits in the sanctum at the temple’s heart. He carries the Tidecaller itself.',
+    done2: 'The King is undone? You have ended a terror older than the isles.',
+    a2: 'Nautilus commands the very water. Strike true and do not falter.',
+    t2: 'The tides themselves will remember your name. Ha!',
+    outro: 'The temple sleeps in peace, and so may we all.', idle: 'The waters are calm now, hero.',
+  }),
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.
@@ -509,6 +749,8 @@ export const SHOP = {
     bronze_sword: 20, iron_sword: 45, steel_sword: 80, oak_bow: 30, yew_bow: 70,
     apprentice_staff: 35, ember_staff: 80, leather_armor: 20, iron_armor: 55, steel_armor: 95,
     bones: 2, seeds: 2, crop: 4, cooked_greens: 10, strong_potion: 20,
+    bone_shard: 10, goblin_tooth: 8, crystal_shard: 14, magma_core: 16, pearl: 22,
+    wraithblade: 130, stormstring_bow: 110, prism_staff: 135, cinderforge_axe: 150, tidecaller_trident: 180,
   },
 };
 
@@ -519,11 +761,17 @@ export const ACHIEVEMENTS = [
   { id: 'emberfang',   name: 'Emberbane',        desc: 'Defeat Emberfang.',            cond: (G) => G.stats.bosses.has('ember_boss') },
   { id: 'wyrmslayer',  name: 'Wyrmslayer',       desc: 'Defeat the Sandwyrm.',         cond: (G) => G.stats.bosses.has('sandwyrm') },
   { id: 'thaw',        name: 'Thaw the Warden',  desc: 'Defeat the Frost Warden.',     cond: (G) => G.stats.bosses.has('frost_warden') },
-  { id: 'globetrotter',name: 'Globetrotter',     desc: 'Set foot in every region.',    cond: (G) => G.stats.regions.size >= 5 },
+  { id: 'globetrotter',name: 'Globetrotter',     desc: 'Set foot in every region.',    cond: (G) => G.stats.regions.size >= 7 },
   { id: 'jeweller',    name: 'Jeweller',         desc: 'Craft a piece of jewelry.',    cond: (G) => G.stats.crafted >= 1 },
   { id: 'suited',      name: 'Suited Up',        desc: 'Wear a full armour set.',      cond: (G) => !!(G.fullSet && G.fullSet()) },
   { id: 'tycoon',      name: 'Tycoon',           desc: 'Hold 1000 gold at once.',      cond: (G) => G.inventory.count('gold') >= 1000 },
   { id: 'isle_hero',   name: 'Isle Hero',        desc: 'Complete every quest.',        cond: (G) => G.quests.all().every((q) => q.status === 'complete') },
   { id: 'jack',        name: 'Jack of Trades',   desc: 'Reach total level 40.',        cond: (G) => G.skills.total() >= 40 },
   { id: 'specialist',  name: 'Specialist',       desc: 'Reach level 20 in any skill.', cond: (G) => G.skills.DEFS.some((d) => G.skills.level(d.key) >= 20) },
+  { id: 'bonelord',    name: 'Lichbane',         desc: 'Defeat Bonelord Mortrax.',     cond: (G) => G.stats.bosses.has('bonelord') },
+  { id: 'warbreaker',  name: 'Warbreaker',       desc: 'Defeat Warchief Gronk.',       cond: (G) => G.stats.bosses.has('warchief') },
+  { id: 'prismshatter',name: 'Prismshatter',     desc: 'Defeat the Prism Tyrant.',     cond: (G) => G.stats.bosses.has('prism_tyrant') },
+  { id: 'cinderfall',  name: 'Cinderfall',       desc: 'Defeat the Cinder Colossus.',   cond: (G) => G.stats.bosses.has('cinder_colossus') },
+  { id: 'tideturner',  name: 'Tideturner',       desc: 'Defeat the Drowned King.',      cond: (G) => G.stats.bosses.has('drowned_king') },
+  { id: 'dungeon_master', name: 'Dungeon Master', desc: 'Defeat all five dungeon bosses.', cond: (G) => ['bonelord', 'warchief', 'prism_tyrant', 'cinder_colossus', 'drowned_king'].every((k) => G.stats.bosses.has(k)) },
 ];

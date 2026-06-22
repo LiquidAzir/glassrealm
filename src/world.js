@@ -16,6 +16,7 @@ const BIOMES = {
   desert:   { sea: 0x16566a, sand: 0xe6d49a, low: 0xe3c277, low2: 0xd6b25e, high: 0xc9a05a, peak: 0xf1e4b4, fol: [0x4a8f5a, 0x5aa56a], trunk: 0x6e4a2b },
   snow:     { sea: 0x2a4a66, sand: 0xdfe8f2, low: 0xeaf2ff, low2: 0xd6e4f4, high: 0xb8c6d6, peak: 0xffffff, fol: [0xbcd0e0, 0xe8f2ff], trunk: 0x5a5350 },
   volcanic: { sea: 0x123842, sand: 0xd7be8e, low: 0xb07045, low2: 0x9c6a3f, high: 0x8f8a86, peak: 0xff8a3d, fol: [0xc9742e, 0xe39a3c], trunk: 0x5a4632 },
+  swamp:    { sea: 0x163a3a, sand: 0x6a6a4a, low: 0x4a6a44, low2: 0x3a5a3e, high: 0x5a5e4a, peak: 0x7a8a6a, fol: [0x3a5a36, 0x4f6a40], trunk: 0x40342a },
 };
 
 const REGIONS = [
@@ -24,10 +25,22 @@ const REGIONS = [
   { key: 'desert',  x: 26,  z: 104, r: 46, biome: 'desert',   village: { name: 'Sunspire Oasis', x: 26, z: 104, hut: [0xd9b98a, 0xc09050] },                                       tree: 'cactus', nTree: 22, nBush: 3,  nRock: 12, nFish: 3, ore: [['iron', 5]] },
   { key: 'snow',    x: 98,  z: -86, r: 44, biome: 'snow',                                                                                     peak: { x: 98, z: -92, r: 22, h: 12 }, tree: 'pine',  nTree: 30, nBush: 5,  nRock: 10, nFish: 3, ore: [['coal', 5]] },
   { key: 'ember',   x: 116, z: 8,   r: 46, biome: 'volcanic', village: { name: 'Emberhold', x: 110, z: 18, hut: [0xb98c63, 0x6b4636], smithy: true }, peak: { x: 122, z: -4, r: 17, h: 11 }, tree: 'pine', nTree: 14, nBush: 0, nRock: 16, nFish: 4, ore: [['iron', 5], ['coal', 4]] },
+  { key: 'mistmoor', x: -72, z: 80, r: 30, biome: 'swamp', village: { name: "Mire's End", x: -80, z: 86, hut: [0x6a5a44, 0x3a4a36] }, tree: 'pine', nTree: 20, nBush: 10, nRock: 6, nFish: 3, ore: [['coal', 3]] },
+  { key: 'tideisle', x: 60, z: 70, r: 24, biome: 'grass', tree: 'pine', nTree: 8, nBush: 4, nRock: 8, nFish: 4, ore: [['iron', 3]] },
 ];
-const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow']];
+const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow'], ['forest', 'mistmoor'], ['desert', 'tideisle']];
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
+// Modular dungeons — themed spire rings (SW entrance gap) with a loot chest + a
+// boss at the centre. Add one here, drop a boss/trash into ENEMY_SPAWNS, and
+// (optionally) wire a quest chain in content.js. That's the whole extension point.
+const DUNGEONS = [
+  { key: 'catacombs', name: 'Gloomroot Catacombs', x: -64, z: 74,  r: 11, spire: 0x4a4458, orb: 0x9b7ad6, chest: { label: 'Catacomb Chest', gold: 200, loot: { bone_shard: 3, ruby: 1 } }, ore: [['coal', 3]] },
+  { key: 'warren',    name: 'Goblin Warren',       x: -24, z: 24,  r: 11, spire: 0x6b5a3a, orb: 0x9ac46a, chest: { label: 'Warren Stash',   gold: 180, loot: { goblin_tooth: 4, iron_bar: 2 } }, ore: [['iron', 3]] },
+  { key: 'crystal',   name: 'Crystal Hollow',      x: 82,  z: -74, r: 11, spire: 0x9b8bd6, orb: 0x9bf2ff, chest: { label: 'Geode Chest',    gold: 220, loot: { crystal_shard: 3, sapphire: 2, emerald: 1 } }, ore: [['coal', 2]] },
+  { key: 'magma',     name: 'Magma Depths',        x: 130, z: 28,  r: 11, spire: 0x7a3320, orb: 0xff6a2a, chest: { label: 'Molten Chest',   gold: 240, loot: { magma_core: 2, coal: 5, iron_ore: 4 } }, ore: [['iron', 3], ['coal', 3]] },
+  { key: 'temple',    name: 'Sunken Temple',       x: 60,  z: 70,  r: 12, spire: 0x3a7a7a, orb: 0x2bd6cf, chest: { label: 'Reliquary',      gold: 260, loot: { pearl: 2, sapphire: 2 } }, ore: [] },
+];
 const SHORTCUT_LINKS = [
   { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
   { name: 'Tangle Vines',    a: { x: 16, z: 42 },  b: { x: 24, z: 86 },  level: 1 },
@@ -111,6 +124,7 @@ export function createWorld(scene, seed = 1337) {
       if (h < hMin || h > hMax) continue;
       let bad = false;
       for (const v of villages) if (dist2D(x, z, v.x, v.z) < 11) { bad = true; break; }
+      if (!bad) for (const dg of DUNGEONS) if (dist2D(x, z, dg.x, dg.z) < dg.r + 2) { bad = true; break; }
       if (!bad) for (const o of occupied) if (dist2D(x, z, o.x, o.z) < minGap) { bad = true; break; }
       if (bad) continue;
       occupied.push({ x, z }); fn(x, z, h); placed++;
@@ -130,6 +144,7 @@ export function createWorld(scene, seed = 1337) {
   }
   for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = 2 + rng() * (CAVE.r - 4); const x = CAVE.x + Math.cos(a) * rad, z = CAVE.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type: rng() > 0.4 ? 'iron' : 'coal', alive: true, respawn: 0 }); }
   for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = 2 + rng() * (CAVE2.r - 4); const x = CAVE2.x + Math.cos(a) * rad, z = CAVE2.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type: rng() > 0.5 ? 'iron' : 'coal', alive: true, respawn: 0 }); }
+  for (const dg of DUNGEONS) for (const [type, n] of dg.ore) for (let i = 0; i < n; i++) { const a = rng() * TAU, rad = 3 + rng() * (dg.r - 5); const x = dg.x + Math.cos(a) * rad, z = dg.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type, alive: true, respawn: 0 }); }
 
   // trees (instanced, per-instance colour)
   const N = Math.max(trees.length, 1);
@@ -302,7 +317,7 @@ export function createWorld(scene, seed = 1337) {
     }
     const cy = height(CAVE.x, CAVE.z);
     const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true })); chest.position.set(CAVE.x, cy + 0.5, CAVE.z); group.add(chest);
-    stations.push({ kind: 'chest', label: 'Cave Chest', x: CAVE.x, z: CAVE.z, y: cy, looted: false });
+    stations.push({ kind: 'chest', label: 'Cave Chest', x: CAVE.x, z: CAVE.z, y: cy, looted: false, gold: 120, loot: { iron_bar: 3, coal: 4 } });
   })();
 
   // Frost Cavern (snow) — icy spires + a frozen chest (the Frost Warden lurks here).
@@ -316,8 +331,25 @@ export function createWorld(scene, seed = 1337) {
     }
     const cy = height(CAVE2.x, CAVE2.z);
     const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0x9bd0ff, flatShading: true })); chest.position.set(CAVE2.x, cy + 0.5, CAVE2.z); group.add(chest);
-    stations.push({ kind: 'chest2', label: 'Frozen Chest', x: CAVE2.x, z: CAVE2.z, y: cy, looted: false });
+    stations.push({ kind: 'chest', label: 'Frozen Chest', x: CAVE2.x, z: CAVE2.z, y: cy, looted: false, gold: 160, loot: { sapphire: 2, emerald: 1 } });
   })();
+
+  // Modular dungeons — themed spire ring (SW entrance gap), a glowing core orb,
+  // and a generic loot chest. The boss/trash for each spawn from ENEMY_SPAWNS.
+  for (const dg of DUNGEONS) {
+    const cols = 16;
+    for (let i = 0; i < cols; i++) {
+      const a = (i / cols) * TAU; if (a > 3.3 && a < 4.3) continue;
+      const x = dg.x + Math.cos(a) * dg.r, z = dg.z + Math.sin(a) * dg.r, hh = 4 + rng() * 2.5;
+      const col = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), new THREE.MeshLambertMaterial({ color: dg.spire, flatShading: true }));
+      col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.25, hh, 1.25); col.rotation.y = rng() * TAU; group.add(col);
+    }
+    const cy = height(dg.x, dg.z);
+    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshBasicMaterial({ color: dg.orb })); orb.position.set(dg.x, cy + 4.6, dg.z); group.add(orb);
+    const cx = dg.x + 2.6, cz = dg.z + 2.6, ccy = height(cx, cz);
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true })); chest.position.set(cx, ccy + 0.5, cz); group.add(chest);
+    stations.push({ kind: 'chest', label: dg.chest.label, x: cx, z: cz, y: ccy, looted: false, gold: dg.chest.gold, loot: dg.chest.loot });
+  }
 
   // Agility shortcut pads (two per link, one at each end → bidirectional hop).
   const shortcuts = [];
@@ -340,6 +372,10 @@ export function createWorld(scene, seed = 1337) {
   locations.push({ name: 'Snowfields', x: byKey.snow.x, z: byKey.snow.z });
   locations.push({ name: 'The Isthmus', x: 61, z: 4 });
   locations.push({ name: 'Emberdeep Cave', x: CAVE.x, z: CAVE.z });
+  locations.push({ name: 'Frost Cavern', x: CAVE2.x, z: CAVE2.z });
+  for (const dg of DUNGEONS) locations.push({ name: dg.name, x: dg.x, z: dg.z });
+  locations.push({ name: 'The Mistmoor', x: byKey.mistmoor.x, z: byKey.mistmoor.z });
+  locations.push({ name: 'Tide Isle', x: byKey.tideisle.x, z: byKey.tideisle.z });
   function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak' })[key] || 'Peak'; }
 
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
@@ -350,7 +386,7 @@ export function createWorld(scene, seed = 1337) {
     village: VILLAGE_A,
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
-    peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, locations,
+    peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
     trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
