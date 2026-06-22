@@ -84,6 +84,7 @@ export function createEntities(scene, world, G) {
       }
       if (e.hurtFlash > 0) e.hurtFlash -= dt;
       const d = dist2D(e.pos.x, e.pos.z, player.position.x, player.position.z);
+      if (d > 70) continue;   // cull far-away AI — perf with 50+ spawns across the map
       if (player.state.hp > 0 && d < e.def.aggro) e.state = 'chase';
       else if (d > e.def.aggro * 1.7) e.state = 'wander';
 

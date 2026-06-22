@@ -26,6 +26,7 @@ export function createSave(G) {
       world: {
         choppedTrees: G.world.trees.filter((t) => !t.alive).map((t) => t.idx),
         harvestedBushes: G.world.bushes.filter((b) => !b.alive).map((b) => b.idx),
+        lootedChests: G.world.stations.filter((s) => s.kind === 'chest' && s.looted).map((s) => s.label),
       },
     };
   }

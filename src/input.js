@@ -12,20 +12,17 @@ export function createInput(target = window) {
   const keys = new Set();
   const handlers = [];
   let lastTapAt = -1;
-  let pendingTap = null;
 
   const emit = (action) => { for (const h of handlers) h(action); };
 
+  // Fire 'tap' immediately so on-device interactions feel instant (no disambiguation
+  // wait — double-tap doesn't register on the band anyway). A quick second press
+  // additionally emits 'doubletap' as a desktop-only convenience.
   function resolveTap() {
     const now = performance.now();
-    if (lastTapAt >= 0 && now - lastTapAt < TAP_GAP) {
-      if (pendingTap) { clearTimeout(pendingTap); pendingTap = null; }
-      lastTapAt = -1;
-      emit('doubletap');
-    } else {
-      lastTapAt = now;
-      pendingTap = setTimeout(() => { pendingTap = null; lastTapAt = -1; emit('tap'); }, TAP_GAP);
-    }
+    emit('tap');
+    if (lastTapAt >= 0 && now - lastTapAt < TAP_GAP) { lastTapAt = -1; emit('doubletap'); }
+    else lastTapAt = now;
   }
 
   function onKeyDown(e) {

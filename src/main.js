@@ -46,6 +46,7 @@ try {
   if (saved) {
     (saved.world && saved.world.choppedTrees || []).forEach((i) => world.removeTree(i));
     (saved.world && saved.world.harvestedBushes || []).forEach((i) => world.harvestBush(i));
+    (saved.world && saved.world.lootedChests || []).forEach((label) => { const st = world.stations.find((s) => s.kind === 'chest' && s.label === label); if (st) st.looted = true; });
     if (saved.player) {
       player.group.position.x = saved.player.x;
       player.group.position.z = saved.player.z;
@@ -573,9 +574,9 @@ try {
     // day/night cycle (~180s) — kept bright enough to stay readable on the display
     tod = (tod + dt / 180) % 1;
     const day = (Math.sin(tod * Math.PI * 2 - Math.PI / 2) + 1) / 2;
-    engine.hemi.intensity = 0.32 + 0.40 * day;
-    engine.sun.intensity = 0.25 + 0.70 * day;
-    engine.fill.intensity = 0.10 + 0.15 * day;
+    engine.hemi.intensity = 0.48 + 0.26 * day;
+    engine.sun.intensity = 0.42 + 0.55 * day;
+    engine.fill.intensity = 0.18 + 0.10 * day;
     const ang = tod * Math.PI * 2;
     engine.sun.position.set(Math.cos(ang) * 60, 25 + 75 * day, Math.sin(ang) * 40);
     engine.sun.color.setHSL(0.09, 0.55, 0.38 + 0.18 * day);
