@@ -100,7 +100,7 @@ export function createWorld(scene, seed = 1337) {
   const rng = mulberry32(seed);
   const group = new THREE.Group();
   const byKey = {}; REGIONS.forEach((r) => (byKey[r.key] = r));
-  const villages = REGIONS.filter((r) => r.village).map((r) => r.village);
+  const villages = REGIONS.filter((r) => r.village).map((r) => { r.village.biome = r.biome; return r.village; });
 
   // bridges: edge-to-edge segments between linked regions
   const BRIDGES = BRIDGE_LINKS.map(([a, b]) => {
@@ -297,18 +297,61 @@ export function createWorld(scene, seed = 1337) {
     tavern:   { roof: 0x8a5a2e, roofH: 2.4, h: 4.4 },
     forge:    { roof: 0x55585f, roofH: 1.8, h: 4.0 },
   };
-  function building(bx, bz, vcx, vcz, type, pal) {
+  // per-BIOME town architecture: each region's town gets distinct walls, roof colour AND
+  // silhouette + structural accents, so you know the region from the rooftops alone.
+  const TOWN = {
+    grass:    { wall: 0xe8d6a8, wall2: 0x9a5a38, roof: 0xc24a3a, roofStyle: 'pitch',  glow: 0xffd47a, accents: [] },
+    forest:   { wall: 0xc9a85a, wall2: 0x4f7a3a, roof: 0x2f8b48, roofStyle: 'gable',  glow: 0xffe08a, accents: ['vines', 'stonebase'] },
+    desert:   { wall: 0xefd49a, wall2: 0xc07a3a, roof: 0x46b8c0, roofStyle: 'dome',   glow: 0xffc24a, accents: ['awning', 'banners'] },
+    snow:     { wall: 0xdce8f6, wall2: 0x7fa0c8, roof: 0x2f5ed8, roofStyle: 'steep',  glow: 0xffe08a, accents: ['snowcap', 'lanterns'] },
+    volcanic: { wall: 0xb07048, wall2: 0x6a5048, roof: 0xf0552e, roofStyle: 'pitch',  glow: 0xff7a2a, accents: ['embers', 'stonebase'] },
+    swamp:    { wall: 0x8a9a5a, wall2: 0x6e5a3c, roof: 0x9aa84e, roofStyle: 'thatch', glow: 0xc8e07a, accents: ['stilts', 'lanterns'] },
+    jungle:   { wall: 0xcba24e, wall2: 0x3fa84a, roof: 0x4fcc3a, roofStyle: 'thatch', glow: 0xffd24a, accents: ['vines', 'banners'] },
+    badlands: { wall: 0xd98a4a, wall2: 0x9a5230, roof: 0xc04a2a, roofStyle: 'flat',   glow: 0xffb04a, accents: ['awning', 'stonebase'] },
+    highland: { wall: 0x9faebe, wall2: 0x6e7a88, roof: 0x6e8470, roofStyle: 'steep',  glow: 0xffd060, accents: ['stonebase', 'banners'] },
+    fae:      { wall: 0x8a5ad0, wall2: 0x3a8aff, roof: 0x5ac8c0, roofStyle: 'spire',  glow: 0x8af0ff, accents: ['glow', 'lanterns'] },
+    coast:    { wall: 0xcfe0e8, wall2: 0x3a93a6, roof: 0x2fb0c8, roofStyle: 'gable',  glow: 0xffe08a, accents: ['lanterns', 'awning'] },
+    autumn:   { wall: 0xe4ac4e, wall2: 0x9a4a24, roof: 0xd85a26, roofStyle: 'pagoda', glow: 0xffb84a, accents: ['lanterns', 'banners'] },
+  };
+  function building(bx, bz, vcx, vcz, type, pal, biome) {
+    const st = TOWN[biome] || TOWN.grass;
     const y = height(bx, bz);
     const faceA = Math.atan2(vcx - bx, vcz - bz);                 // face the plaza
     const fx = Math.sin(faceA), fz = Math.cos(faceA), rx = Math.cos(faceA), rz = -Math.sin(faceA);
     const cfg = BLD[type] || BLD.home, W = 5.2, D = 5.2, H = cfg.h;
     // place at building-local coords: side = right offset, oy = height, fwd = toward the plaza
     const put = (geo, mat, side, oy, fwd, rotX) => { const m = new THREE.Mesh(geo, mat); m.position.set(bx + fx * fwd + rx * side, y + oy, bz + fz * fwd + rz * side); m.rotation.y = faceA; if (rotX) m.rotation.x = rotX; group.add(m); return m; };
-    put(new THREE.BoxGeometry(W, H, D), lmat(pal[0]), 0, H / 2, 0);                                                   // walls
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(W * 0.82, cfg.roofH, 4), lmat(cfg.roof)); roof.position.set(bx, y + H + cfg.roofH / 2 - 0.1, bz); roof.rotation.y = faceA + Math.PI / 4; group.add(roof);
+    const basic = (c) => new THREE.MeshBasicMaterial({ color: c });
+    if (st.accents.includes('stonebase')) put(new THREE.BoxGeometry(W * 1.1, 1.2, D * 1.1), lmat(st.wall2), 0, 0.6, 0);   // stone footing peeks below the walls
+    put(new THREE.BoxGeometry(W, H, D), lmat(st.wall), 0, H / 2, 0);                                                   // walls (biome colour)
+    // ---- roof silhouette per biome ----
+    const rc = lmat(st.roof), top = y + H, rh = cfg.roofH;
+    const atTop = (mesh, oy, ry) => { mesh.position.set(bx, top + oy, bz); mesh.rotation.y = (ry === undefined ? faceA : ry); group.add(mesh); return mesh; };
+    if (st.roofStyle === 'flat') {
+      atTop(new THREE.Mesh(new THREE.BoxGeometry(W * 1.02, 0.45, D * 1.02), rc), 0.22);
+      atTop(new THREE.Mesh(new THREE.BoxGeometry(W * 1.12, 0.16, D * 1.12), lmat(st.wall2)), 0.5);                    // parapet lip
+    } else if (st.roofStyle === 'dome') {
+      atTop(new THREE.Mesh(new THREE.SphereGeometry(W * 0.6, 12, 8, 0, TAU, 0, Math.PI * 0.5), rc), 0);
+    } else if (st.roofStyle === 'thatch') {
+      atTop(new THREE.Mesh(new THREE.ConeGeometry(W * 0.92, rh * 1.45, 8), rc), rh * 1.45 / 2 - 0.1);                 // rounded straw cone
+    } else if (st.roofStyle === 'steep') {
+      atTop(new THREE.Mesh(new THREE.ConeGeometry(W * 0.74, rh * 2.2, 4), rc), rh * 2.2 / 2 - 0.1, faceA + Math.PI / 4);
+    } else if (st.roofStyle === 'spire') {
+      atTop(new THREE.Mesh(new THREE.ConeGeometry(W * 0.78, rh, 4), rc), rh / 2 - 0.1, faceA + Math.PI / 4);          // flared base
+      atTop(new THREE.Mesh(new THREE.ConeGeometry(W * 0.34, rh * 3.4, 6), rc), rh * 0.6 + rh * 3.4 / 2);             // tall spire
+      atTop(new THREE.Mesh(new THREE.IcosahedronGeometry(0.26, 0), basic(st.glow)), rh * 0.6 + rh * 3.4 + 0.2);     // glowing finial
+    } else if (st.roofStyle === 'pagoda') {
+      atTop(new THREE.Mesh(new THREE.ConeGeometry(W * 0.95, rh * 0.8, 4), rc), rh * 0.8 / 2 - 0.1, faceA + Math.PI / 4);
+      atTop(new THREE.Mesh(new THREE.ConeGeometry(W * 0.62, rh * 0.8, 4), rc), rh * 0.8 + rh * 0.8 / 2 - 0.1, faceA + Math.PI / 4);
+    } else if (st.roofStyle === 'gable') {
+      for (const s of [1, -1]) put(new THREE.BoxGeometry(W * 1.06, 0.18, D * 0.72), rc, 0, H + 0.55, s * D * 0.2, -s * 0.62);   // two slopes → ridge
+      put(new THREE.BoxGeometry(W * 1.04, 0.7, 0.16), lmat(st.wall2), 0, H + rh * 0.62, 0);                          // ridge beam
+    } else {
+      atTop(new THREE.Mesh(new THREE.ConeGeometry(W * 0.82, rh, 4), rc), rh / 2 - 0.1, faceA + Math.PI / 4);         // pitch (default)
+    }
     put(new THREE.BoxGeometry(1.5, 2.3, 0.25), lmat(0x3a2a1c), 0, 1.15, D / 2 - 0.02);                                // door
-    for (const s of [-W * 0.3, W * 0.3]) put(new THREE.BoxGeometry(1.0, 1.0, 0.12), new THREE.MeshBasicMaterial({ color: 0xffd47a }), s, H * 0.58, D / 2);   // lit windows
-    put(new THREE.BoxGeometry(2.0, 0.6, 0.12), lmat(SIGN_COL[type] || 0xcaa878), 0, H - 0.5, D / 2 + 0.08);           // sign
+    for (const s of [-W * 0.3, W * 0.3]) put(new THREE.BoxGeometry(1.0, 1.0, 0.12), basic(st.glow), s, H * 0.58, D / 2);   // lit windows (biome glow)
+    put(new THREE.BoxGeometry(2.0, 0.6, 0.12), lmat(SIGN_COL[type] || 0xcaa878), 0, H - 0.5, D / 2 + 0.08);           // per-type sign
     if (type === 'tavern') {
       put(new THREE.CylinderGeometry(0.5, 0.5, 1.0, 10), lmat(0x6e4a2b), W * 0.42, 0.5, D / 2 + 0.7);                 // barrel
       put(new THREE.BoxGeometry(0.18, 2.4, 0.18), lmat(0x4a3526), -W * 0.42, 1.2, D / 2 + 0.7);                       // sign post
@@ -327,6 +370,17 @@ export function createWorld(scene, seed = 1337) {
     } else {
       put(new THREE.BoxGeometry(0.6, H + 0.9, 0.6), lmat(0x7a5a44), W * 0.3, (H + 0.9) / 2, -D * 0.25);               // home chimney
       put(new THREE.BoxGeometry(1.5, 0.32, 0.32), lmat(0x4a7a3a), 0, H * 0.4, D / 2 + 0.12);                          // flower box
+    }
+    // ---- biome structural accents (on top of per-type props) ----
+    for (const acc of st.accents) {
+      if (acc === 'snowcap') { atTop(new THREE.Mesh(new THREE.ConeGeometry(W * 0.6, 0.5, 4), basic(0xffffff)), rh * 0.9, faceA + Math.PI / 4); put(new THREE.BoxGeometry(W * 1.0, 0.18, D * 1.0), basic(0xeef6ff), 0, H + 0.05, 0); }
+      else if (acc === 'awning') { put(new THREE.BoxGeometry(W * 0.7, 0.14, 1.5), lmat(st.wall2), 0, H * 0.5, D / 2 + 0.55, -0.4); }
+      else if (acc === 'banners') { for (const s of [-W * 0.34, W * 0.34]) put(new THREE.BoxGeometry(0.5, 1.5, 0.08), lmat(st.roof), s, H * 0.45, D / 2 + 0.06); }
+      else if (acc === 'stilts') { for (const ax of [-W * 0.4, W * 0.4]) for (const az of [-D * 0.4, D * 0.4]) put(new THREE.BoxGeometry(0.26, 1.5, 0.26), lmat(st.wall2), ax, 0.75, az); }
+      else if (acc === 'glow') { put(new THREE.IcosahedronGeometry(0.24, 0), basic(st.glow), 0, H + 0.4, D / 2 + 0.3); for (const s of [-W * 0.4, W * 0.4]) put(new THREE.IcosahedronGeometry(0.2, 0), basic(st.glow), s, H * 0.75, D / 2 + 0.2); }
+      else if (acc === 'lanterns') { for (const s of [-W * 0.42, W * 0.42]) { put(new THREE.BoxGeometry(0.08, 0.5, 0.08), lmat(0x2a2018), s, H * 0.74, D / 2 + 0.2); put(new THREE.IcosahedronGeometry(0.2, 0), basic(0xffce6a), s, H * 0.5, D / 2 + 0.2); } }
+      else if (acc === 'embers') { for (const e of [[-W * 0.3, 0.5], [W * 0.36, 0.8], [0, 1.4]]) put(new THREE.BoxGeometry(0.16, 0.16, 0.16), basic(0xff7a33), e[0], e[1], D / 2 + 0.3); }
+      else if (acc === 'vines') { for (const s of [-W * 0.36, 0, W * 0.36]) put(new THREE.BoxGeometry(0.34, 1.6, 0.12), lmat(0x3f8f3f), s, H * 0.55, D / 2 + 0.02); }
     }
     const sx = bx + fx * (D / 2 + 1.2), sz = bz + fz * (D / 2 + 1.2);
     stations.push({ kind: 'door', label: 'Enter ' + (BLD_NAME[type] || 'building'), x: sx, z: sz, y: height(sx, sz), building: type });
@@ -426,7 +480,7 @@ export function createWorld(scene, seed = 1337) {
   // cauldron services now live INSIDE their buildings (entered via the door).
   for (const v of villages) {
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
-    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * 8.5, v.z + Math.sin(a) * 8.5, v.x, v.z, types[i], v.hut); }
+    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * 8.5, v.z + Math.sin(a) * 8.5, v.x, v.z, types[i], v.hut, v.biome); }
     well(v.x, v.z);
     fire(v.x - 3.5, v.z + 3.5);
     altar(v.x + 3.5, v.z + 3.5);
