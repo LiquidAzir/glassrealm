@@ -8,6 +8,7 @@ const COAST_FWD = 0.42;
 const COAST_TURN = 0.26;
 const CAM_DIST = 9.5, CAM_HEIGHT = 5.2, CAM_LOOK = 3.0, HEAD_Y = 1.5;
 const ATTACK_DUR = 0.34;
+const GATHER_DUR = 0.6;
 
 export function createPlayer(scene, world) {
   const group = new THREE.Group();
@@ -40,6 +41,7 @@ export function createPlayer(scene, world) {
   const hand = new THREE.Group(); hand.position.set(0, -0.62, 0); rightArm.add(hand);
   hand.add(mkBox(0.18, 0.18, 0.18, skin, 0, 0, 0));          // fist
   const weaponHolder = new THREE.Group(); hand.add(weaponHolder);
+  const toolHolder = new THREE.Group(); hand.add(toolHolder); toolHolder.visible = false;   // axe/pick/rod shown while gathering
 
   function clearHolder() { while (weaponHolder.children.length) weaponHolder.remove(weaponHolder.children[0]); }
   function setWeaponMesh(style) {
@@ -56,6 +58,18 @@ export function createPlayer(scene, world) {
     }
     // unarmed: nothing — just the fist
   }
+  function setToolMesh(kind) {
+    while (toolHolder.children.length) toolHolder.remove(toolHolder.children[0]);
+    if (kind === 'mine') {                                                    // pickaxe
+      toolHolder.add(mkBox(0.06, 0.95, 0.06, woodMat, 0, -0.5, 0));
+      toolHolder.add(mkBox(0.55, 0.09, 0.09, steel, 0, -0.92, 0));
+    } else if (kind === 'fish') {                                             // fishing rod
+      toolHolder.add(mkBox(0.05, 1.3, 0.05, woodMat, 0, -0.64, 0));
+    } else {                                                                  // axe (chop / forage)
+      toolHolder.add(mkBox(0.06, 0.9, 0.06, woodMat, 0, -0.46, 0));
+      toolHolder.add(mkBox(0.3, 0.16, 0.1, steel, 0.12, -0.86, 0));
+    }
+  }
 
   // Stand on the plaza south of the village (clear of the hut ring), facing in.
   const sx = world.village.x, sz = world.village.z + 12;
@@ -67,7 +81,7 @@ export function createPlayer(scene, world) {
     hp: 100, maxHp: 100,
     coastFwd: 0, coastTurn: 0, coastTurnDir: 0,
     moving: false, bob: 0,
-    attackCd: 0, attackAnim: 0, attackStyle: 'unarmed',
+    attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
     equipment: { weapon: null, armor: null, amulet: null, ring: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
   };
@@ -82,7 +96,9 @@ export function createPlayer(scene, world) {
   const forwardVec = () => ({ x: Math.sin(state.heading), z: Math.cos(state.heading) });
   const impulseForward = () => { state.coastFwd = COAST_FWD; };
   const impulseTurn = (dir) => { state.coastTurnDir = dir; state.coastTurn = COAST_TURN; };
-  function playAttack(style) { state.attackStyle = style || weapon().style; state.attackAnim = ATTACK_DUR; }
+  function showTool(on) { toolHolder.visible = on; weaponHolder.visible = !on; state.toolActive = on; }
+  function playAttack(style) { if (state.toolActive) showTool(false); state.attackStyle = style || weapon().style; state.attackAnim = ATTACK_DUR; state.animDur = ATTACK_DUR; }
+  function playGather(kind) { setToolMesh(kind); showTool(true); state.attackStyle = kind; state.attackAnim = GATHER_DUR; state.animDur = GATHER_DUR; }
 
   function tryMove(dt) {
     const f = forwardVec();
@@ -100,7 +116,7 @@ export function createPlayer(scene, world) {
     if (input.keys.has('right')) turn += 1;
     if (turn === 0 && state.coastTurn > 0) turn = state.coastTurnDir;
     state.coastTurn = Math.max(0, state.coastTurn - dt);
-    state.heading += turn * TURN * dt;
+    state.heading -= turn * TURN * dt;   // swipe-left turns left (mirrors on-device feel)
     if (state.heading > Math.PI) state.heading -= TAU;
     if (state.heading < -Math.PI) state.heading += TAU;
 
@@ -117,11 +133,18 @@ export function createPlayer(scene, world) {
     // attack animation
     if (state.attackAnim > 0) {
       state.attackAnim = Math.max(0, state.attackAnim - dt);
-      const t = 1 - state.attackAnim / ATTACK_DUR;
+      const t = 1 - state.attackAnim / state.animDur;
       const s = Math.sin(t * Math.PI);
-      if (state.attackStyle === 'ranged') rightArm.rotation.x = -1.2 - 0.5 * s;
-      else if (state.attackStyle === 'magic') rightArm.rotation.x = -1.5 - 0.4 * s;
-      else rightArm.rotation.x = -2.3 * s;   // melee / unarmed swing
+      switch (state.attackStyle) {
+        case 'ranged': rightArm.rotation.x = -1.2 - 0.5 * s; break;
+        case 'magic':  rightArm.rotation.x = -1.5 - 0.4 * s; break;
+        case 'chop':   rightArm.rotation.x = -2.4 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two overhead chops
+        case 'mine':   rightArm.rotation.x = -2.1 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two pick swings
+        case 'fish':   rightArm.rotation.x = -1.5 + 0.6 * s; break;                               // cast & settle
+        case 'forage': rightArm.rotation.x = -1.0 * s; break;                                     // reach down
+        default:       rightArm.rotation.x = -2.3 * s;   // melee / unarmed swing
+      }
+      if (state.attackAnim === 0 && state.toolActive) showTool(false);
     } else if (rightArm.rotation.x !== 0) {
       rightArm.rotation.x *= (1 - damp(12, dt));
       if (Math.abs(rightArm.rotation.x) < 0.01) rightArm.rotation.x = 0;
@@ -148,7 +171,7 @@ export function createPlayer(scene, world) {
 
   return {
     group, state, update, updateCamera, impulseForward, impulseTurn, forwardVec,
-    playAttack, refreshEquipment, weapon, handPosition,
+    playAttack, playGather, refreshEquipment, weapon, handPosition,
     get position() { return group.position; },
   };
 }

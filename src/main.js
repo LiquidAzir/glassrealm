@@ -80,10 +80,12 @@ try {
   G.stats = { kills: 0, crafted: 0, regions: new Set(), bosses: new Set(), killsByType: {} };
   if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); Object.assign(G.stats.killsByType, saved.stats.killsByType || {}); }
   G.slayer = (saved && saved.slayer) ? { ...saved.slayer } : { active: false, enemy: null, count: 0, progress: 0 };
+  G.trackedQuest = (saved && saved.tracked) || null;   // quest pinned in the Quests menu
   const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
   G.slayerAssign = () => { const enemy = SLAYER_POOL[Math.floor(Math.random() * SLAYER_POOL.length)]; const count = 6 + Math.floor(Math.random() * 7); G.slayer = { active: true, enemy, count, progress: 0 }; G.ui.toast(`Slayer task: ${count} ${ENEMIES[enemy].name}s`, 'good', 2600); G.save.save(); };
   G.slayerClaim = () => { const s = G.slayer; if (!s.active || s.progress < s.count) return; const reward = s.count * 8; G.inventory.add('gold', reward); G.gainXp('slayer', s.count * 15); s.active = false; G.ui.toast(`Slayer contract complete! +${reward}g`, 'good', 2800); G.ach.evaluate(); G.save.save(); };
   G.prestigeSkill = (key) => { if (!G.skills.canPrestige(key)) { G.ui.toast('Reach level 20 to prestige', 'bad', 1800); return; } if (G.skills.doPrestige(key)) { G.ui.toast(`⭐ Prestiged ${skillName(key)}!`, 'good', 3000); G.ui.levelBanner(`Prestige — ${skillName(key)}`); G.audio.sfx('ach'); G.ach.evaluate(); G.save.save(); } };
+  G.trackQuest = (id) => { G.trackedQuest = (G.trackedQuest === id) ? null : id; G.ui.toast(G.trackedQuest ? `Tracking: ${QUESTS[id].name}` : 'Tracking cleared', 'good', 1600); G.save.save(); };
   G.ach = {
     unlocked: new Set((saved && saved.achievements) || []),
     evaluate() {
@@ -114,6 +116,7 @@ try {
 
   G.chopTree = (t) => {
     world.removeTree(t.idx);
+    player.playGather('chop');
     G.inventory.add('wood', 1);
     G.ui.toast('Chopped Driftwood', 'gold', 1400); G.audio.sfx('pickup');
     G.gainXp('woodcutting', 14);
@@ -121,6 +124,7 @@ try {
   };
   G.forageBush = (b) => {
     world.harvestBush(b.idx);
+    player.playGather('forage');
     const herb = Math.random() < 0.3;
     G.inventory.add(herb ? 'herb' : 'berry', 1);
     G.ui.toast(herb ? 'Foraged Glimmerleaf' : 'Foraged Sunberries', 'gold', 1400);
@@ -129,12 +133,14 @@ try {
   };
   G.plotAction = (p) => {
     if (p.state === 'grown') {
+      player.playGather('forage');
       const n = 1 + Math.floor(Math.random() * 2);
       G.inventory.add('crop', n); world.harvestPlot(p); G.gainXp('farming', 24);
       G.ui.toast(`Harvested ${n} Isle Greens`, 'gold', 1500); checkQuestReady(); G.save.save();
     } else if (p.state === 'growing') {
       G.ui.toast('Still growing…', '', 1200);
     } else if (G.inventory.has('seeds', 1)) {
+      player.playGather('forage');
       G.inventory.remove('seeds', 1); world.plantPlot(p); G.gainXp('farming', 8); G.ui.toast('Planted seeds', 'good', 1300); G.save.save();
     } else G.ui.toast('No seeds — buy some from Trader Pell', 'bad', 1800);
   };
@@ -165,6 +171,7 @@ try {
   const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal' };
   G.mineOre = (o) => {
     world.depleteOre(o);
+    player.playGather('mine');
     const item = ORE_ITEM[o.type];
     G.inventory.add(item, 1);
     G.ui.toast('Mined ' + ITEMS[item].name, 'gold', 1400); G.audio.sfx('pickup');
@@ -174,6 +181,7 @@ try {
     checkQuestReady(); G.save.save();
   };
   G.fishSpot = () => {
+    player.playGather('fish');
     const item = Math.random() < 0.55 ? 'raw_shrimp' : 'raw_trout';
     G.inventory.add(item, 1);
     G.ui.toast('Caught ' + ITEMS[item].name, 'gold', 1400);
@@ -518,20 +526,22 @@ try {
     if (item === 'relic') { const e = nearestEnemyOf('ember_boss'); return e ? { x: e.pos.x, z: e.pos.z, y: e.pos.y } : null; }
     return null;
   }
-  function questTarget() {
-    for (const id of G.quests.activeList()) {
-      const def = QUESTS[id];
-      if (G.quests.isReady(id)) { const n = npcByKey(def.giver); if (n) return { x: n.pos.x, z: n.pos.z, y: n.pos.y + 2.9, label: 'Return to ' + n.def.name }; continue; }
-      const objs = G.quests.objectives(id);
-      let found = null;
-      for (let i = 0; i < def.objectives.length && !found; i++) {
-        if (objs[i].done) continue;
-        const o = def.objectives[i];
-        if (o.type === 'kill') { const e = nearestEnemyOf(o.enemy); if (e) found = { x: e.pos.x, z: e.pos.z, y: e.pos.y + 2.6, label: 'Defeat ' + ENEMIES[o.enemy].name }; }
-        else if (o.type === 'have') { const s = itemSource(o.item); if (s) found = { x: s.x, z: s.z, y: (s.y || 0) + 2.2, label: 'Gather ' + ITEMS[o.item].name }; }
-      }
-      if (found) return found;
+  function targetForQuest(id) {
+    const def = QUESTS[id];
+    if (G.quests.isReady(id)) { const n = npcByKey(def.giver); return n ? { x: n.pos.x, z: n.pos.z, y: n.pos.y + 2.9, label: 'Return to ' + n.def.name } : null; }
+    const objs = G.quests.objectives(id);
+    for (let i = 0; i < def.objectives.length; i++) {
+      if (objs[i].done) continue;
+      const o = def.objectives[i];
+      if (o.type === 'kill') { const e = nearestEnemyOf(o.enemy); if (e) return { x: e.pos.x, z: e.pos.z, y: e.pos.y + 2.6, label: 'Defeat ' + ENEMIES[o.enemy].name }; }
+      else if (o.type === 'have') { const s = itemSource(o.item); if (s) return { x: s.x, z: s.z, y: (s.y || 0) + 2.2, label: 'Gather ' + ITEMS[o.item].name }; }
     }
+    return null;
+  }
+  function questTarget() {
+    // a quest pinned in the Quests menu takes priority
+    if (G.trackedQuest && G.quests.status(G.trackedQuest) === 'active') { const t = targetForQuest(G.trackedQuest); if (t) return t; }
+    for (const id of G.quests.activeList()) { const t = targetForQuest(id); if (t) return t; }
     let best = null, bd = Infinity;
     for (const q of G.quests.all()) { if (q.status !== 'available') continue; const n = npcByKey(q.def.giver); if (!n) continue; const d = dist2D(player.position.x, player.position.z, n.pos.x, n.pos.z); if (d < bd) { bd = d; best = { x: n.pos.x, z: n.pos.z, y: n.pos.y + 2.9, label: 'New quest: ' + n.def.name }; } }
     return best;

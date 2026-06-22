@@ -191,15 +191,17 @@ html, body {
   box-shadow: 0 0 8px var(--gold);
 }
 
-/* Quest guidance arrow */
+/* Quest guidance arrow — prominent, near the top under the compass */
 #questGuide {
-  position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 14px; background: var(--surface); border: 1px solid #3b7bd6;
-  border-radius: 18px; box-shadow: 0 0 14px rgba(91, 155, 255, 0.35); max-width: 536px;
+  position: absolute; left: 50%; top: 42px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 18px; background: var(--surface); border: 1.5px solid #4f93e6;
+  border-radius: 20px; max-width: 536px;
+  animation: qgGlow 1.6s ease-in-out infinite;
 }
-.qg-arrow { display: inline-block; color: #6db3ff; font-size: 18px; line-height: 1; }
-.qg-label { font-size: 13px; font-weight: 700; color: #bcdcff; white-space: nowrap; }
+@keyframes qgGlow { 0%, 100% { box-shadow: 0 0 16px rgba(91, 155, 255, 0.4); } 50% { box-shadow: 0 0 28px rgba(91, 155, 255, 0.75); } }
+.qg-arrow { display: inline-block; color: #8fd0ff; font-size: 28px; line-height: 1; text-shadow: 0 0 12px rgba(91, 155, 255, 0.85); }
+.qg-label { font-size: 14px; font-weight: 800; color: #dcefff; white-space: nowrap; letter-spacing: 0.3px; }
 
 /* Interaction prompt */
 #prompt {
@@ -231,7 +233,7 @@ html, body {
 /* Toasts */
 #toasts {
   position: absolute;
-  top: 44px;
+  top: 92px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;

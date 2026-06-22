@@ -118,6 +118,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Gear') return gearRows().length;
     if (TABS[tab] === 'Prayer') return PRAYERS.length;
     if (TABS[tab] === 'Skills') return G.skills.DEFS.length;
+    if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
     if (TABS[tab] === 'Diary') return 1;
     return 0;
   }
@@ -139,6 +140,9 @@ export function createUI(G) {
       const pr = PRAYERS[row]; if (pr) { G.togglePrayer(pr.key); renderMenu(); }
     } else if (TABS[tab] === 'Skills') {
       const d = G.skills.DEFS[row]; if (d && G.skills.canPrestige(d.key)) { G.prestigeSkill(d.key); renderMenu(); }
+    } else if (TABS[tab] === 'Quests') {
+      const act = G.quests.all().filter((q) => q.status === 'active'); const q = act[row];
+      if (q) { G.trackQuest(q.id); renderMenu(); }
     } else if (TABS[tab] === 'Diary') {
       if (row === 0 && G.audio) { G.audio.toggleMuted(); G.save.save(); renderMenu(); }
     }
@@ -226,9 +230,10 @@ export function createUI(G) {
   function renderQuests() {
     const all = G.quests.all();
     const sect = (label, arr, fn) => arr.length ? `<div class="section-head">${label}</div>` + arr.map(fn).join('') : '';
-    const active = (q) => {
+    const active = (q, i) => {
       const objs = G.quests.objectives(q.id).map((o) => `<div class="obj ${o.done ? 'done' : ''}"><span class="box">${o.done ? '☑' : '☐'}</span>${o.text}</div>`).join('');
-      return `<div class="row"><div class="row-main"><div class="row-title">${q.def.name}</div><div class="row-sub">${q.def.desc}</div>${objs}</div></div>`;
+      const tracked = G.trackedQuest === q.id;
+      return `<div class="row ${i === row ? 'sel' : ''}"><div class="row-main"><div class="row-title">${tracked ? '📍 ' : ''}${q.def.name}${tracked ? ' <span style="color:var(--gold)">tracking</span>' : ''}</div><div class="row-sub">${q.def.desc} &nbsp;·&nbsp; tap to ${tracked ? 'untrack' : 'track'}</div>${objs}</div></div>`;
     };
     let html = sect('Active', all.filter((q) => q.status === 'active'), active);
     html += sect('Available', all.filter((q) => q.status === 'available'), (q) => `<div class="row"><div class="row-main"><div class="row-title">${q.def.name}</div><div class="row-sub">See ${npcName(q.def.giver)} &nbsp;·&nbsp; ${q.def.desc}</div></div></div>`);
