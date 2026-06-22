@@ -269,6 +269,11 @@ export function createWorld(scene, seed = 1337) {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 2.6, 6), lmat(0x40434a)); post.position.set(x, y + 1.3, z); group.add(post);
     const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lamp.position.set(x, y + 2.7, z); group.add(lamp);
   }
+  function signpost(x, z, color) {   // a plaza notice post (Merchants' Guild / Job Board)
+    const y = height(x, z);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 2.0, 6), lmat(0x6e4a2b)); post.position.set(x, y + 1.0, z); group.add(post);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.85, 0.14), lmat(color)); board.position.set(x, y + 1.95, z); group.add(board);
+  }
   const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   function fire(x, z) {   // a proper cast-iron stove with a flickering fire window + pot
     const y = height(x, z);
@@ -352,6 +357,8 @@ export function createWorld(scene, seed = 1337) {
     stall(v.x - 4, v.z - 3.5);
     lampPost(v.x + 4.6, v.z - 4.6); lampPost(v.x - 4.6, v.z + 4.6);
     plot(v.x + 12, v.z + 2); plot(v.x + 13.4, v.z + 3.2); plot(v.x + 12.6, v.z + 4.6);
+    { const lx = v.x - 2.4, lz = v.z - 5.0; signpost(lx, lz, 0xffd45f); stations.push({ kind: 'ledger', label: 'Merchants’ Guild', x: lx, z: lz, y: height(lx, lz) }); }
+    { const jx = v.x + 2.4, jz = v.z - 5.0; signpost(jx, jz, 0x9bf2ff); stations.push({ kind: 'jobboard', label: 'Job Board', x: jx, z: jz, y: height(jx, jz) }); }
   }
 
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.

@@ -1128,6 +1128,24 @@ export const CLASSES = [
   { key: 'rogue',   name: 'Rogue',   icon: '🗡️', desc: 'Bronze dagger — fast, nimble strikes.',     grant: { weapon: 'bronze_dagger', armor: 'leather_armor', items: { potion: 3, gold: 60 } } },
 ];
 
+// ===== Economy (opt-in): work jobs for quick coin, or found businesses that earn
+// passively (even while away) and hire employees to grow them. =====
+// Owned via the Merchants' Guild (ledger station); jobs via the Job Board.
+export const BUSINESSES = [
+  { key: 'shop',      name: 'General Store',  icon: '🛒', desc: 'A storefront that earns coin while you adventure.',  foundCost: 450, base: 6,  empName: 'Shop Clerk', empIcon: '🧑‍💼', empBase: 180, empBoost: 4,   wage: 1, maxEmp: 4 },
+  { key: 'farm',      name: 'Farmstead',      icon: '🌾', desc: 'Fields that yield a steady harvest of coin.',        foundCost: 350, base: 5,  empName: 'Farmhand',   empIcon: '🧑‍🌾', empBase: 150, empBoost: 3.5, wage: 1, maxEmp: 5 },
+  { key: 'tradepost', name: 'Trading Post',   icon: '🐪', desc: 'Caravans trade afar and bring back profit.',          foundCost: 800, base: 9,  empName: 'Trader',     empIcon: '🧳', empBase: 300, empBoost: 6,   wage: 2, maxEmp: 4 },
+  { key: 'tavernbiz', name: 'Tavern',         icon: '🍺', desc: 'Your own alehouse — barkeeps pour while you roam.',   foundCost: 600, base: 7,  empName: 'Barkeep',    empIcon: '🍻', empBase: 220, empBoost: 5,   wage: 2, maxEmp: 4 },
+];
+// Active work shifts (a timed shift pays coin + skill xp on the spot).
+export const JOBS = [
+  { key: 'bar',   name: 'Tend the Tavern Bar', icon: '🍺', skill: 'cooking',  anim: 'forage', dur: 6, pay: 18, xp: 40 },
+  { key: 'dock',  name: 'Work the Docks',      icon: '🎣', skill: 'fishing',  anim: 'fish',   dur: 6, pay: 16, xp: 38 },
+  { key: 'forge', name: 'Hammer at the Forge', icon: '🔨', skill: 'smithing', anim: 'mine',   dur: 7, pay: 22, xp: 48 },
+  { key: 'field', name: 'Work the Fields',     icon: '🌱', skill: 'farming',  anim: 'forage', dur: 6, pay: 15, xp: 36 },
+  { key: 'watch', name: 'Stand the Town Watch', icon: '🛡️', skill: 'defence', anim: 'chop',  dur: 7, pay: 20, xp: 42 },
+];
+
 // Tavern Keeper's drink/food menu, and idle rumours patrons murmur when chatted to.
 export const TAVERN = [
   { key: 'ale', price: 6 },

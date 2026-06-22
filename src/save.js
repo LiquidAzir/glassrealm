@@ -19,6 +19,7 @@ export function createSave(G) {
       prestige: G.skills.serializePrestige(),
       inventory: G.inventory.serialize(),
       bank: { ...G.bankItems },
+      economy: G.economy ? G.economy.serialize() : undefined,
       quests: G.quests.serialize(),
       slayer: G.slayer ? { ...G.slayer } : undefined,
       tracked: G.trackedQuest || undefined,

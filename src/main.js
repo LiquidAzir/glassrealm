@@ -12,7 +12,8 @@ import { createInventory } from './inventory.js';
 import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
 import { loadSave, createSave } from './save.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES } from './content.js';
+import { createEconomy } from './economy.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { createFx } from './fx.js';
 import { createInteriors } from './interiors.js';
@@ -49,6 +50,8 @@ try {
   G.bankItems = (saved && saved.bank) || {};
   G.audio = createAudio(saved && saved.audioMuted);
   G.save = createSave(G);
+  G.economy = createEconomy(saved && saved.economy);
+  G.economy.tick();   // offline catch-up from the last saved tick
 
   // restore saved world edits + player
   if (saved) {
@@ -261,6 +264,8 @@ try {
     } else if (s.kind === 'shop') { G.openShop(); return;
     } else if (s.kind === 'tavern') { G.openTavern(); return;
     } else if (s.kind === 'patron') { G.ui.toast(PATRON_LINES[Math.floor(Math.random() * PATRON_LINES.length)], '', 3400); G.audio.sfx('ui'); return;
+    } else if (s.kind === 'ledger') { G.openBusiness(); return;
+    } else if (s.kind === 'jobboard') { G.openJobs(); return;
     }
     G.save.save();
   };
@@ -357,6 +362,44 @@ try {
   G.openForge = () => { setMode('picker'); G.ui.openPicker(forgeCfg); };
   G.openBank = () => { setMode('picker'); G.ui.openPicker(bankCfg); };
   G.closePicker = () => { G.ui.closePicker(); setMode(G.inInterior ? 'interior' : 'world'); };
+
+  // ---------- economy: ventures (Merchants' Guild) + work shifts (Job Board) ----------
+  const businessCfg = {
+    title: 'Merchants’ Guild', empty: 'No ventures yet.',
+    rows: () => {
+      const rows = [];
+      for (const def of BUSINESSES) {
+        if (!G.economy.owned(def.key)) {
+          rows.push({ section: 'Found a venture (earns coin while you adventure)', icon: def.icon, title: def.name, sub: def.desc, right: `${def.foundCost}g`, data: { op: 'found', key: def.key } });
+        } else {
+          const lvl = G.economy.levelOf(def.key), emp = G.economy.empOf(def.key), acc = G.economy.accruedOf(def.key), net = Math.round(G.economy.netPerMin(def.key));
+          const sect = `${def.icon} ${def.name} · Lv ${lvl} · ${net}g/min`;
+          rows.push({ section: sect, icon: '💰', title: 'Collect earnings', sub: `${emp}/${def.maxEmp} ${def.empName}${emp === 1 ? '' : 's'} on staff`, right: `${acc}g`, data: { op: 'collect', key: def.key } });
+          rows.push({ section: sect, icon: '⬆️', title: `Upgrade to Lv ${lvl + 1}`, sub: 'raises output', right: `${G.economy.upgradeCost(def.key)}g`, data: { op: 'upgrade', key: def.key } });
+          if (G.economy.canHire(def.key)) rows.push({ section: sect, icon: def.empIcon, title: `Hire ${def.empName}`, sub: `+${def.empBoost}g/min (−${def.wage}g/min wage)`, right: `${G.economy.hireCost(def.key)}g`, data: { op: 'hire', key: def.key } });
+        }
+      }
+      return rows;
+    },
+    onSelect: (r) => G.bizAction(r.data.op, r.data.key),
+  };
+  const jobsCfg = {
+    title: 'Job Board', hint: '↑ ↓ select · tap to work a shift · ↑↓↑↓ leave',
+    rows: () => JOBS.map((j) => ({ icon: j.icon, title: j.name, sub: `${j.dur}s shift · +${j.xp} ${j.skill} xp`, right: `${j.pay}g`, data: { key: j.key } })),
+    onSelect: (r) => { const j = JOBS.find((x) => x.key === r.data.key); G.closePicker(); G.workJob(j); },
+  };
+  G.openBusiness = () => { setMode('picker'); G.ui.openPicker(businessCfg); };
+  G.openJobs = () => { setMode('picker'); G.ui.openPicker(jobsCfg); };
+  G.bizAction = (op, key) => {
+    const def = BUSINESSES.find((b) => b.key === key); if (!def) return;
+    const gold = () => G.inventory.count('gold');
+    if (op === 'found') { if (gold() < def.foundCost) return G.ui.toast('Not enough gold', 'bad', 1600); G.inventory.remove('gold', def.foundCost); G.economy.found(key); G.ui.toast(`Founded your ${def.name}!`, 'gold', 2600); G.audio.sfx('level'); if (G.ach) G.ach.evaluate(); }
+    else if (op === 'collect') { const g = G.economy.collect(key); if (g <= 0) return G.ui.toast('No earnings to collect yet', '', 1500); G.inventory.add('gold', g); G.ui.toast(`Collected ${g}g from your ${def.name}`, 'gold', 2400); G.audio.sfx('pickup'); }
+    else if (op === 'upgrade') { const c = G.economy.upgradeCost(key); if (gold() < c) return G.ui.toast('Not enough gold', 'bad', 1600); G.inventory.remove('gold', c); G.economy.upgrade(key); G.ui.toast(`${def.name} upgraded!`, 'gold', 2000); G.audio.sfx('ui'); }
+    else if (op === 'hire') { const c = G.economy.hireCost(key); if (gold() < c) return G.ui.toast('Not enough gold', 'bad', 1600); G.inventory.remove('gold', c); G.economy.hire(key); G.ui.toast(`Hired a ${def.empName}!`, 'gold', 2000); G.audio.sfx('ui'); }
+    G.save.save();
+  };
+  G.workJob = (j) => { if (!j || G.channel) return; startChannel(j.dur, j.anim, 'Working: ' + j.name, () => { G.inventory.add('gold', j.pay); G.ui.toast(`Shift done · +${j.pay}g`, 'gold', 2200); G.gainXp(j.skill, j.xp); G.audio.sfx('pickup'); checkQuestReady(); G.save.save(); }); };
 
   const tavernCfg = {
     title: 'Tavern Keeper', hint: '↑ ↓ select · tap to order · ↑↓↑↓ leave',
@@ -694,7 +737,7 @@ try {
     return best;
   }
 
-  const STATION_PIP = { cook: '🍳', bank: '🏦', anvil: '⚒️', furnace: '🔥', craft: '💍', cauldron: '⚗️', bed: '🛏️', shop: '🛒', exit: '🚪' };
+  const STATION_PIP = { cook: '🍳', bank: '🏦', anvil: '⚒️', furnace: '🔥', craft: '💍', cauldron: '⚗️', bed: '🛏️', shop: '🛒', exit: '🚪', ledger: '🏛️', jobboard: '📋' };
   function updateMarkers() {
     if (mode === 'interior') {
       const il = [];
@@ -734,10 +777,11 @@ try {
   }
 
   // ---------- loop ----------
-  let running = true, tod = 0.32, mmTick = 0;
+  let running = true, tod = 0.32, mmTick = 0, econTick = 0;
   function frame() {
     if (!running) return;
     const dt = Math.min(engine.clock.getDelta(), 0.05);
+    if (++econTick % 90 === 0) G.economy.tick();   // accrue passive business income (~1.5s)
     // day/night cycle (~180s) — kept bright enough to stay readable on the display
     tod = (tod + dt / 180) % 1;
     const day = (Math.sin(tod * Math.PI * 2 - Math.PI / 2) + 1) / 2;
