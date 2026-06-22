@@ -22,6 +22,8 @@ export const ITEMS = {
   mithril_sword:  { name: 'Mithril Sword',  icon: '⚔️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 19, range: 2.7, speed: 0.42, desc: 'A keen mithril blade. +19 melee.' },
   mithril_armor:  { name: 'Mithril Armor',  icon: '🛡️', type: 'armor',  defense: 18, desc: 'Light, strong mithril plate. -18 damage taken.' },
   mithril_shield: { name: 'Mithril Shield', icon: '🛡️', type: 'shield', defense: 18, desc: 'A gleaming mithril shield. Blocks 18 damage.' },
+  mariner_plate:  { name: 'Mariner Plate',  icon: '🛡️', type: 'armor', defense: 14, desc: 'Salt-stained naval plate. -14 damage taken.' },
+  grave_plate:    { name: 'Grave Plate',    icon: '🛡️', type: 'armor', defense: 16, desc: 'Cold barrow-iron plate. -16 damage taken.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -244,6 +246,19 @@ export const WANDERERS = [
   { kind: 'wander', name: 'Monk',      color: 0x6a6a78, home: { x: -2, z: -6 },  radius: 9,  speed: 1.2 },
   { kind: 'wander', name: 'Merchant',  color: 0xc8a23a, home: { x: 32, z: 100 }, radius: 11, speed: 1.4 },
   { kind: 'wander', name: 'Dockhand',  color: 0x4a8f7a, home: { x: 88, z: 180 }, radius: 9,  speed: 1.5 },
+];
+
+// Hidden things to stumble on while exploring — deliberately NOT shown on the map or quest
+// arrow. Walk near and investigate for a one-time reward. Persisted once found (save.js).
+export const DISCOVERIES = [
+  { key: 'buried_chest',   name: 'Buried Chest',   kind: 'chest',  x: 30,   z: 14,   prompt: 'Dig up the chest',    gold: 300, loot: { sapphire: 2, potion: 2 }, msg: 'Half-buried in the earth — a smuggler’s chest!' },
+  { key: 'standing_stone', name: 'Standing Stone', kind: 'shrine', x: -92,  z: -18,  prompt: 'Touch the stone',     xp: { prayer: 700 }, msg: 'Ancient runes warm your spirit. (+Prayer XP)' },
+  { key: 'fallen_star',    name: 'Fallen Star',    kind: 'meteor', x: 150,  z: -30,  prompt: 'Chip the star-metal', loot: { mithril_ore: 4, ruby: 1 }, msg: 'A fallen star, rich with mithril!' },
+  { key: 'old_shipwreck',  name: 'Old Shipwreck',  kind: 'wreck',  x: 104,  z: 192,  prompt: 'Search the wreck',    gold: 220, loot: { mariner_plate: 1 }, msg: 'In the rotting hull — a mariner’s plate!' },
+  { key: 'hermit_cache',   name: 'Hermit’s Cache', kind: 'cairn',  x: -176, z: -28,  prompt: 'Open the cache',      gold: 160, loot: { herb: 5, emerald: 1 }, msg: 'A hermit’s hidden stash of herbs and gems.' },
+  { key: 'fairy_ring',     name: 'Fairy Ring',     kind: 'ring',   x: -48,  z: -136, prompt: 'Step into the ring',  xp: { agility: 600 }, gold: 100, msg: 'The fairy ring hums and quickens your step. (+Agility XP)' },
+  { key: 'sunken_idol',    name: 'Sunken Idol',    kind: 'idol',   x: 80,   z: 138,  prompt: 'Pry loose the idol',  gold: 420, msg: 'A golden idol, lost for an age!' },
+  { key: 'frozen_pack',    name: 'Frozen Pack',    kind: 'cairn',  x: 84,   z: -106, prompt: 'Take the pack',       gold: 150, loot: { grave_plate: 1, potion: 3 }, msg: 'A lost traveler’s pack, frozen in the snow.' },
 ];
 
 export const ENEMIES = {

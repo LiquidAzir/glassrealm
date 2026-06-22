@@ -64,6 +64,7 @@ try {
     (saved.world && saved.world.choppedTrees || []).forEach((i) => world.removeTree(i));
     (saved.world && saved.world.harvestedBushes || []).forEach((i) => world.harvestBush(i));
     (saved.world && saved.world.lootedChests || []).forEach((label) => { const st = world.stations.find((s) => s.kind === 'chest' && s.label === label); if (st) st.looted = true; });
+    (saved.world && saved.world.foundDiscoveries || []).forEach((key) => { const d = world.discoveries.find((x) => x.key === key); if (d) { d.found = true; if (d.mesh) d.mesh.visible = false; } });
     if (saved.player) {
       player.group.position.x = saved.player.x;
       player.group.position.z = saved.player.z;
@@ -439,6 +440,22 @@ try {
     });
   };
 
+  // ---------- hidden discoveries: one-time reward + headline banner when you stumble on one ----------
+  G.findDiscovery = (d) => {
+    if (!d || d.found) return;
+    d.found = true;
+    if (d.mesh) d.mesh.visible = false;
+    if (G.fx) G.fx.burst(d.x, d.y + 1, d.z, 0xffe066, { n: 20, spread: 2.8, up: 3.6, life: 1.1 });
+    const parts = [];
+    if (d.gold) { G.inventory.add('gold', d.gold); parts.push(`+${d.gold}g`); }
+    for (const k in (d.loot || {})) { G.inventory.add(k, d.loot[k]); parts.push(`${ITEMS[k].name}×${d.loot[k]}`); }
+    for (const sk in (d.xp || {})) G.gainXp(sk, d.xp[sk]);
+    G.ui.levelBanner('✦ ' + d.name);
+    G.ui.toast(`${d.msg}${parts.length ? '  ' + parts.join(', ') : ''}`, 'gold', 4400);
+    G.audio.sfx('ach');
+    if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
+  };
+
   const tavernCfg = {
     title: 'Tavern Keeper', hint: '↑ ↓ select · tap to order · ↑↓↑↓ leave',
     rows: () => TAVERN.map((d) => ({ icon: ITEMS[d.key].icon, title: ITEMS[d.key].name, sub: ITEMS[d.key].desc, right: `🪙 ${d.price}`, data: { key: d.key, price: d.price } })),
@@ -702,6 +719,7 @@ try {
     else if (t.kind === 'stall') G.thieveStall(t.ref);
     else if (t.kind === 'shortcut') G.useShortcut(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
+    else if (t.kind === 'discovery') G.findDiscovery(t.ref);
     else if (t.kind === 'enemy') { G.combatTarget = t.ref; G.attackEnemy(t.ref); }   // lock on + auto-attack
   }
 

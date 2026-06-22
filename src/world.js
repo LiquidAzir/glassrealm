@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TAU, clamp, smoothstep, mulberry32, dist2D, distToSeg } from './util.js';
+import { DISCOVERIES } from './content.js';
 
 // ============================================================================
 // MODULAR WORLD — one contiguous heightfield (no loading zones).
@@ -55,6 +56,23 @@ const MINES = [
   { name: 'Red Mesa Mine',   x: 150,  z: 116, rocks: [['iron', 4], ['coal', 4], ['gem_rock', 2]] },
 ];
 const MINE_R = 6;
+
+// Low-poly props for each hidden discovery kind. Bright bits use MeshBasic so they glow
+// on the additive display. Built into a small group placed on the ground at the site.
+function buildDiscovery(g, kind) {
+  const mat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+  const glow = (c) => new THREE.MeshBasicMaterial({ color: c });
+  const box = (w, h, d, c, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y, z); if (ry) m.rotation.y = ry; g.add(m); return m; };
+  const orb = (r, c, x, y, z) => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), glow(c)); m.position.set(x, y, z); g.add(m); return m; };
+  if (kind === 'chest') { box(1.3, 0.7, 0.9, 0x6a4a2a, 0, 0.35, 0); box(1.36, 0.32, 0.96, 0x8a6a3a, 0, 0.78, 0); box(0.14, 0.5, 0.12, 0xe0c050, 0, 0.5, 0.46); }
+  else if (kind === 'shrine') { box(0.5, 2.2, 0.5, 0x8a8f9a, 0, 1.1, 0); box(0.9, 0.3, 0.9, 0x6a6f78, 0, 0.15, 0); orb(0.34, 0x8fd0ff, 0, 2.35, 0); }
+  else if (kind === 'meteor') { box(2.8, 0.2, 2.8, 0x5a4a3a, 0, 0.02, 0); const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 0), mat(0x3a3340)); m.position.y = 0.6; m.scale.set(1, 0.8, 1); g.add(m); orb(0.22, 0x6fb0e8, 0.3, 0.85, 0.2); orb(0.16, 0x6fb0e8, -0.3, 0.7, -0.25); }
+  else if (kind === 'wreck') { box(3.6, 0.55, 1.2, 0x5a4630, 0, 0.3, 0, 0.3); for (let i = -2; i <= 2; i++) box(0.16, 1.3 - Math.abs(i) * 0.2, 0.16, 0x6a5436, i * 0.65, 0.75, 0.55, 0.3); box(0.2, 2.1, 0.2, 0x6a5436, -1.3, 1.1, -0.1, 0.3); }
+  else if (kind === 'cairn') { box(0.95, 0.42, 0.95, 0x8a8f96, 0, 0.21, 0); box(0.74, 0.42, 0.74, 0x9aa0a8, 0.05, 0.62, -0.03); box(0.52, 0.42, 0.52, 0x7a8088, -0.04, 1.0, 0.04); box(0.3, 0.3, 0.3, 0x9aa0a8, 0.02, 1.32, 0); }
+  else if (kind === 'ring') { for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; box(0.3, 0.9 + (i % 2) * 0.35, 0.3, 0xb0a0c0, Math.cos(a) * 1.7, 0.5, Math.sin(a) * 1.7); } const c = orb(0.5, 0xb98fff, 0, 0.7, 0); c.material.transparent = true; c.material.opacity = 0.55; }
+  else if (kind === 'idol') { box(0.5, 0.3, 0.5, 0x6a5436, 0, 0.15, 0); box(0.7, 1.3, 0.6, 0xe0c050, 0, 0.95, 0); orb(0.36, 0xf4d860, 0, 1.85, 0); }
+  else { box(0.8, 0.8, 0.8, 0x9a8f7a, 0, 0.4, 0); }
+}
 // Modular dungeons — themed spire rings (SW entrance gap) with a loot chest + a
 // boss at the centre. Add one here, drop a boss/trash into ENEMY_SPAWNS, and
 // (optionally) wire a quest chain in content.js. That's the whole extension point.
@@ -183,6 +201,15 @@ export function createWorld(scene, seed = 1337) {
     for (const [type, n] of m.rocks) for (let i = 0; i < n; i++) { const a = rng() * TAU, rad = rng() * MINE_R; const x = m.x + Math.cos(a) * rad, z = m.z + Math.sin(a) * rad; oreNodes.push({ x, z, y: height(x, z), type, alive: true, respawn: 0 }); }
     for (let i = 0; i < 6; i++) { const a = rng() * TAU, rad = MINE_R * 0.75 + rng() * 3; const x = m.x + Math.cos(a) * rad, z = m.z + Math.sin(a) * rad; rocks.push({ x, z, y: height(x, z), s: 1.5 + rng() * 1.3 }); }
   }
+  // hidden discoveries — placed off the beaten path, each snapped to nearby walkable land
+  const discoveries = DISCOVERIES.map((d) => {
+    let x = d.x, z = d.z;
+    if (!isWalkable(x, z)) { outer: for (let r = 4; r <= 56; r += 4) for (let a = 0; a < TAU; a += TAU / 18) { const nx = d.x + Math.cos(a) * r, nz = d.z + Math.sin(a) * r; if (isWalkable(nx, nz)) { x = nx; z = nz; break outer; } } }
+    const y = height(x, z);
+    const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.y = rng() * TAU;
+    buildDiscovery(grp, d.kind); group.add(grp);
+    return { ...d, x, z, y, found: false, mesh: grp };
+  });
 
   // trees (instanced, per-instance colour)
   const N = Math.max(trees.length, 1);
@@ -532,7 +559,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);

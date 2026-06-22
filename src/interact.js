@@ -40,6 +40,7 @@ export function createInteraction(G) {
     for (const st of G.world.stalls) consider('stall', st, st.x, st.z, st.cooldown > 0 ? 'Stall (watched)' : 'Steal from stall');
     for (const sc of G.world.shortcuts) consider('shortcut', sc, sc.x, sc.z, `Shortcut: ${sc.name} (Agility ${sc.level})`);
     for (const n of G.entities.npcs) consider('npc', n, n.pos.x, n.pos.z, 'Talk to ' + n.def.name);
+    for (const d of G.world.discoveries) if (!d.found) consider('discovery', d, d.x, d.z, d.prompt || 'Investigate');
 
     // Enemy targeting: a bow/staff reaches out to weapon range. Attack when nothing
     // else is in reach, or when a foe is in melee range and at least as close — so a

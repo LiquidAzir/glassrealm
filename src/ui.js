@@ -294,6 +294,7 @@ export function createUI(G) {
     for (const s of G.world.stations) { if (s.kind !== 'door') continue; const [x, y] = to(s.x, s.z); ctx.fillStyle = BUILD_COL[s.building] || '#caa878'; ctx.beginPath(); ctx.arc(x, y, 2, 0, 7); ctx.fill(); }
     ctx.textAlign = 'center'; ctx.font = 'bold 9px sans-serif';
     G.world.villages.forEach((v) => { const [x, y] = to(v.x, v.z); ctx.fillStyle = '#ffd45f'; ctx.fillRect(x - 3, y - 3, 6, 6); ctx.fillStyle = '#ffe9a8'; ctx.fillText(v.name, x, y - 7); });
+    (G.world.mines || []).forEach((m) => { const [x, y] = to(m.x, m.z); ctx.fillStyle = '#caa050'; ctx.beginPath(); ctx.arc(x, y, 3.4, 0, 7); ctx.fill(); ctx.fillStyle = '#1a1208'; ctx.fillText('⛏', x, y + 3.2); });
     ctx.fillStyle = '#5fe3ff'; G.entities.npcs.forEach((n) => { const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill(); });
     G.entities.enemies.forEach((e) => { if (!e.alive) return; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 5 : 2, 0, 7); ctx.fill(); });
     const [hx, hy] = to(G.player.position.x, G.player.position.z);
@@ -314,6 +315,7 @@ export function createUI(G) {
     if (G.world.dungeons) { ctx.fillStyle = '#7a4a8a'; for (const d of G.world.dungeons) { const [x, y] = to(d.x, d.z); ctx.beginPath(); ctx.arc(x, y, Math.max(2, d.r * sc), 0, 7); ctx.fill(); } }
     { const cv = G.world.cave; const [x, y] = to(cv.x, cv.z); ctx.fillStyle = '#5a5550'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, cv.r * sc), 0, 7); ctx.fill(); }
     if (G.world.cave2) { const c2 = G.world.cave2; const [x, y] = to(c2.x, c2.z); ctx.fillStyle = '#5a6a80'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, c2.r * sc), 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#caa050'; for (const m of (G.world.mines || [])) { const dx = m.x - px, dz = m.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(m.x, m.z); ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#ffd45f'; for (const v of G.world.villages) { const [x, y] = to(v.x, v.z); ctx.fillRect(x - 2, y - 2, 4, 4); }
     // building-type chips (letters) for the local town when zoomed in
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 7px sans-serif';
