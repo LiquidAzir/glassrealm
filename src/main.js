@@ -16,6 +16,7 @@ import { createEconomy } from './economy.js';
 import { createCloud } from './cloud.js';
 import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
 import { createProjectiles } from './projectiles.js';
+import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
 import { createInteriors } from './interiors.js';
 import { createAudio } from './audio.js';
@@ -66,8 +67,9 @@ try {
     (saved.world && saved.world.lootedChests || []).forEach((label) => { const st = world.stations.find((s) => s.kind === 'chest' && s.label === label); if (st) st.looted = true; });
     (saved.world && saved.world.foundDiscoveries || []).forEach((key) => { const d = world.discoveries.find((x) => x.key === key); if (d) { d.found = true; if (d.mesh) d.mesh.visible = false; } });
     if (saved.player) {
-      player.group.position.x = saved.player.x;
-      player.group.position.z = saved.player.z;
+      const sRatio = WORLD_SCALE / (saved.worldScale || 1);   // migrate old positions onto the (re)scaled map
+      player.group.position.x = saved.player.x * sRatio;
+      player.group.position.z = saved.player.z * sRatio;
       player.state.heading = saved.player.heading;
       player.state.hp = Math.max(1, saved.player.hp || player.state.maxHp);
       if (saved.player.prayer != null) player.state.prayer = saved.player.prayer;
@@ -756,7 +758,7 @@ try {
   // ---------- HUD helpers ----------
   let curLoc = '';
   function updateLocation() {
-    let name = 'Verdant Isle', best = 16;
+    let name = 'Verdant Isle', best = 16 * WORLD_SCALE;
     for (const l of world.locations) {
       const d = dist2D(player.position.x, player.position.z, l.x, l.z);
       if (d < best) { best = d; name = l.name; }

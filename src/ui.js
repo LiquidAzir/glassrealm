@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ITEMS, SHOP, PRAYERS, ACHIEVEMENTS, ENEMIES } from './content.js';
+import { WORLD_SCALE } from './scale.js';
 
 const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Bestiary', 'Map'];
 
@@ -303,7 +304,7 @@ export function createUI(G) {
   }
 
   function updateMinimap() {
-    const ctx = mmCtx, S = 116, R = 75;                       // 116px canvas shows ~75 world units around the player
+    const ctx = mmCtx, S = 116, R = 75 * WORLD_SCALE;         // 116px canvas shows ~75 (scaled) world units around the player
     const px = G.player.position.x, pz = G.player.position.z, sc = (S / 2) / R;
     const to = (x, z) => [S / 2 + (x - px) * sc, S / 2 + (z - pz) * sc];
     ctx.clearRect(0, 0, S, S);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TAU, clamp, smoothstep, mulberry32, dist2D, distToSeg } from './util.js';
-import { DISCOVERIES } from './content.js';
+import { DISCOVERIES, NPCS, WANDERERS, ENEMY_SPAWNS, QUESTS } from './content.js';
+import { WORLD_SCALE as WS } from './scale.js';
 
 // ============================================================================
 // MODULAR WORLD — one contiguous heightfield (no loading zones).
@@ -96,7 +97,35 @@ const SHORTCUT_LINKS = [
   { name: 'Forest Climb',    a: { x: -40, z: 8 },  b: { x: -86, z: 14 }, level: 3 },
 ];
 
+// Grow the whole world uniformly: multiply every world POSITION + land RADIUS by WS, and
+// bump surface prop counts (sub-quadratically, so bigger regions feel MORE open). Object
+// sizes (building rings, bridge width, mine/dungeon arena internals, interaction ranges)
+// stay fixed. Runs exactly once — mutates the shared data singletons in place before any
+// consumer (heightfield, entities, quests, minimap) reads them.
+let _worldScaled = false;
+function scaleWorldData() {
+  if (_worldScaled || WS === 1) return; _worldScaled = true;
+  const sp = (o) => { if (o && typeof o.x === 'number') { o.x *= WS; o.z *= WS; } };
+  for (const r of REGIONS) {
+    sp(r); r.r *= WS;
+    if (r.village) sp(r.village);
+    if (r.peak) { sp(r.peak); r.peak.r *= WS; }
+    r.nTree = Math.round((r.nTree || 0) * WS); r.nBush = Math.round((r.nBush || 0) * WS);
+    r.nRock = Math.round((r.nRock || 0) * WS); if (r.nFish) r.nFish = Math.round(r.nFish * WS);
+  }
+  sp(CAVE); CAVE.r *= WS; sp(CAVE2); CAVE2.r *= WS;
+  for (const m of MINES) sp(m);
+  for (const d of DUNGEONS) { sp(d); d.r *= WS; }
+  for (const s of SHORTCUT_LINKS) { sp(s.a); sp(s.b); }
+  for (const d of DISCOVERIES) sp(d);
+  for (const n of NPCS) sp(n.pos);
+  for (const w of WANDERERS) { if (w.loop) w.loop.forEach(sp); if (w.home) sp(w.home); }
+  for (const s of ENEMY_SPAWNS) sp(s);
+  for (const q of Object.values(QUESTS)) (q.objectives || []).forEach((o) => { if (o.type === 'visit') sp(o); });
+}
+
 export function createWorld(scene, seed = 1337) {
+  scaleWorldData();
   const rng = mulberry32(seed);
   const group = new THREE.Group();
   const byKey = {}; REGIONS.forEach((r) => (byKey[r.key] = r));
@@ -112,14 +141,14 @@ export function createWorld(scene, seed = 1337) {
   // --- height field -------------------------------------------------------
   function landMask(x, z) {
     let m = 0;
-    for (const r of REGIONS) m = Math.max(m, smoothstep((r.r - Math.hypot(x - r.x, z - r.z)) / 16));
+    for (const r of REGIONS) m = Math.max(m, smoothstep((r.r - Math.hypot(x - r.x, z - r.z)) / (16 * WS)));   // coastline width scales with the world so beaches stay proportional (rim features stay on land)
     for (const b of BRIDGES) m = Math.max(m, smoothstep((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / 5));
     return m;
   }
   function height(x, z) {
     const land = landMask(x, z);
     let h = land * 2.4;
-    h += (Math.sin(x * 0.10) * Math.cos(z * 0.09) * 1.3 + Math.sin(x * 0.06 + z * 0.045 + 2.0) * 1.1 + Math.cos(z * 0.08) * 0.7) * land;
+    h += (Math.sin(x * (0.10 / WS)) * Math.cos(z * (0.09 / WS)) * 1.3 + Math.sin(x * (0.06 / WS) + z * (0.045 / WS) + 2.0) * 1.1 + Math.cos(z * (0.08 / WS)) * 0.7) * land;   // noise freq /WS → heightfield is a true scaled copy (features keep their original height)
     for (const r of REGIONS) if (r.peak) h += smoothstep(clamp(1 - Math.hypot(x - r.peak.x, z - r.peak.z) / r.peak.r, 0, 1)) * r.peak.h * land;
     h += (land - 1) * 1.6;
     // flatten bridges into level causeways so noise dips never break the path
@@ -133,7 +162,7 @@ export function createWorld(scene, seed = 1337) {
   function biomeAt(x, z) { let best = REGIONS[0], bd = Infinity; for (const r of REGIONS) { const d = Math.hypot(x - r.x, z - r.z) - r.r; if (d < bd) { bd = d; best = r; } } return best.biome; }
 
   // --- terrain mesh (biome-coloured) -------------------------------------
-  const SIZE = 480, SEG = 128, CX = 19, CZ = 3;   // bigger heightfield to cover the frontier regions
+  const SIZE = Math.ceil(480 * WS), SEG = Math.round(128 * WS), CX = 19 * WS, CZ = 3 * WS;   // heightfield grows with WORLD_SCALE to cover the (now larger) frontier regions
   let geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   geo.rotateX(-Math.PI / 2); geo.translate(CX, 0, CZ);
   const pa = geo.attributes.position;
@@ -571,7 +600,8 @@ export function createWorld(scene, seed = 1337) {
     group.add(ring, post);
     shortcuts.push({ x, z, toX, toZ, level, name, cooldown: 0 });
   }
-  for (const s of SHORTCUT_LINKS) { pad(s.a.x, s.a.z, s.b.x, s.b.z, s.level, s.name); pad(s.b.x, s.b.z, s.a.x, s.a.z, s.level, s.name); }
+  const snapLand = (x, z) => { if (isWalkable(x, z)) return { x, z }; for (let r = 3; r <= 44; r += 3) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz)) return { x: nx, z: nz }; } return { x, z }; };
+  for (const s of SHORTCUT_LINKS) { const a = snapLand(s.a.x, s.a.z), b = snapLand(s.b.x, s.b.z); pad(a.x, a.z, b.x, b.z, s.level, s.name); pad(b.x, b.z, a.x, a.z, s.level, s.name); }
 
   // visible bridge decks + railings so crossings read as solid causeways (not just flat water)
   for (const b of BRIDGES) {
@@ -592,7 +622,7 @@ export function createWorld(scene, seed = 1337) {
   for (const r of REGIONS) { if (r.village) locations.push({ name: r.village.name, x: r.village.x, z: r.village.z }); if (r.peak) locations.push({ name: peakName(r.key), x: r.peak.x, z: r.peak.z }); }
   locations.push({ name: 'Whispering Wood', x: byKey.forest.x, z: byKey.forest.z });
   locations.push({ name: 'Snowfields', x: byKey.snow.x, z: byKey.snow.z });
-  locations.push({ name: 'The Isthmus', x: 61, z: 4 });
+  locations.push({ name: 'The Isthmus', x: 61 * WS, z: 4 * WS });
   locations.push({ name: 'Emberdeep Cave', x: CAVE.x, z: CAVE.z });
   locations.push({ name: 'Frost Cavern', x: CAVE2.x, z: CAVE2.z });
   for (const m of MINES) locations.push({ name: m.name, x: m.x, z: m.z });
@@ -603,8 +633,8 @@ export function createWorld(scene, seed = 1337) {
   locations.push({ name: 'Scorched Wastes', x: byKey.badlands.x, z: byKey.badlands.z });
   locations.push({ name: 'Stormhold Highlands', x: byKey.highland.x, z: byKey.highland.z });
   locations.push({ name: 'Moonlit Glade', x: byKey.glade.x, z: byKey.glade.z });
-  locations.push({ name: 'Saltcrest Shoals', x: 80, z: 200 });
-  locations.push({ name: 'Amberfell Woods', x: 50, z: -148 });
+  locations.push({ name: 'Saltcrest Shoals', x: 80 * WS, z: 200 * WS });
+  locations.push({ name: 'Amberfell Woods', x: 50 * WS, z: -148 * WS });
   function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak', jungle: 'Kytari Spire', badlands: 'Red Mesa', highland: 'Thunderpeak', glade: 'Moonspire', amberfell: 'Amber Tor' })[key] || 'Peak'; }
 
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);

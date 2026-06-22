@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { NPCS, ENEMIES, ENEMY_SPAWNS, WANDERERS } from './content.js';
 import { TAU, dist2D } from './util.js';
+import { WORLD_SCALE as WS } from './scale.js';
 
 const DEATH_DUR = 0.55;   // topple/shrink/sink before the corpse vanishes
 const ATK_ANIM = 0.3;     // forward-lean bite when an enemy strikes
@@ -97,6 +98,7 @@ export function createEntities(scene, world, G) {
 
   const enemies = [];
   function spawnEnemy(key, x, z) {
+    if (!world.isWalkable(x, z)) { outer: for (let r = 4; r <= 40; r += 4) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (world.isWalkable(nx, nz)) { x = nx; z = nz; break outer; } } }   // keep spawns out of the sea
     const def = ENEMIES[key];
     const group = makeEnemyMesh(def);
     group.position.set(x, world.height(x, z), z);
@@ -105,7 +107,7 @@ export function createEntities(scene, world, G) {
       def, group, kind: 'enemy', enemyKey: key,
       hp: def.hp, maxHp: def.hp, alive: true, state: 'wander',
       home: { x, z }, heading: Math.random() * TAU, wanderT: 0, moving: false,
-      attackCd: 0, hurtFlash: 0, respawn: 0, baseScale: def.scale || 1, leash: def.boss ? 26 : 16,
+      attackCd: 0, hurtFlash: 0, respawn: 0, baseScale: def.scale || 1, leash: (def.boss ? 26 : 16) * WS,
       provoked: false,   // peaceful until the player attacks it
       dying: 0, deathY: 0, atkAnim: 0, walkPhase: Math.random() * TAU,
       get pos() { return group.position; },
@@ -139,7 +141,7 @@ export function createEntities(scene, world, G) {
       if (e.hurtFlash > 0) e.hurtFlash -= dt;
       if (e.atkAnim > 0) e.atkAnim -= dt;
       const d = dist2D(e.pos.x, e.pos.z, player.position.x, player.position.z);
-      if (d > 70) { e.group.rotation.z = 0; continue; }   // cull far-away AI — perf with 50+ spawns
+      if (d > 70 * WS) { e.group.rotation.z = 0; continue; }   // cull far-away AI — perf with 50+ spawns
       // peaceful by default (RuneScape-style) — chase/attack only once provoked by being
       // struck, and give up if dragged beyond its leash from home or the player flees far
       if (e.provoked) {
@@ -214,7 +216,7 @@ export function createEntities(scene, world, G) {
     }
     // ambient mobs — squads patrol a loop in formation, wanderers stroll near home; all walk-cycle
     for (const m of mobs) {
-      if (dist2D(m.pos.x, m.pos.z, player.position.x, player.position.z) > 75) continue;   // freeze when far (perf)
+      if (dist2D(m.pos.x, m.pos.z, player.position.x, player.position.z) > 75 * WS) continue;   // freeze when far (perf)
       let tx, tz, stop = 1.2;
       if (m.squad) {
         if (m.idx === 0) {

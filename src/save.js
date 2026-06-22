@@ -1,3 +1,5 @@
+import { WORLD_SCALE } from './scale.js';
+
 const KEY = 'glassrealm.save.v1';
 
 export function loadSave() {
@@ -37,6 +39,7 @@ export function createSave(G) {
       slayer: G.slayer ? { ...G.slayer } : undefined,
       tracked: G.trackedQuest || undefined,
       audioMuted: G.audio ? G.audio.muted : false,
+      worldScale: WORLD_SCALE,
       stats: G.stats ? { kills: G.stats.kills, crafted: G.stats.crafted, regions: [...G.stats.regions], bosses: [...G.stats.bosses], killsByType: { ...G.stats.killsByType } } : undefined,
       achievements: G.ach ? [...G.ach.unlocked] : undefined,
       world: {
