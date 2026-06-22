@@ -457,9 +457,8 @@ try {
   G.copySyncLink = () => {
     if (!G.cloud || !G.cloud.enabled) { G.ui.toast('Cloud sync is off — set cloudUrl in config.js (see /worker).', '', 4200); return; }
     const link = G.cloud.link();
-    const ok = () => G.ui.toast('Sync link copied! Open it on your other devices to share this save.', 'good', 5200);
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, () => window.prompt('Your sync link:', link));
-    else window.prompt('Your sync link:', link);
+    G.ui.showSync(link);   // show it on-screen (big text + QR) — readable + scannable on the glasses
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).catch(() => {});
   };
 
   // ---------- enter / exit buildings ----------
@@ -616,6 +615,7 @@ try {
 
   input.on((a) => {
     G.audio.resume();
+    if (G.ui.syncOpen()) { G.ui.hideSync(); return; }   // the cloud-sync link panel: any input dismisses it
     // direct menu toggle (touch ☰ button / future bindings) — no wiggle needed
     if (a === 'menu') { if (mode === 'world' || mode === 'interior') openMenu(); else exitOverlay(); return; }
     // ↑↓↑↓ wiggle: opens the menu in the world (so a stray swipe-down never opens it) and closes any overlay

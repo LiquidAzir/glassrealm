@@ -362,6 +362,20 @@ export function createUI(G) {
   function pickerMove(dir) { if (!pickerRows.length) return; pickerRow = (pickerRow + dir + pickerRows.length) % pickerRows.length; renderPicker(); const s = pickerBodyEl.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
   function pickerSelect() { const r = pickerRows[pickerRow]; if (r && pickerCfg) pickerCfg.onSelect(r); renderPicker(); }
 
+  // ---- cloud sync link panel (so the keyboard-less glasses can SEE + scan the link) ----
+  const syncEl = document.createElement('div'); syncEl.id = 'syncPanel'; syncEl.className = 'overlay hidden';
+  syncEl.innerHTML = '<div class="sync-box"><div class="sync-title">☁️ Your Cloud Sync Link</div><div class="sync-qr"><img id="syncQr" alt="sync QR" /></div><div class="sync-link" id="syncLink"></div><div class="sync-foot">Open or scan this link on your phone &amp; PC to share this save.<br/>Any tap / swipe closes.</div></div>';
+  app.appendChild(syncEl);
+  const syncLinkEl = syncEl.querySelector('#syncLink');
+  const syncQrEl = syncEl.querySelector('#syncQr');
+  function showSync(link) {
+    syncLinkEl.textContent = link;
+    syncQrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=' + encodeURIComponent(link);
+    syncEl.classList.remove('hidden');
+  }
+  function hideSync() { syncEl.classList.add('hidden'); }
+  function syncOpen() { return !syncEl.classList.contains('hidden'); }
+
   // ---- dialogue ----
   function showDialogue() { els.dialogue.classList.remove('hidden'); }
   function hideDialogue() { els.dialogue.classList.add('hidden'); }
@@ -382,6 +396,7 @@ export function createUI(G) {
     hitsplat, xpDrop, levelBanner,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,
+    showSync, hideSync, syncOpen,
     showDialogue, hideDialogue, renderDialogue,
   };
   return api;
