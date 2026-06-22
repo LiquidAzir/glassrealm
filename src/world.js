@@ -219,6 +219,7 @@ export function createWorld(scene, seed = 1337) {
   // --- settlements + stations (modular kit per village) ------------------
   let animT = 0;
   const fireMeshes = [], orbMeshes = [];   // ambient meshes animated in tick()
+  const solids = [];                       // circular collision obstacles (buildings, wells)
   const stations = [];
   function hut(x, z, a, wallHex, roofHex) {
     const y = height(x, z);
@@ -244,6 +245,7 @@ export function createWorld(scene, seed = 1337) {
     const sign = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 0.12), lmat(SIGN_COL[type] || 0xcaa878)); sign.position.set(bx + fx * (D / 2 + 0.08), y + 2.4, bz + fz * (D / 2 + 0.08)); sign.rotation.y = faceA; group.add(sign);
     const sx = bx + fx * (D / 2 + 1.0), sz = bz + fz * (D / 2 + 1.0);
     stations.push({ kind: 'door', label: 'Enter ' + (BLD_NAME[type] || 'building'), x: sx, z: sz, y: height(sx, sz), building: type });
+    solids.push({ x: bx, z: bz, r: 2.8 });
   }
   function well(x, z) {
     const y = height(x, z);
@@ -251,6 +253,7 @@ export function createWorld(scene, seed = 1337) {
     const water = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.1, 10), new THREE.MeshBasicMaterial({ color: 0x2bd6cf })); water.position.set(x, y + 0.95, z); group.add(water);
     for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.9, 0.16), lmat(0x6e4a2b)); post.position.set(x + s, y + 1.45, z); group.add(post); }
     const roof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 4), lmat(0x7a8aa0)); roof.position.set(x, y + 2.7, z); roof.rotation.y = Math.PI / 4; group.add(roof);
+    solids.push({ x, z, r: 1.6 });
   }
   function lampPost(x, z) {
     const y = height(x, z);
@@ -452,7 +455,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);

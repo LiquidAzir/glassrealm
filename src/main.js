@@ -11,7 +11,7 @@ import { createInventory } from './inventory.js';
 import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
 import { loadSave, createSave } from './save.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { createFx } from './fx.js';
 import { createInteriors } from './interiors.js';
@@ -43,6 +43,7 @@ try {
   G.fx = createFx(engine.scene);
   G.interiors = createInteriors(engine.scene);
   G.inInterior = false; G.interiorStations = [];
+  player.setSolids(world.solids);   // collide with buildings/wells outdoors
   G.bankItems = (saved && saved.bank) || {};
   G.audio = createAudio(saved && saved.audioMuted);
   G.save = createSave(G);
@@ -255,6 +256,8 @@ try {
     } else if (s.kind === 'door') { G.enterBuilding(s); return;
     } else if (s.kind === 'exit') { G.exitInterior(); return;
     } else if (s.kind === 'shop') { G.openShop(); return;
+    } else if (s.kind === 'tavern') { G.openTavern(); return;
+    } else if (s.kind === 'patron') { G.ui.toast(PATRON_LINES[Math.floor(Math.random() * PATRON_LINES.length)], '', 3400); G.audio.sfx('ui'); return;
     }
     G.save.save();
   };
@@ -350,6 +353,17 @@ try {
   G.openBank = () => { setMode('picker'); G.ui.openPicker(bankCfg); };
   G.closePicker = () => { G.ui.closePicker(); setMode(G.inInterior ? 'interior' : 'world'); };
 
+  const tavernCfg = {
+    title: 'Tavern Keeper', hint: '↑ ↓ select · tap to order · ↑↓↑↓ leave',
+    rows: () => TAVERN.map((d) => ({ icon: ITEMS[d.key].icon, title: ITEMS[d.key].name, sub: ITEMS[d.key].desc, right: `🪙 ${d.price}`, data: { key: d.key, price: d.price } })),
+    onSelect: (r) => G.buyDrink(r.data.key, r.data.price),
+  };
+  G.openTavern = () => { setMode('picker'); G.ui.openPicker(tavernCfg); };
+  G.buyDrink = (key, price) => {
+    if (G.inventory.count('gold') >= price) { G.inventory.remove('gold', price); G.inventory.add(key, 1); G.audio.sfx('pickup'); G.ui.toast(`Ordered ${ITEMS[key].name}`, 'gold', 1500); G.save.save(); }
+    else G.ui.toast('Not enough gold', 'bad', 1400);
+  };
+
   // ---------- enter / exit buildings ----------
   const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge' };
   G.enterBuilding = (door) => {
@@ -360,6 +374,7 @@ try {
     world.group.visible = false;   // stop drawing the whole overworld while indoors
     G.entities.setHidden(true);
     player.setBounds(info.bounds);
+    player.setSolids(info.solids);   // collide with furniture / indoor NPCs
     player.group.position.set(info.entry.x, info.bounds.y, info.entry.z);
     player.state.heading = Math.PI;
     player.snapCamera();
@@ -374,6 +389,7 @@ try {
     world.group.visible = true;
     G.entities.setHidden(false);
     player.setBounds(null);
+    player.setSolids(world.solids);
     const r = G.returnPos || { x: world.village.x, z: world.village.z + 12, heading: Math.PI };
     player.group.position.set(r.x, world.height(r.x, r.z), r.z);
     player.state.heading = r.heading;

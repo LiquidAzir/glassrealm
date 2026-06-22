@@ -115,6 +115,7 @@ export function createPlayer(scene, world) {
     equipment: { weapon: null, armor: null, amulet: null, ring: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
     bounds: null,   // set while inside a building → clamp movement to the room
+    solids: null,   // circular obstacles (buildings outdoors, furniture/NPCs indoors)
   };
 
   function weapon() { return weaponOf(state.equipment.weapon); }
@@ -132,21 +133,21 @@ export function createPlayer(scene, world) {
   function playGather(kind) { setToolMesh(kind); showTool(true); state.attackStyle = kind; state.attackAnim = GATHER_DUR; state.animDur = GATHER_DUR; }
 
   const inB = (b, x, z) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ;
+  function clear(x, z) {
+    if (state.bounds) { if (!inB(state.bounds, x, z)) return false; }
+    else if (!world.isWalkable(x, z)) return false;
+    const s = state.solids;                                  // circular obstacle collision (buildings / furniture / NPCs)
+    if (s) for (let i = 0; i < s.length; i++) { const o = s[i], dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return false; }
+    return true;
+  }
   function tryMove(dt) {
     const f = forwardVec();
     const step = SPEED * dt;
     const x = group.position.x, z = group.position.z;
     const nx = x + f.x * step, nz = z + f.z * step;
-    const b = state.bounds;
-    if (b) {
-      if (inB(b, nx, nz)) { group.position.x = nx; group.position.z = nz; }
-      else if (inB(b, nx, z)) { group.position.x = nx; }
-      else if (inB(b, x, nz)) { group.position.z = nz; }
-    } else {
-      if (world.isWalkable(nx, nz)) { group.position.x = nx; group.position.z = nz; }
-      else if (world.isWalkable(nx, z)) { group.position.x = nx; }
-      else if (world.isWalkable(x, nz)) { group.position.z = nz; }
-    }
+    if (clear(nx, nz)) { group.position.x = nx; group.position.z = nz; }      // full move
+    else if (clear(nx, z)) { group.position.x = nx; }                          // slide along X
+    else if (clear(x, nz)) { group.position.z = nz; }                          // slide along Z
   }
 
   function update(dt, input) {
@@ -212,7 +213,7 @@ export function createPlayer(scene, world) {
   return {
     group, state, update, updateCamera, impulseForward, impulseTurn, forwardVec,
     playAttack, playGather, refreshEquipment, weapon, handPosition,
-    setBounds(b) { state.bounds = b; }, snapCamera() { camReady = false; },
+    setBounds(b) { state.bounds = b; }, setSolids(s) { state.solids = s; }, snapCamera() { camReady = false; },
     get position() { return group.position; },
   };
 }

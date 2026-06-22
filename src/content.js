@@ -109,6 +109,12 @@ export const ITEMS = {
   // --- crafted from frontier materials ---
   verdant_charm:    { name: 'Verdant Charm',    icon: '📿', type: 'amulet', bonus: { maxhp: 40, def: 6 },   desc: 'Crafted. +40 max HP, +6 defence.' },
   stormforged_ring: { name: 'Stormforged Ring', icon: '💍', type: 'ring',   bonus: { ranged: 9, melee: 6 }, desc: 'Crafted. +9 ranged, +6 melee.' },
+
+  // --- tavern fare (bought from a Tavern Keeper) ---
+  ale:             { name: 'Frothy Ale',      icon: '🍺', type: 'consumable', heal: 18, desc: 'A foaming mug. Restores 18 HP.' },
+  spiced_mead:     { name: 'Spiced Mead',     icon: '🍯', type: 'consumable', heal: 26, desc: 'Warm and sweet. Restores 26 HP.' },
+  hearty_stew:     { name: 'Hearty Stew',     icon: '🍲', type: 'consumable', heal: 42, desc: 'A hot bowl of stew. Restores 42 HP.' },
+  traveler_coffee: { name: "Traveler's Brew", icon: '☕', type: 'consumable', heal: 14, desc: 'Bitter and bracing. Restores 14 HP.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -999,6 +1005,24 @@ export const SHOP = {
     coilfang_spear: 150, ashbringer: 200, tempest_bow: 140, faewild_staff: 170,
   },
 };
+
+// Tavern Keeper's drink/food menu, and idle rumours patrons murmur when chatted to.
+export const TAVERN = [
+  { key: 'ale', price: 6 },
+  { key: 'spiced_mead', price: 10 },
+  { key: 'hearty_stew', price: 16 },
+  { key: 'traveler_coffee', price: 5 },
+];
+export const PATRON_LINES = [
+  'Heard the Sandwyrm’s no monster at all — a guardian, they say.',
+  'They say the Hollow King gave up his own heart to seal something worse. Brrr.',
+  'The Frost Warden took a whole expedition years back. Eira still sings of it.',
+  'Mind the dungeon spires — that gap in the ring is the only way in.',
+  'Crystal Hollow gems hum if you hold one to your ear. Or so the lapidary swears.',
+  'Loremaster Vael’s always on about some old Pact. Bought me an ale once, mind.',
+  'A keeper of the isle, eh? You’ve the look of one. Mind the boars.',
+  'Best stew on the isles, this. Don’t go telling the cook I said “only”.',
+];
 
 // Achievements — re-evaluated on events; cond reads live game state (G).
 export const ACHIEVEMENTS = [
