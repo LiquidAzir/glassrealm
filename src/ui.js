@@ -35,6 +35,18 @@ export function createUI(G) {
   const prayerFill = prayerBar.querySelector('#prayerFill');
   const prayerLabel = prayerBar.querySelector('#prayerLabel');
   function setPrayer(cur, mx) { prayerFill.style.width = Math.max(0, Math.min(100, (cur / mx) * 100)) + '%'; prayerLabel.textContent = `✨ ${Math.ceil(cur)}/${mx}`; }
+
+  // quest guidance arrow (points toward current objective, relative to facing)
+  const questGuide = document.createElement('div'); questGuide.id = 'questGuide'; questGuide.className = 'hidden';
+  questGuide.innerHTML = '<span class="qg-arrow">▲</span><span class="qg-label"></span>';
+  document.getElementById('hud').appendChild(questGuide);
+  const qgArrow = questGuide.querySelector('.qg-arrow'), qgLabel = questGuide.querySelector('.qg-label');
+  function setQuestArrow(rad, label, dist) {
+    if (rad == null) { questGuide.classList.add('hidden'); return; }
+    questGuide.classList.remove('hidden');
+    qgArrow.style.transform = `rotate(${rad}rad)`;
+    qgLabel.textContent = label + (dist != null ? `  ·  ${dist}m` : '');
+  }
   function showPrompt(t) { els.promptText.textContent = t; els.prompt.classList.remove('hidden'); }
   function hidePrompt() { els.prompt.classList.add('hidden'); }
   function toast(text, type = '', ms = 2400) {
@@ -250,7 +262,7 @@ export function createUI(G) {
 
   // ---- picker (shop / forge / bank) — generic list overlay ----
   const pickerEl = document.createElement('div'); pickerEl.id = 'shop'; pickerEl.className = 'overlay hidden';
-  pickerEl.innerHTML = '<div class="panel"><div class="tabs"><div class="tab sel" style="flex:2" id="pickerTitle">Shop</div><div class="tab" id="pickerGold">🪙 0</div></div><div class="menu-body" id="pickerBody"></div><div class="hint" id="pickerHint">↑ ↓ select &nbsp;·&nbsp; tap &nbsp;·&nbsp; double-tap leave</div></div>';
+  pickerEl.innerHTML = '<div class="panel"><div class="tabs"><div class="tab sel" style="flex:2" id="pickerTitle">Shop</div><div class="tab" id="pickerGold">🪙 0</div></div><div class="menu-body" id="pickerBody"></div><div class="hint" id="pickerHint">↑ ↓ select &nbsp;·&nbsp; tap &nbsp;·&nbsp; ↑↓↑↓ leave</div></div>';
   app.appendChild(pickerEl);
   const pickerTitleEl = pickerEl.querySelector('#pickerTitle');
   const pickerGoldEl = pickerEl.querySelector('#pickerGold');
@@ -270,7 +282,7 @@ export function createUI(G) {
     });
     pickerBodyEl.innerHTML = pickerRows.length ? html : `<div class="empty-note">${pickerCfg.empty || 'Nothing here.'}</div>`;
   }
-  function openPicker(cfg) { pickerCfg = cfg; pickerRow = 0; pickerHintEl.textContent = cfg.hint || '↑ ↓ select · tap · double-tap leave'; pickerEl.classList.remove('hidden'); renderPicker(); }
+  function openPicker(cfg) { pickerCfg = cfg; pickerRow = 0; pickerHintEl.textContent = cfg.hint || '↑ ↓ select · tap · ↑↓↑↓ leave'; pickerEl.classList.remove('hidden'); renderPicker(); }
   function closePicker() { pickerEl.classList.add('hidden'); pickerCfg = null; }
   function pickerMove(dir) { if (!pickerRows.length) return; pickerRow = (pickerRow + dir + pickerRows.length) % pickerRows.length; renderPicker(); const s = pickerBodyEl.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
   function pickerSelect() { const r = pickerRows[pickerRow]; if (r && pickerCfg) pickerCfg.onSelect(r); renderPicker(); }
@@ -286,12 +298,12 @@ export function createUI(G) {
       const tag = c.tag ? `<span class="tag">${c.tag}</span>` : '';
       return `<div class="choice ${i === idx ? 'sel' : ''}">${tag}${label}</div>`;
     }).join('');
-    els.dlgHint.textContent = choices.length > 1 ? 'tap select  ·  ◂ ▸ choose  ·  double-tap end' : 'tap continue  ·  double-tap end';
+    els.dlgHint.textContent = choices.length > 1 ? 'tap select  ·  ◂ ▸ choose  ·  ↑↓↑↓ end' : 'tap continue  ·  ↑↓↑↓ end';
   }
 
   const api = {
     menuOpen: false,
-    setCompass, setHealth, setLocation, setPrayer, showPrompt, hidePrompt, toast, updateMarkers,
+    setCompass, setHealth, setLocation, setPrayer, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers,
     hitsplat, xpDrop, levelBanner,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,

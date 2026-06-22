@@ -297,7 +297,7 @@ try {
     G.ui.toast(`Sold ${ITEMS[key].name}  +${p}g`, 'gold', 1300); G.save.save();
   };
   const shopCfg = {
-    title: 'Trader Pell', hint: '↑ ↓ select · tap buy/sell · double-tap leave',
+    title: 'Trader Pell', hint: '↑ ↓ select · tap buy/sell · ↑↓↑↓ leave',
     rows: () => {
       const rows = SHOP.stock.map((s) => ({ section: 'Buy', icon: ITEMS[s.key].icon, title: ITEMS[s.key].name, sub: ITEMS[s.key].desc, right: `🪙 ${s.price}`, data: { t: 'buy', key: s.key } }));
       G.inventory.list().filter((it) => SHOP.sell[it.key]).forEach((it) => rows.push({ section: 'Sell (one)', icon: it.def.icon, title: it.def.name, sub: 'tap to sell', right: `🪙 ${SHOP.sell[it.key]} · ×${it.count}`, data: { t: 'sell', key: it.key } }));
@@ -306,7 +306,7 @@ try {
     onSelect: (r) => { if (r.data.t === 'buy') G.buyItem(r.data.key); else G.sellItem(r.data.key); },
   };
   const forgeCfg = {
-    title: 'Anvil — Forge', hint: '↑ ↓ select · tap forge · double-tap leave', empty: 'Smelt bars at the furnace first.',
+    title: 'Anvil — Forge', hint: '↑ ↓ select · tap forge · ↑↓↑↓ leave', empty: 'Smelt bars at the furnace first.',
     rows: () => FORGE.map((rec) => {
       const cost = Object.keys(rec.cost).map((k) => `${rec.cost[k]} ${ITEMS[k].name}`).join(', ');
       const can = Object.keys(rec.cost).every((k) => G.inventory.has(k, rec.cost[k]));
@@ -315,7 +315,7 @@ try {
     onSelect: (r) => G.forgeItem(r.data.out),
   };
   const bankCfg = {
-    title: 'Bank', hint: '↑ ↓ select · tap deposit/withdraw all · double-tap leave', empty: 'Your pack and bank are empty.',
+    title: 'Bank', hint: '↑ ↓ select · tap deposit/withdraw all · ↑↓↑↓ leave', empty: 'Your pack and bank are empty.',
     rows: () => {
       const rows = G.inventory.list().map((it) => ({ section: 'Deposit (all)', icon: it.def.icon, title: it.def.name, sub: 'tap to bank', right: `×${it.count}`, data: { op: 'dep', key: it.key } }));
       Object.keys(G.bankItems).filter((k) => G.bankItems[k] > 0).forEach((k) => rows.push({ section: 'Withdraw (all)', icon: ITEMS[k].icon, title: ITEMS[k].name, sub: 'tap to take', right: `×${G.bankItems[k]}`, data: { op: 'wd', key: k } }));
@@ -355,7 +355,7 @@ try {
   G.bankWithdraw = (key) => { const n = G.bankItems[key] || 0; if (n <= 0) return; G.bankItems[key] = 0; G.inventory.add(key, n); G.save.save(); };
 
   const craftCfg = {
-    title: 'Crafting Bench', hint: '↑ ↓ select · tap craft · double-tap leave', empty: 'Mine gems first (sapphire/emerald/ruby).',
+    title: 'Crafting Bench', hint: '↑ ↓ select · tap craft · ↑↓↑↓ leave', empty: 'Mine gems first (sapphire/emerald/ruby).',
     rows: () => CRAFT.map((rec) => {
       const cost = Object.keys(rec.cost).map((k) => `${rec.cost[k]} ${ITEMS[k].name}`).join(', ');
       const can = Object.keys(rec.cost).every((k) => G.inventory.has(k, rec.cost[k]));
@@ -428,8 +428,21 @@ try {
   function openMenu() { setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
   function closeMenu() { G.ui.closeMenu(); setMode('world'); }
 
+  // Universal "back" — an up-down-up-down swipe wiggle (double-tap doesn't register
+  // on-device). Tracked only in overlays; the swipes still navigate as normal.
+  let backSeq = [];
+  function backGesture(a) {
+    const now = performance.now();
+    backSeq = backSeq.filter((e) => now - e.t < 2200);
+    backSeq.push({ a, t: now });
+    if (backSeq.length > 4) backSeq = backSeq.slice(-4);
+    return backSeq.length === 4 && backSeq.map((e) => e.a).join() === 'up,down,up,down';
+  }
+  function exitOverlay() { backSeq = []; if (mode === 'menu') closeMenu(); else if (mode === 'dialogue') G.dialogue.close(); else if (mode === 'picker') G.closePicker(); }
+
   input.on((a) => {
     G.audio.resume();
+    if (mode !== 'world' && (a === 'up' || a === 'down') && backGesture(a)) { exitOverlay(); return; }
     if (mode === 'world') {
       if (a === 'up') player.impulseForward();
       else if (a === 'left') player.impulseTurn(-1);
@@ -492,9 +505,50 @@ try {
     if (t) G.ui.showPrompt(t.label); else G.ui.hidePrompt();
   }
 
+  // ---------- quest guidance ----------
+  function npcByKey(key) { return G.entities.npcs.find((n) => n.def.key === key); }
+  function nearestEnemyOf(type) { let best = null, bd = Infinity; for (const e of G.entities.enemies) { if (!e.alive || e.enemyKey !== type) continue; const d = dist2D(player.position.x, player.position.z, e.pos.x, e.pos.z); if (d < bd) { bd = d; best = e; } } return best; }
+  function nearestNode(arr, alive) { let best = null, bd = Infinity; for (const o of arr) { if (alive && !o.alive) continue; const d = dist2D(player.position.x, player.position.z, o.x, o.z); if (d < bd) { bd = d; best = o; } } return best; }
+  function itemSource(item) {
+    if (item === 'wood') return nearestNode(world.trees, true);
+    if (item === 'berry' || item === 'herb') return nearestNode(world.bushes, true);
+    if (item === 'copper_ore' || item === 'iron_ore' || item === 'coal') { const tp = { copper_ore: 'copper', iron_ore: 'iron', coal: 'coal' }[item]; return nearestNode(world.oreNodes.filter((o) => o.type === tp), true); }
+    if (item === 'raw_trout' || item === 'raw_shrimp') return nearestNode(world.fishingSpots, false);
+    if (item === 'crop') return world.plots[0];
+    if (item === 'bronze_bar' || item === 'iron_bar') return world.stations.find((s) => s.kind === 'furnace');
+    if (item === 'relic') { const e = nearestEnemyOf('ember_boss'); return e ? { x: e.pos.x, z: e.pos.z, y: e.pos.y } : null; }
+    return null;
+  }
+  function questTarget() {
+    for (const id of G.quests.activeList()) {
+      const def = QUESTS[id];
+      if (G.quests.isReady(id)) { const n = npcByKey(def.giver); if (n) return { x: n.pos.x, z: n.pos.z, y: n.pos.y + 2.9, label: 'Return to ' + n.def.name }; continue; }
+      const objs = G.quests.objectives(id);
+      let found = null;
+      for (let i = 0; i < def.objectives.length && !found; i++) {
+        if (objs[i].done) continue;
+        const o = def.objectives[i];
+        if (o.type === 'kill') { const e = nearestEnemyOf(o.enemy); if (e) found = { x: e.pos.x, z: e.pos.z, y: e.pos.y + 2.6, label: 'Defeat ' + ENEMIES[o.enemy].name }; }
+        else if (o.type === 'have') { const s = itemSource(o.item); if (s) found = { x: s.x, z: s.z, y: (s.y || 0) + 2.2, label: 'Gather ' + ITEMS[o.item].name }; }
+      }
+      if (found) return found;
+    }
+    let best = null, bd = Infinity;
+    for (const q of G.quests.all()) { if (q.status !== 'available') continue; const n = npcByKey(q.def.giver); if (!n) continue; const d = dist2D(player.position.x, player.position.z, n.pos.x, n.pos.z); if (d < bd) { bd = d; best = { x: n.pos.x, z: n.pos.z, y: n.pos.y + 2.9, label: 'New quest: ' + n.def.name }; } }
+    return best;
+  }
+
   function updateMarkers() {
     const list = [];
     const p = player.position;
+    const guide = mode === 'world' ? questTarget() : null;
+    if (guide) {
+      list.push({ id: 'questguide', x: guide.x, y: guide.y, z: guide.z, kind: 'questguide', pip: '◈', label: guide.label });
+      let rel = Math.atan2(guide.x - p.x, guide.z - p.z) - player.state.heading;
+      while (rel > Math.PI) rel -= Math.PI * 2;
+      while (rel < -Math.PI) rel += Math.PI * 2;
+      G.ui.setQuestArrow(rel, guide.label, Math.round(dist2D(p.x, p.z, guide.x, guide.z)));
+    } else G.ui.setQuestArrow(null);
     for (const n of G.entities.npcs) {
       const d = dist2D(p.x, p.z, n.pos.x, n.pos.z);
       if (d < 36) list.push({ id: 'npc_' + n.def.key, x: n.pos.x, y: n.pos.y + 2.6, z: n.pos.z, kind: 'npc', pip: '◆', label: n.def.name, far: d > 20 });
