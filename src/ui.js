@@ -70,8 +70,10 @@ export function createUI(G) {
       v.set(m.x, m.y, m.z).project(cam);
       if (v.z > 1 || v.x < -1.3 || v.x > 1.3) { el.style.display = 'none'; continue; }
       el.style.display = '';
-      el.className = 'marker ' + m.kind + (m.far ? ' far' : '');
-      el.innerHTML = (m.pip ? `<span class="pip">${m.pip}</span>` : '') + (m.label ? `<span class="label">${m.label}</span>` : '');
+      const cls = 'marker ' + m.kind + (m.far ? ' far' : '');
+      if (el._cls !== cls) { el.className = cls; el._cls = cls; }   // only touch the DOM when content changes
+      const html = (m.pip ? `<span class="pip">${m.pip}</span>` : '') + (m.label ? `<span class="label">${m.label}</span>` : '');
+      if (el._html !== html) { el.innerHTML = html; el._html = html; }
       el.style.left = ((v.x * 0.5 + 0.5) * 600) + 'px';
       el.style.top = ((-v.y * 0.5 + 0.5) * 600) + 'px';
     }

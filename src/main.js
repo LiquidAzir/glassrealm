@@ -356,6 +356,8 @@ try {
     const info = G.interiors.enter(door.building);
     G.interiorStations = info.stations;
     G.inInterior = true;
+    world.group.visible = false;   // stop drawing the whole overworld while indoors
+    G.entities.setHidden(true);
     player.setBounds(info.bounds);
     player.group.position.set(info.entry.x, info.bounds.y, info.entry.z);
     player.state.heading = Math.PI;
@@ -368,6 +370,8 @@ try {
   G.exitInterior = () => {
     G.interiors.leave();
     G.inInterior = false; G.interiorStations = [];
+    world.group.visible = true;
+    G.entities.setHidden(false);
     player.setBounds(null);
     const r = G.returnPos || { x: world.village.x, z: world.village.z + 12, heading: Math.PI };
     player.group.position.set(r.x, world.height(r.x, r.z), r.z);
@@ -665,10 +669,10 @@ try {
       updatePrompt();
     }
     if (hurtFlash > 0) { hurtFlash -= dt; document.body.style.boxShadow = `inset 0 0 ${Math.round(120 * (hurtFlash / 0.25))}px rgba(255,40,40,0.6)`; }
-    else if (document.body.style.boxShadow) document.body.style.boxShadow = '';
+    else { const r = player.state.hp / player.state.maxHp; if (r > 0 && r < 0.3) document.body.style.boxShadow = `inset 0 0 80px rgba(255,40,40,${((0.3 - r) * 0.9 + 0.1).toFixed(2)})`; else if (document.body.style.boxShadow) document.body.style.boxShadow = ''; }
     player.updateCamera(engine.camera, dt);
     G.ui.setCompass(player.state.heading);
-    updateMarkers();
+    if (mode === 'world' || mode === 'interior') updateMarkers();   // markers are hidden behind overlays
     engine.renderer.render(engine.scene, engine.camera);
     requestAnimationFrame(frame);
   }

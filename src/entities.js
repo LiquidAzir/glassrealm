@@ -156,5 +156,11 @@ export function createEntities(scene, world, G) {
     return false;
   }
 
-  return { npcs, enemies, update, damageEnemy, spawnEnemy };
+  // Hide/show all entity meshes (used while indoors to skip ~300 draw calls).
+  function setHidden(flag) {
+    for (const n of npcs) n.group.visible = !flag;
+    for (const e of enemies) e.group.visible = flag ? false : e.alive;
+  }
+
+  return { npcs, enemies, update, damageEnemy, spawnEnemy, setHidden };
 }

@@ -49,6 +49,7 @@ const TEMPLATES = {
 
 export function createInteriors(scene) {
   const root = new THREE.Group(); scene.add(root); root.visible = false;
+  const lamp = new THREE.PointLight(0xffe2b0, 0.85, 38); lamp.position.set(IX, 4.4, IZ); root.add(lamp);   // cozy warmth, only lit while a room is shown
   const cache = {};
 
   function buildType(type) {

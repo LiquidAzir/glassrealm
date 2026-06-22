@@ -8,11 +8,11 @@ export function createInteraction(G) {
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   function nearestEnemy(p, range) {
-    let best = null, bd = range;
+    let best = null, bd2 = range * range;
     for (const e of G.entities.enemies) {
       if (!e.alive) continue;
-      const d = dist2D(p.x, p.z, e.pos.x, e.pos.z);
-      if (d <= bd) { bd = d; best = { kind: 'enemy', ref: e, x: e.pos.x, z: e.pos.z, label: 'Attack ' + e.def.name, dist: d }; }
+      const dx = p.x - e.pos.x, dz = p.z - e.pos.z, d2 = dx * dx + dz * dz;
+      if (d2 <= bd2) { bd2 = d2; best = { kind: 'enemy', ref: e, x: e.pos.x, z: e.pos.z, label: 'Attack ' + e.def.name, dist: Math.sqrt(d2) }; }
     }
     return best;
   }
@@ -20,15 +20,16 @@ export function createInteraction(G) {
   function best() {
     const p = G.player.position;
     if (G.inInterior) {   // inside a building: only the room's stations are interactable
-      let bc = null, bd = 3.6;
-      for (const s of (G.interiorStations || [])) { const d = dist2D(p.x, p.z, s.x, s.z); if (d <= bd) { bd = d; bc = { kind: 'station', ref: s, x: s.x, z: s.z, label: s.label, dist: d }; } }
+      let bc = null, bd2 = 3.6 * 3.6;
+      for (const s of (G.interiorStations || [])) { const dx = p.x - s.x, dz = p.z - s.z, d2 = dx * dx + dz * dz; if (d2 <= bd2) { bd2 = d2; bc = { kind: 'station', ref: s, x: s.x, z: s.z, label: s.label, dist: Math.sqrt(d2) }; } }
       return bc;
     }
     const w = G.player.weapon();
-    let bestC = null, bestD = Infinity;
+    // squared distances throughout — avoids a sqrt for every object every frame
+    let bestC = null, bestD2 = Infinity;
     const consider = (kind, ref, x, z, label) => {
-      const d = dist2D(p.x, p.z, x, z);
-      if (d <= RANGE[kind] && d < bestD) { bestD = d; bestC = { kind, ref, x, z, label, dist: d }; }
+      const dx = p.x - x, dz = p.z - z, d2 = dx * dx + dz * dz, r = RANGE[kind];
+      if (d2 <= r * r && d2 < bestD2) { bestD2 = d2; bestC = { kind, ref, x, z, label, dist: Math.sqrt(d2) }; }
     };
     for (const t of G.world.trees) if (t.alive) consider('tree', t, t.x, t.z, 'Chop tree');
     for (const b of G.world.bushes) if (b.alive) consider('bush', b, b.x, b.z, 'Forage berries');
@@ -44,7 +45,7 @@ export function createInteraction(G) {
     // else is in reach, or when a foe is in melee range and at least as close — so a
     // station/NPC/chest you're standing on still wins with a weapon equipped.
     const enemy = nearestEnemy(p, Math.max(RANGE.enemy, w.range));
-    if (enemy && (!bestC || (enemy.dist <= RANGE.enemy && enemy.dist <= bestD))) return enemy;
+    if (enemy && (!bestC || (enemy.dist <= RANGE.enemy && enemy.dist * enemy.dist <= bestD2))) return enemy;
     return bestC;
   }
   return { best, RANGE };
