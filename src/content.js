@@ -312,6 +312,7 @@ export const NPCS = [
   { key: 'faewarden',   name: 'Oona the Fae',     color: 0xc6a8ff, pos: { x: -21, z: -100 }, dialogue: 'faewarden' },
   // Saga-givers (long multi-stage questlines)
   { key: 'vael',   name: 'Loremaster Vael', color: 0xffd45f, pos: { x: 2, z: -9 },    dialogue: 'saga_vael' },
+  { key: 'guildmaster', name: 'Guildmaster Aldric', color: 0xffe08a, pos: { x: 9, z: -8 }, dialogue: 'saga_trades' },
   { key: 'eira',   name: 'Skald Eira',      color: 0xbfe0ff, pos: { x: 90, z: -78 },  dialogue: 'saga_eira' },
   { key: 'sefu',   name: 'Chronicler Sefu', color: 0xe3c277, pos: { x: 30, z: 108 },  dialogue: 'saga_sefu' },
   { key: 'itzel',  name: 'Wayfarer Itzel',  color: 0x4fd06a, pos: { x: 180, z: 32 },  dialogue: 'saga_itzel' },
@@ -690,6 +691,32 @@ export const QUESTS = {
   q_saga_a1: { name: 'The Amber Blight', saga: true, giver: 'loreseeker', startsAvailable: true, desc: 'A rot creeps through Amberfell. Climb the Moonspire for moonlit herbs to read the omen.', objectives: [{ id: 'spire', type: 'visit', x: -34, z: -124, r: 14, name: 'the Moonspire' }, { id: 'wolf', type: 'kill', enemy: 'blight_wolf', count: 4 }, { id: 'herb', type: 'have', item: 'herb', count: 4 }], rewards: { xp: { combat: 320, herblore: 180 }, items: { gold: 190 } } },
   q_saga_a2: { name: 'The Amber Blight — Fading Light', saga: true, giver: 'loreseeker', requires: 'q_saga_a1', desc: 'The blight is fae-born. Read the old frost-wards atop Frostpeak, counsel Oona in the glade, and bring coal to ward the groves.', objectives: [{ id: 'frost', type: 'visit', x: 98, z: -92, r: 14, name: 'Frostpeak' }, { id: 'oona', type: 'talk', npc: 'faewarden', name: 'Oona the Fae' }, { id: 'coal', type: 'have', item: 'coal', count: 5 }], rewards: { xp: { combat: 360, mining: 150 }, items: { gold: 250 } } },
   q_saga_a3: { name: 'The Amber Blight — The Crowned Dead', saga: true, giver: 'loreseeker', requires: 'q_saga_a2', desc: 'The blight’s heart is the Barrow Wight. End it, then return to Wynn.', objectives: [{ id: 'boss', type: 'kill', enemy: 'barrow_wight', count: 1 }, { id: 'wynn', type: 'talk', npc: 'loreseeker', name: 'Loreseeker Wynn' }], rewards: { xp: { combat: 1120, herblore: 240 }, items: { gold: 480, verdant_charm: 1 } } },
+
+  // ===== Guild of Trades (Guildmaster Aldric) — a hands-on tour that teaches each crafting workflow =====
+  q_trade_cook: { name: 'Trades: Hearth & Hook', saga: true, giver: 'guildmaster', startsAvailable: true,
+    desc: 'Fish at a shimmering water spot, then cook the catch on a stove. Bring 2 Cooked Shrimp.',
+    objectives: [{ id: 'cooked', type: 'have', item: 'cooked_shrimp', count: 2 }],
+    rewards: { xp: { fishing: 130, cooking: 130 }, items: { gold: 70 } } },
+  q_trade_fletch: { name: 'Trades: The Bowyer’s Craft', saga: true, giver: 'guildmaster', requires: 'q_trade_cook',
+    desc: 'Chop logs → carve shafts at a Fletching Bench; forage feathers and smelt a bronze bar, then fletch 5 Bronze Arrows.',
+    objectives: [{ id: 'arrow', type: 'have', item: 'bronze_arrow', count: 5 }],
+    rewards: { xp: { woodcutting: 110, fletching: 220, ranged: 150 }, items: { gold: 130, longbow: 1 } } },
+  q_trade_brew: { name: 'Trades: Salves & Simples', saga: true, giver: 'guildmaster', requires: 'q_trade_fletch',
+    desc: 'Forage Glimmerleaf + Sunberries from bushes, then brew an Antidote at a cauldron.',
+    objectives: [{ id: 'pot', type: 'have', item: 'antidote', count: 1 }],
+    rewards: { xp: { foraging: 110, herblore: 230 }, items: { gold: 120, strong_potion: 2 } } },
+  q_trade_build: { name: 'Trades: Raising the Roof', saga: true, giver: 'guildmaster', requires: 'q_trade_brew',
+    desc: 'Chop logs and saw them into planks at the Sawmill — the heart of Construction. Bring 8 Planks.',
+    objectives: [{ id: 'plank', type: 'have', item: 'plank', count: 8 }],
+    rewards: { xp: { woodcutting: 110, construction: 240 }, items: { gold: 150 } } },
+  q_trade_rune: { name: 'Trades: Threads of the Weave', saga: true, giver: 'guildmaster', requires: 'q_trade_build',
+    desc: 'Travel to the Moonwell glade, mine rune essence at the glowing outcrop, and bind 5 Air Runes at a Rune Altar.',
+    objectives: [{ id: 'rune', type: 'have', item: 'air_rune', count: 5 }],
+    rewards: { xp: { runecraft: 230, magic: 150 }, items: { gold: 160, magic_potion: 1 } } },
+  q_trade_farm: { name: 'Trades: Homestead Dreams', saga: true, giver: 'guildmaster', requires: 'q_trade_rune',
+    desc: 'Visit the Farmstead west of the village and grow crops: buy seeds from Trader Pell, plant them in a garden plot, and harvest 3.',
+    objectives: [{ id: 'visit', type: 'visit', x: -20, z: -10, r: 14, name: 'the Farmstead' }, { id: 'crop', type: 'have', item: 'crop', count: 3 }],
+    rewards: { xp: { farming: 240 }, items: { gold: 200, seeds: 5 } } },
 };
 
 export function objectiveText(obj, n) {
@@ -1167,6 +1194,14 @@ export const DIALOGUE = {
     { id: 'q_saga_v2', intro: 'The Pact had a guardian — Emberfang, a flame-beast bound to defend the isle. But ashen cultists crept into the Emberdeep and shattered its binding. Go down into the cave, scatter the cult, and gather copper to forge a new seal.', accept: 'I’ll break the cult.', active: 'The cult still chants in the Emberdeep, and the seal is unforged.', done: 'The cult is broken and the seal is cast — but it is too late. Emberfang is feral now. Only one path remains, and it is grim.' },
     { id: 'q_saga_v3', intro: 'Emberfang cannot be re-bound; it must be put down — the guardian itself, gone mad. Strike it down on the peak, then come back to me. This is the heaviest line of the Pact, and I would not ask it of anyone else.', accept: 'It will be done.', active: 'Emberfang still rages where the Pact once held.', done: 'Emberfang is dead. Now hear the truth: with the old guardian gone, the Pact passes to a new keeper — to you. The isle is yours to protect now. Wear this amulet, and never set it down.' },
   ], 'The Verdant Pact lives in you now, keeper. Walk tall — the land is watching.'),
+  saga_trades: sagaDialogue('Guildmaster Aldric', [
+    { id: 'q_trade_cook', intro: 'Welcome to the Guild of Trades! Every master starts with a full belly. Find a shimmering fishing spot, tap to fish, then cook your catch on a stove — there’s one by the village hearth. Bring me two Cooked Shrimp.', accept: 'I’ll catch and cook.', active: 'Fish at a shimmering water spot, then cook the catch at a stove.', done: 'A cook who won’t starve on the road! Now — to a real craft.' },
+    { id: 'q_trade_fletch', intro: 'A ranger makes their own arrows. Chop a tree for logs, then at a Fletching Bench carve them into shafts. Forage bushes for feathers, smelt copper ore into a bronze bar at a furnace, and fletch it all into five Bronze Arrows.', accept: 'I’ll fletch them.', active: 'Fletching Bench: logs → shafts, then shafts + feathers + a bronze bar → arrows.', done: 'Fine fletching! Take this longbow — equip it and your arrows fire for bonus damage. On to herbs.' },
+    { id: 'q_trade_brew', intro: 'A wise adventurer carries cures. Forage Glimmerleaf and Sunberries from the bushes, then brew an Antidote at a cauldron. Drink potions from your pack when the fight turns.', accept: 'I’ll brew one.', active: 'Forage a herb + two berries, then brew an Antidote at a cauldron.', done: 'A field medic in the making. Every trade needs a workshop, though…' },
+    { id: 'q_trade_build', intro: 'Construction begins with planks. Chop logs and saw them at the Sawmill in town. With planks you can build furniture — a shrine, hearth, even a bank — at the Carpenter’s Workbench by your house. Bring me eight Planks.', accept: 'I’ll mill some planks.', active: 'Chop logs, then saw them into planks at the Sawmill.', done: 'Soon you’ll have a home that works for you. One trade remains — the arcane.' },
+    { id: 'q_trade_rune', intro: 'Magic is fuelled by runes. Travel west to the Moonwell glade, mine the glowing rune essence there, then bind it into Air Runes at a Rune Altar. Carry runes and your spells strike harder.', accept: 'I’ll seek the essence.', active: 'In the fae glade: mine rune essence, then bind Air Runes at a Rune Altar.', done: 'The Weave answers you now. One last lesson — and it may make you rich.' },
+    { id: 'q_trade_farm', intro: 'A trade you can own: the Farmstead, just west of the village. Visit it and grow a crop — buy seeds from Trader Pell, plant them in a garden plot, and harvest. Then buy the deed to raise livestock and hire farmhands who work it while you adventure.', accept: 'I’ll tend the land.', active: 'Visit the Farmstead and harvest three crops (plant seeds in a plot first).', done: 'You’ve learned every trade the Guild can teach. The rest, you’ll master in the doing. Go well, friend.' },
+  ], 'You’ve graduated the Guild of Trades, master. Every workflow on the isles is yours now.'),
   saga_eira: sagaDialogue('Skald Eira', [
     { id: 'q_saga_f1', intro: 'I sing for a saga with no ending. My brother led an expedition into the snow and never came back. I have the verses as far as the Frost Cavern — but no further. Retrace their road: reach the cavern, thin the wolves that hunt it, and carry trout as they would have. Maybe the white will give up its secret.', accept: 'I’ll retrace their road.', active: 'The cavern is cold and the wolves are many. The saga waits for its next verse.', done: 'You reached the cavern and lived — further than my brother’s last verse. There is a trail, faint but there.' },
     { id: 'q_saga_f2', intro: 'Follow the cold trail. The expedition lit signal fires on Frostpeak; relight them with coal so I can read the way they went. And speak with Frostkeeper Nessa — she was the last to see them alive.', accept: 'I’ll relight the fires.', active: 'Frostpeak is dark, and Nessa has not yet told her tale.', done: 'The fires burn again, and Nessa wept as she spoke. She saw them taken — into the cavern, by something that wore a man’s shape. I know now how the saga ends.' },
