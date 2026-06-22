@@ -17,6 +17,10 @@ const BIOMES = {
   snow:     { sea: 0x2a4a66, sand: 0xdfe8f2, low: 0xeaf2ff, low2: 0xd6e4f4, high: 0xb8c6d6, peak: 0xffffff, fol: [0xbcd0e0, 0xe8f2ff], trunk: 0x5a5350 },
   volcanic: { sea: 0x123842, sand: 0xd7be8e, low: 0xb07045, low2: 0x9c6a3f, high: 0x8f8a86, peak: 0xff8a3d, fol: [0xc9742e, 0xe39a3c], trunk: 0x5a4632 },
   swamp:    { sea: 0x163a3a, sand: 0x6a6a4a, low: 0x4a6a44, low2: 0x3a5a3e, high: 0x5a5e4a, peak: 0x7a8a6a, fol: [0x3a5a36, 0x4f6a40], trunk: 0x40342a },
+  jungle:   { sea: 0x0e5a52, sand: 0xcdbf86, low: 0x2faa4a, low2: 0x1f8a3e, high: 0x6a8a3a, peak: 0xc8e0a0, fol: [0x1f9a3e, 0x4fd06a], trunk: 0x4a3520 },
+  badlands: { sea: 0x2a4a52, sand: 0xc99a5a, low: 0xb5622e, low2: 0x9a4f28, high: 0x7a3a22, peak: 0xe0b080, fol: [0x8a6a3a, 0xa07a44], trunk: 0x5a3a22 },
+  highland: { sea: 0x2a4a66, sand: 0x9aa0a8, low: 0x6a7a6a, low2: 0x566a58, high: 0x8a93a0, peak: 0xf4f8ff, fol: [0x4a6a52, 0x6a8a6a], trunk: 0x55534e },
+  fae:      { sea: 0x241a5a, sand: 0x8a7ab0, low: 0x6a4a9a, low2: 0x7a3a9a, high: 0x9a6abf, peak: 0xe0c8ff, fol: [0xb04acf, 0x6a8aff], trunk: 0x9a8ab0 },
 };
 
 const REGIONS = [
@@ -27,8 +31,12 @@ const REGIONS = [
   { key: 'ember',   x: 116, z: 8,   r: 46, biome: 'volcanic', village: { name: 'Emberhold', x: 110, z: 18, hut: [0xb98c63, 0x6b4636], smithy: true }, peak: { x: 122, z: -4, r: 17, h: 11 }, tree: 'pine', nTree: 14, nBush: 0, nRock: 16, nFish: 4, ore: [['iron', 5], ['coal', 4]] },
   { key: 'mistmoor', x: -72, z: 80, r: 30, biome: 'swamp', village: { name: "Mire's End", x: -80, z: 86, hut: [0x6a5a44, 0x3a4a36] }, tree: 'pine', nTree: 20, nBush: 10, nRock: 6, nFish: 3, ore: [['coal', 3]] },
   { key: 'tideisle', x: 60, z: 70, r: 24, biome: 'grass', tree: 'pine', nTree: 8, nBush: 4, nRock: 8, nFish: 4, ore: [['iron', 3]] },
+  { key: 'jungle',   x: 196, z: 36,  r: 48, biome: 'jungle',   village: { name: 'Kytari Hollow', x: 184, z: 28, hut: [0x3a6a3a, 0x9a4f3a] }, peak: { x: 208, z: 22, r: 16, h: 9 },  tree: 'pine',   nTree: 64, nBush: 18, nRock: 8,  nFish: 4, ore: [['copper', 4], ['iron', 3]] },
+  { key: 'badlands', x: 150, z: 118, r: 44, biome: 'badlands',                                                                            peak: { x: 160, z: 126, r: 16, h: 10 }, tree: 'cactus', nTree: 16, nBush: 2,  nRock: 20, nFish: 2, ore: [['iron', 5], ['coal', 5]] },
+  { key: 'highland', x: -158, z: -38, r: 48, biome: 'highland', village: { name: 'Stormhold', x: -158, z: -32, hut: [0x6a7280, 0x3a4a58] }, peak: { x: -168, z: -52, r: 22, h: 15 }, tree: 'pine', nTree: 28, nBush: 6,  nRock: 18, nFish: 3, ore: [['coal', 4], ['iron', 4]] },
+  { key: 'glade',    x: -25, z: -110, r: 46, biome: 'fae',      village: { name: 'Moonwell', x: -25, z: -100, hut: [0x6a4a9a, 0x3a2a6a] }, peak: { x: -34, z: -124, r: 14, h: 8 },  tree: 'pine',   nTree: 44, nBush: 20, nRock: 8,  nFish: 4, ore: [['copper', 3]] },
 ];
-const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow'], ['forest', 'mistmoor'], ['desert', 'tideisle']];
+const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow'], ['forest', 'mistmoor'], ['desert', 'tideisle'], ['ember', 'jungle'], ['jungle', 'badlands'], ['forest', 'highland'], ['verdant', 'glade']];
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
 // Modular dungeons — themed spire rings (SW entrance gap) with a loot chest + a
@@ -40,6 +48,11 @@ const DUNGEONS = [
   { key: 'crystal',   name: 'Crystal Hollow',      x: 82,  z: -74, r: 11, spire: 0x9b8bd6, orb: 0x9bf2ff, chest: { label: 'Geode Chest',    gold: 220, loot: { crystal_shard: 3, sapphire: 2, emerald: 1 } }, ore: [['coal', 2]] },
   { key: 'magma',     name: 'Magma Depths',        x: 130, z: 28,  r: 11, spire: 0x7a3320, orb: 0xff6a2a, chest: { label: 'Molten Chest',   gold: 240, loot: { magma_core: 2, coal: 5, iron_ore: 4 } }, ore: [['iron', 3], ['coal', 3]] },
   { key: 'temple',    name: 'Sunken Temple',       x: 60,  z: 70,  r: 12, spire: 0x3a7a7a, orb: 0x2bd6cf, chest: { label: 'Reliquary',      gold: 260, loot: { pearl: 2, sapphire: 2 } }, ore: [] },
+  { key: 'ziggurat',  name: 'Overgrown Ziggurat',  x: 205, z: 55,  r: 12, style: 'pillar',  spire: 0x5a7a4a, orb: 0x7cff8a, chest: { label: 'Jungle Reliquary', gold: 280, loot: { vine_coil: 3, emerald: 2 } }, ore: [['copper', 2]] },
+  { key: 'glimmer',   name: 'Glimmer Cavern',      x: 178, z: 52,  r: 11, style: 'crystal', spire: 0x9bf2ff, orb: 0x9bf2ff, chest: { label: 'Glimmer Chest',   gold: 240, loot: { crystal_shard: 3, sapphire: 2 } }, ore: [['copper', 2]] },
+  { key: 'ashpit',    name: 'The Ashpit',          x: 140, z: 108, r: 12, style: 'spike',   spire: 0x3a2230, orb: 0xff5a2a, chest: { label: 'Cinder Hoard',    gold: 320, loot: { demon_ash: 3, magma_core: 2 } }, ore: [['coal', 4]] },
+  { key: 'thunderhold', name: 'Thunderpeak Hold',  x: -145, z: -55, r: 12, style: 'pillar', spire: 0x6a7280, orb: 0x9bdcff, chest: { label: 'Storm Vault',     gold: 340, loot: { storm_shard: 3, iron_bar: 2 } }, ore: [['iron', 3]] },
+  { key: 'feywild',   name: 'Feywild Hollow',      x: -8, z: -118, r: 12, style: 'fungal',  spire: 0xff7af0, orb: 0xb04acf, chest: { label: 'Fae Cache',       gold: 300, loot: { fae_dust: 3, sapphire: 2 } }, ore: [] },
 ];
 const SHORTCUT_LINKS = [
   { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
@@ -82,7 +95,7 @@ export function createWorld(scene, seed = 1337) {
   function biomeAt(x, z) { let best = REGIONS[0], bd = Infinity; for (const r of REGIONS) { const d = Math.hypot(x - r.x, z - r.z) - r.r; if (d < bd) { bd = d; best = r; } } return best.biome; }
 
   // --- terrain mesh (biome-coloured) -------------------------------------
-  const SIZE = 330, SEG = 92, CX = 12, CZ = 10;
+  const SIZE = 480, SEG = 128, CX = 19, CZ = 3;   // bigger heightfield to cover the frontier regions
   let geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   geo.rotateX(-Math.PI / 2); geo.translate(CX, 0, CZ);
   const pa = geo.attributes.position;
@@ -382,9 +395,15 @@ export function createWorld(scene, seed = 1337) {
     const cols = 16;
     for (let i = 0; i < cols; i++) {
       const a = (i / cols) * TAU; if (a > 3.3 && a < 4.3) continue;
-      const x = dg.x + Math.cos(a) * dg.r, z = dg.z + Math.sin(a) * dg.r, hh = 4 + rng() * 2.5;
-      const col = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), new THREE.MeshLambertMaterial({ color: dg.spire, flatShading: true }));
-      col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.25, hh, 1.25); col.rotation.y = rng() * TAU; group.add(col);
+      const x = dg.x + Math.cos(a) * dg.r, z = dg.z + Math.sin(a) * dg.r, gy = height(x, z), hh = 4 + rng() * 2.5, style = dg.style || 'spire';
+      const cmat = new THREE.MeshLambertMaterial({ color: dg.spire, flatShading: true });
+      let col;
+      if (style === 'pillar') { col = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 1.5), cmat); col.scale.set(1, hh * 1.15, 1); col.position.set(x, gy + hh * 0.55, z); col.rotation.y = rng() * 0.5; }
+      else if (style === 'spike') { col = new THREE.Mesh(new THREE.ConeGeometry(1.0, 1, 5), cmat); col.scale.set(1, hh * 1.4, 1); col.position.set(x, gy + hh * 0.6, z); col.rotation.y = rng() * TAU; }
+      else if (style === 'crystal') { col = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1, 5), cmat); col.scale.set(1, hh * 1.5, 1); col.position.set(x, gy + hh * 0.65, z); col.rotation.set((rng() - 0.5) * 0.5, rng() * TAU, (rng() - 0.5) * 0.5); }
+      else if (style === 'fungal') { const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, hh * 1.4, 6), new THREE.MeshLambertMaterial({ color: 0xd8d0e6, flatShading: true })); stalk.position.set(x, gy + hh * 0.7, z); group.add(stalk); col = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 5, 0, TAU, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: dg.spire })); col.position.set(x, gy + hh * 1.4, z); }
+      else { col = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), cmat); col.scale.set(1.25, hh, 1.25); col.position.set(x, gy + hh * 0.4, z); col.rotation.y = rng() * TAU; }
+      group.add(col);
     }
     const cy = height(dg.x, dg.z);
     const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshBasicMaterial({ color: dg.orb })); orb.position.set(dg.x, cy + 4.6, dg.z); group.add(orb); orbMeshes.push({ m: orb, baseY: cy + 4.6, seed: dg.x });
@@ -418,7 +437,11 @@ export function createWorld(scene, seed = 1337) {
   for (const dg of DUNGEONS) locations.push({ name: dg.name, x: dg.x, z: dg.z });
   locations.push({ name: 'The Mistmoor', x: byKey.mistmoor.x, z: byKey.mistmoor.z });
   locations.push({ name: 'Tide Isle', x: byKey.tideisle.x, z: byKey.tideisle.z });
-  function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak' })[key] || 'Peak'; }
+  locations.push({ name: 'Kytari Jungle', x: byKey.jungle.x, z: byKey.jungle.z });
+  locations.push({ name: 'Scorched Wastes', x: byKey.badlands.x, z: byKey.badlands.z });
+  locations.push({ name: 'Stormhold Highlands', x: byKey.highland.x, z: byKey.highland.z });
+  locations.push({ name: 'Moonlit Glade', x: byKey.glade.x, z: byKey.glade.z });
+  function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak', jungle: 'Kytari Spire', badlands: 'Red Mesa', highland: 'Thunderpeak', glade: 'Moonspire' })[key] || 'Peak'; }
 
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
   function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }

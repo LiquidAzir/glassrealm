@@ -252,7 +252,7 @@ export function createUI(G) {
     els.menuBody.innerHTML = `<div class="section-head">World Map</div><canvas id="mapCanvas" width="300" height="300"></canvas>`;
     drawMap(document.getElementById('mapCanvas').getContext('2d'));
   }
-  const BIOME_MAP_COL = { grass: '#2f7d4a', forest: '#1f5a36', desert: '#d6bd72', snow: '#dbe6f2', volcanic: '#9c5a34', swamp: '#3a5a3e' };
+  const BIOME_MAP_COL = { grass: '#2f7d4a', forest: '#1f5a36', desert: '#d6bd72', snow: '#dbe6f2', volcanic: '#9c5a34', swamp: '#3a5a3e', jungle: '#2faa4a', badlands: '#b5622e', highland: '#7a8290', fae: '#8a3a9a' };
   function drawMap(ctx) {
     const S = 300, pad = 12, R = G.world.regions;
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;

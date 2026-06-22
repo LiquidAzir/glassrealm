@@ -87,6 +87,28 @@ export const ITEMS = {
   crystalweave_amulet: { name: 'Crystalweave Amulet', icon: '📿', type: 'amulet', bonus: { magic: 11, def: 4 },  desc: 'Crafted. +11 magic, +4 defence.' },
   bonecharm_ring:      { name: 'Bonecharm Ring',      icon: '💍', type: 'ring',   bonus: { melee: 7, maxhp: 15 }, desc: 'Crafted. +7 melee, +15 max HP.' },
   tideheart_amulet:    { name: 'Tideheart Amulet',    icon: '📿', type: 'amulet', bonus: { maxhp: 60 },          desc: 'Crafted. +60 max HP.' },
+
+  // --- frontier materials (new regions / dungeons) ---
+  vine_coil:   { name: 'Vine Coil',   icon: '🌿', type: 'material', desc: 'Living vine from the Kytari jungle.' },
+  demon_ash:   { name: 'Demon Ash',   icon: '🔥', type: 'material', desc: 'Smouldering ash from the Ashpit.' },
+  storm_shard: { name: 'Storm Shard', icon: '⚡', type: 'material', desc: 'A crackling shard from Thunderpeak.' },
+  fae_dust:    { name: 'Fae Dust',    icon: '✨', type: 'material', desc: 'Glittering dust from the Feywild.' },
+
+  // --- frontier boss weapons (extend the top of each style line) ---
+  coilfang_spear: { name: 'Coilfang Spear', icon: '🔱', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 30, range: 3.2, speed: 0.46, desc: "Jorath's fanged spear. +30 melee." },
+  ashbringer:     { name: 'Ashbringer',     icon: '⚔️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 36, range: 3.0, speed: 0.5,  desc: "Ashlord Vurak's blade. +36 melee." },
+  tempest_bow:    { name: 'Tempest Bow',    icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 24, range: 17,  speed: 0.56, desc: "Thruun's storm bow. +24 ranged." },
+  faewild_staff:  { name: 'Faewild Staff',  icon: '🪄', type: 'weapon', style: 'magic',  skill: 'magic',  bonus: 30, range: 16,  speed: 0.64, desc: "The Hollow King's staff. +30 magic." },
+
+  // --- frontier rare drops ---
+  serpent_eye:     { name: 'Serpent Eye',     icon: '📿', type: 'amulet', bonus: { melee: 9, ranged: 9 },  desc: 'Rare drop. +9 melee, +9 ranged.' },
+  demonheart_ring: { name: 'Demonheart Ring', icon: '💍', type: 'ring',   bonus: { melee: 14 },            desc: 'Rare drop. +14 melee.' },
+  storm_amulet:    { name: 'Storm Amulet',    icon: '📿', type: 'amulet', bonus: { ranged: 12, magic: 8 }, desc: 'Rare drop. +12 ranged, +8 magic.' },
+  fae_crown:       { name: 'Fae Crown',       icon: '📿', type: 'amulet', bonus: { magic: 14, maxhp: 25 }, desc: 'Rare drop. +14 magic, +25 max HP.' },
+
+  // --- crafted from frontier materials ---
+  verdant_charm:    { name: 'Verdant Charm',    icon: '📿', type: 'amulet', bonus: { maxhp: 40, def: 6 },   desc: 'Crafted. +40 max HP, +6 defence.' },
+  stormforged_ring: { name: 'Stormforged Ring', icon: '💍', type: 'ring',   bonus: { ranged: 9, melee: 6 }, desc: 'Crafted. +9 ranged, +6 melee.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -118,6 +140,8 @@ export const CRAFT = [
   { out: 'crystalweave_amulet', cost: { crystal_shard: 3, sapphire: 2 }, xp: 180 },
   { out: 'bonecharm_ring',      cost: { bone_shard: 3, iron_bar: 2 }, xp: 160 },
   { out: 'tideheart_amulet',    cost: { pearl: 2, emerald: 2 }, xp: 220 },
+  { out: 'verdant_charm',       cost: { vine_coil: 3, fae_dust: 2 }, xp: 210 },
+  { out: 'stormforged_ring',    cost: { storm_shard: 3, iron_bar: 2 }, xp: 200 },
 ];
 export const SETS = {
   guardian: { name: 'Guardian', def: 10, melee: 8, maxhp: 20 },
@@ -156,6 +180,10 @@ export const NPCS = [
   { key: 'lapidary',    name: 'Lapidary Sten',    color: 0x9bf2ff, pos: { x: 92, z: -82 }, dialogue: 'lapidary' },
   { key: 'emberwright', name: 'Emberwright Vol',  color: 0xff7a3a, pos: { x: 122, z: 18 }, dialogue: 'emberwright' },
   { key: 'oracle',      name: 'Oracle Nerida',    color: 0x2bd6cf, pos: { x: 50, z: 80 }, dialogue: 'oracle' },
+  { key: 'pathfinder',  name: 'Pathfinder Anouk', color: 0x4fd06a, pos: { x: 188, z: 28 }, dialogue: 'pathfinder' },
+  { key: 'cinderwarden', name: 'Cinderwarden Hax', color: 0xff7a3a, pos: { x: 128, z: 98 }, dialogue: 'cinderwarden' },
+  { key: 'stormcaller', name: 'Stormcaller Branok', color: 0x9bdcff, pos: { x: -154, z: -32 }, dialogue: 'stormcaller' },
+  { key: 'faewarden',   name: 'Oona the Fae',     color: 0xc6a8ff, pos: { x: -21, z: -100 }, dialogue: 'faewarden' },
 ];
 
 export const ENEMIES = {
@@ -188,6 +216,24 @@ export const ENEMIES = {
   deep_lurker: { name: 'Deep Lurker', hp: 80, dmg: 18, speed: 3.8, xp: 200, color: 0x2f8f8a, aggro: 13, shape: 'beast',    loot: { pearl: 1, raw_trout: 1 } },
   tide_priest: { name: 'Tide Priest', hp: 92, dmg: 20, speed: 3.4, xp: 230, color: 0x3aa0b0, aggro: 13, shape: 'humanoid', loot: { pearl: 1, gold: 26 } },
   drowned_king: { name: 'Drowned King Nautilus', hp: 370, dmg: 32, speed: 3.4, xp: 1000, color: 0x2bd6cf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 320, tidecaller_trident: 1, pearl: 5, relic: 1 }, rare: { item: 'pearl_depths', chance: 0.3 } },
+
+  // Kytari Jungle / Overgrown Ziggurat + Glimmer Cavern
+  jungle_panther: { name: 'Jungle Panther', hp: 72,  dmg: 17, speed: 5.2, xp: 175, color: 0x2a2d33, aggro: 14, shape: 'beast',    loot: { pelt: 2, meat: 1 } },
+  serpent:        { name: 'Coil Serpent',   hp: 64,  dmg: 16, speed: 4.0, xp: 165, color: 0x3f9a4a, aggro: 12, shape: 'beast', scale: 0.8, loot: { vine_coil: 1, bones: 1 } },
+  glimmer_bat:    { name: 'Glimmer Bat',    hp: 56,  dmg: 14, speed: 5.0, xp: 150, color: 0x9bd0ff, aggro: 13, shape: 'beast', scale: 0.7, loot: { crystal_shard: 1 } },
+  jorath:         { name: 'Jorath the Coiled', hp: 330, dmg: 30, speed: 4.0, xp: 880, color: 0x2f8a3e, aggro: 18, shape: 'beast', scale: 2.3, boss: true, loot: { gold: 280, coilfang_spear: 1, vine_coil: 4, emerald: 2 }, rare: { item: 'serpent_eye', chance: 0.3 } },
+  // Scorched Wastes / The Ashpit
+  scorchling: { name: 'Scorchling', hp: 60,  dmg: 16, speed: 4.6, xp: 160, color: 0xff7a3a, aggro: 13, shape: 'beast', scale: 0.8, loot: { coal: 1, demon_ash: 1 } },
+  ash_hound:  { name: 'Ash Hound',  hp: 108, dmg: 22, speed: 4.6, xp: 250, color: 0x8a3a2a, aggro: 14, shape: 'beast', scale: 1.3, loot: { demon_ash: 1, coal: 3 } },
+  vurak:      { name: 'Ashlord Vurak', hp: 390, dmg: 34, speed: 3.6, xp: 1000, color: 0xff4a2a, aggro: 19, shape: 'humanoid', scale: 2.3, boss: true, loot: { gold: 340, ashbringer: 1, demon_ash: 5, magma_core: 2 }, rare: { item: 'demonheart_ring', chance: 0.3 } },
+  // Stormhold Highlands / Thunderpeak Hold
+  storm_harpy: { name: 'Storm Harpy', hp: 80,  dmg: 19, speed: 4.8, xp: 205, color: 0x9bdcff, aggro: 14, shape: 'humanoid', loot: { storm_shard: 1, bones: 1 } },
+  crag_golem:  { name: 'Crag Golem',  hp: 132, dmg: 24, speed: 2.8, xp: 270, color: 0x7a8290, aggro: 12, shape: 'humanoid', scale: 1.5, loot: { storm_shard: 1, iron_ore: 1 } },
+  thruun:      { name: 'Stormcaller Thruun', hp: 410, dmg: 35, speed: 3.4, xp: 1060, color: 0xbfe6ff, aggro: 20, shape: 'humanoid', scale: 2.4, boss: true, loot: { gold: 360, tempest_bow: 1, storm_shard: 5, coal: 6 }, rare: { item: 'storm_amulet', chance: 0.3 } },
+  // Moonlit Glade / Feywild Hollow
+  wisp:      { name: 'Fae Wisp',  hp: 62,  dmg: 18, speed: 5.0, xp: 185, color: 0xc6a8ff, aggro: 13, shape: 'beast', scale: 0.6, loot: { fae_dust: 1 } },
+  thornling: { name: 'Thornling', hp: 92,  dmg: 20, speed: 3.2, xp: 225, color: 0x6a4a9a, aggro: 12, shape: 'humanoid', scale: 1.2, loot: { fae_dust: 1, herb: 1 } },
+  hollow_king: { name: 'The Hollow King', hp: 430, dmg: 36, speed: 3.8, xp: 1160, color: 0xb04acf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 400, faewild_staff: 1, fae_dust: 5, ruby: 2 }, rare: { item: 'fae_crown', chance: 0.3 } },
 };
 
 export const ENEMY_SPAWNS = [
@@ -219,6 +265,23 @@ export const ENEMY_SPAWNS = [
   // Sunken Temple (Tide Isle) — centre (60, 70)
   { enemy: 'deep_lurker', x: 56, z: 68 }, { enemy: 'deep_lurker', x: 64, z: 72 }, { enemy: 'tide_priest', x: 57, z: 74 }, { enemy: 'tide_priest', x: 63, z: 66 },
   { enemy: 'drowned_king', x: 60, z: 70 },
+  // Kytari Jungle (surface) + Overgrown Ziggurat (205,55) + Glimmer Cavern (178,52)
+  { enemy: 'jungle_panther', x: 210, z: 44 }, { enemy: 'jungle_panther', x: 186, z: 48 }, { enemy: 'serpent', x: 200, z: 26 }, { enemy: 'serpent', x: 190, z: 44 },
+  { enemy: 'serpent', x: 208, z: 58 }, { enemy: 'serpent', x: 202, z: 52 }, { enemy: 'jungle_panther', x: 206, z: 58 }, { enemy: 'jungle_panther', x: 204, z: 52 },
+  { enemy: 'jorath', x: 205, z: 55 },
+  { enemy: 'glimmer_bat', x: 175, z: 55 }, { enemy: 'glimmer_bat', x: 181, z: 49 }, { enemy: 'crystal_sprite', x: 178, z: 52 },
+  // Scorched Wastes (surface) + The Ashpit (140,108)
+  { enemy: 'scorchling', x: 160, z: 112 }, { enemy: 'scorchling', x: 142, z: 126 }, { enemy: 'ash_hound', x: 155, z: 124 }, { enemy: 'ash_hound', x: 146, z: 110 },
+  { enemy: 'scorchling', x: 137, z: 105 }, { enemy: 'scorchling', x: 143, z: 111 }, { enemy: 'ash_hound', x: 138, z: 111 }, { enemy: 'ash_hound', x: 143, z: 105 },
+  { enemy: 'vurak', x: 140, z: 108 },
+  // Stormhold Highlands (surface) + Thunderpeak Hold (-145,-55)
+  { enemy: 'storm_harpy', x: -148, z: -30 }, { enemy: 'storm_harpy', x: -168, z: -40 }, { enemy: 'crag_golem', x: -150, z: -44 },
+  { enemy: 'storm_harpy', x: -148, z: -58 }, { enemy: 'storm_harpy', x: -142, z: -52 }, { enemy: 'crag_golem', x: -148, z: -52 }, { enemy: 'crag_golem', x: -142, z: -58 },
+  { enemy: 'thruun', x: -145, z: -55 },
+  // Moonlit Glade (surface) + Feywild Hollow (-8,-118)
+  { enemy: 'wisp', x: -15, z: -105 }, { enemy: 'wisp', x: -35, z: -115 }, { enemy: 'thornling', x: -18, z: -118 }, { enemy: 'thornling', x: -12, z: -100 },
+  { enemy: 'wisp', x: -11, z: -115 }, { enemy: 'wisp', x: -5, z: -121 }, { enemy: 'thornling', x: -11, z: -121 }, { enemy: 'thornling', x: -5, z: -115 },
+  { enemy: 'hollow_king', x: -8, z: -118 },
 ];
 
 export const QUESTS = {
@@ -372,6 +435,19 @@ export const QUESTS = {
     objectives: [{ id: 'boss', type: 'kill', enemy: 'drowned_king', count: 1 }],
     rewards: { xp: { combat: 1000, prayer: 260 }, items: { gold: 400 } },
   },
+
+  // --- Kytari Jungle / Overgrown Ziggurat ---
+  q_zigg: { name: 'Jungle Hunt', giver: 'pathfinder', startsAvailable: true, desc: 'Cull the coil serpents around the Overgrown Ziggurat.', objectives: [{ id: 'k', type: 'kill', enemy: 'serpent', count: 4 }], rewards: { xp: { combat: 300, woodcutting: 120 }, items: { gold: 120 } } },
+  q_jorath: { name: 'Jorath the Coiled', giver: 'pathfinder', requires: 'q_zigg', desc: 'Slay the great serpent Jorath atop the ziggurat.', objectives: [{ id: 'boss', type: 'kill', enemy: 'jorath', count: 1 }], rewards: { xp: { combat: 950, slayer: 240 }, items: { gold: 360 } } },
+  // --- Scorched Wastes / The Ashpit ---
+  q_ashpit: { name: 'Into the Ashes', giver: 'cinderwarden', startsAvailable: true, desc: 'Put down the ash hounds prowling the Scorched Wastes.', objectives: [{ id: 'k', type: 'kill', enemy: 'ash_hound', count: 3 }], rewards: { xp: { combat: 320 }, items: { gold: 130 } } },
+  q_vurak: { name: 'Ashlord Vurak', giver: 'cinderwarden', requires: 'q_ashpit', desc: 'Destroy Ashlord Vurak in the Ashpit.', objectives: [{ id: 'boss', type: 'kill', enemy: 'vurak', count: 1 }], rewards: { xp: { combat: 1050, slayer: 280 }, items: { gold: 400 } } },
+  // --- Stormhold Highlands / Thunderpeak Hold ---
+  q_thunder: { name: 'Storm Riders', giver: 'stormcaller', startsAvailable: true, desc: 'Drive the storm harpies from the Stormhold Highlands.', objectives: [{ id: 'k', type: 'kill', enemy: 'storm_harpy', count: 4 }], rewards: { xp: { combat: 340, defence: 120 }, items: { gold: 140 } } },
+  q_thruun: { name: 'Stormcaller Thruun', giver: 'stormcaller', requires: 'q_thunder', desc: 'Defeat the storm titan Thruun in Thunderpeak Hold.', objectives: [{ id: 'boss', type: 'kill', enemy: 'thruun', count: 1 }], rewards: { xp: { combat: 1100, ranged: 220 }, items: { gold: 420 } } },
+  // --- Moonlit Glade / Feywild Hollow ---
+  q_fey: { name: 'Tangled Thorns', giver: 'faewarden', startsAvailable: true, desc: 'Clear the thornlings creeping out of the Feywild Hollow.', objectives: [{ id: 'k', type: 'kill', enemy: 'thornling', count: 3 }], rewards: { xp: { combat: 360, herblore: 150 }, items: { gold: 150 } } },
+  q_hollow: { name: 'The Hollow King', giver: 'faewarden', requires: 'q_fey', desc: 'Banish the Hollow King in the heart of the Feywild.', objectives: [{ id: 'boss', type: 'kill', enemy: 'hollow_king', count: 1 }], rewards: { xp: { combat: 1200, magic: 240 }, items: { gold: 460 } } },
 };
 
 export function objectiveText(obj, n) {
@@ -728,6 +804,67 @@ export const DIALOGUE = {
     t2: 'The tides themselves will remember your name. Ha!',
     outro: 'The temple sleeps in peace, and so may we all.', idle: 'The waters are calm now, hero.',
   }),
+
+  pathfinder: dungeonChain('Pathfinder Anouk', {
+    q1: 'q_zigg', n1: 4, foe1: 'serpents', verb1: 'coil',
+    intro1: 'The Kytari jungle swallows the unready. Coil serpents nest by the Overgrown Ziggurat — thin four of them for me.',
+    accept1: 'I’ll track them.', where1: 'The ziggurat rises in the east of the jungle.',
+    done1: 'Four serpents down — you move well in the green.',
+    a1: 'Strike fast; the serpents are quick. Vine coils drop from them.',
+    t1: 'Coin, and the jungle’s respect. But the great coil still waits atop the ziggurat…',
+    q2: 'q_jorath', accept2: 'I’ll climb it.',
+    intro2: 'Jorath the Coiled rules the ziggurat — a serpent the size of a river. End it.',
+    hint2: 'Jorath waits at the ziggurat’s summit. Bring strong steel.',
+    done2: 'Jorath slain?! The Kytari will carve your name in the stones.',
+    a2: 'Jorath strikes like lightning and coils like a vice. Keep moving.',
+    t2: 'A jungle legend, you are. Ha!',
+    outro: 'The green is calmer for your passing.', idle: 'Tread softly among the vines.',
+  }),
+  cinderwarden: dungeonChain('Cinderwarden Hax', {
+    q1: 'q_ashpit', n1: 3, foe1: 'ash hounds', verb1: 'prowl',
+    intro1: 'The Scorched Wastes burn anything soft. Ash hounds hunt the dunes of cinder — put three down.',
+    accept1: 'I’ll cool them.', where1: 'The Ashpit yawns open in the heart of the wastes.',
+    done1: 'Three hounds doused. The wastes breathe a little.',
+    a1: 'The hounds run hot and fast. Demon ash drops from them.',
+    t1: 'Coin from the embers. But the Ashlord himself broods below…',
+    q2: 'q_vurak', accept2: 'I’ll face the Ashlord.',
+    intro2: 'Ashlord Vurak commands the Ashpit — a demon of living fire. Snuff him out.',
+    hint2: 'Vurak rages at the pit’s floor. Bring your best armour.',
+    done2: 'Vurak is cinders? The wastes owe you their cooling.',
+    a2: 'Vurak hurls fire and hits like a falling mountain. Strike between blasts.',
+    t2: 'Forged a legend in the ashes today. Ha!',
+    outro: 'The embers settle, thanks to you.', idle: 'Mind the heat, wanderer.',
+  }),
+  stormcaller: dungeonChain('Stormcaller Branok', {
+    q1: 'q_thunder', n1: 4, foe1: 'storm harpies', verb1: 'wheel overhead',
+    intro1: 'The Highlands answer to the storm. Harpies ride the gales and raid Stormhold — bring down four.',
+    accept1: 'I’ll ground them.', where1: 'They wheel above the crags around Thunderpeak Hold.',
+    done1: 'Four harpies felled. The winds ease.',
+    a1: 'The harpies strike from above. Storm shards fall from them.',
+    t1: 'Coin, and the mountain’s thanks. But the storm titan still walks the Hold…',
+    q2: 'q_thruun', accept2: 'I’ll climb the Hold.',
+    intro2: 'Thruun, the storm titan, broods in Thunderpeak Hold — thunder given form. Lay him low.',
+    hint2: 'Thruun waits in the Hold’s great hall. Mind the lightning.',
+    done2: 'Thruun has fallen?! The Highlands will sing through every storm.',
+    a2: 'Thruun calls the lightning and strikes like an avalanche. Stay nimble.',
+    t2: 'A storm-breaker walks among us. Ha!',
+    outro: 'The skies are kinder now.', idle: 'Keep your footing on the crags.',
+  }),
+  faewarden: dungeonChain('Oona the Fae', {
+    q1: 'q_fey', n1: 3, foe1: 'thornlings', verb1: 'creep',
+    intro1: 'The Moonlit Glade sours. Thornlings creep from the Feywild Hollow, choking the moonflowers — cut back three.',
+    accept1: 'I’ll tend it.', where1: 'The Hollow opens beneath the glade’s glowing canopy.',
+    done1: 'Three thornlings pruned. The glade glimmers again.',
+    a1: 'The thornlings are slow but barbed. Fae dust drifts from them.',
+    t1: 'Fae coin for you. But the Hollow King stirs at the root of it all…',
+    q2: 'q_hollow', accept2: 'I’ll enter the Hollow.',
+    intro2: 'The Hollow King twists the Feywild to nightmare. Banish him and free the glade.',
+    hint2: 'The King holds court deep in the Hollow. Magic wards would help.',
+    done2: 'The Hollow King is undone? The glade will bloom for a thousand years.',
+    a2: 'The King bends light and thorn alike. Strike true through his illusions.',
+    t2: 'The Fae will remember you in moonlight. Ha!',
+    outro: 'The glade sings your name softly.', idle: 'Walk gently in the moonlight.',
+  }),
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.
@@ -751,6 +888,8 @@ export const SHOP = {
     bones: 2, seeds: 2, crop: 4, cooked_greens: 10, strong_potion: 20,
     bone_shard: 10, goblin_tooth: 8, crystal_shard: 14, magma_core: 16, pearl: 22,
     wraithblade: 130, stormstring_bow: 110, prism_staff: 135, cinderforge_axe: 150, tidecaller_trident: 180,
+    vine_coil: 12, demon_ash: 16, storm_shard: 18, fae_dust: 20,
+    coilfang_spear: 150, ashbringer: 200, tempest_bow: 140, faewild_staff: 170,
   },
 };
 
@@ -761,7 +900,7 @@ export const ACHIEVEMENTS = [
   { id: 'emberfang',   name: 'Emberbane',        desc: 'Defeat Emberfang.',            cond: (G) => G.stats.bosses.has('ember_boss') },
   { id: 'wyrmslayer',  name: 'Wyrmslayer',       desc: 'Defeat the Sandwyrm.',         cond: (G) => G.stats.bosses.has('sandwyrm') },
   { id: 'thaw',        name: 'Thaw the Warden',  desc: 'Defeat the Frost Warden.',     cond: (G) => G.stats.bosses.has('frost_warden') },
-  { id: 'globetrotter',name: 'Globetrotter',     desc: 'Set foot in every region.',    cond: (G) => G.stats.regions.size >= 7 },
+  { id: 'globetrotter',name: 'Globetrotter',     desc: 'Set foot in every region.',    cond: (G) => G.stats.regions.size >= 11 },
   { id: 'jeweller',    name: 'Jeweller',         desc: 'Craft a piece of jewelry.',    cond: (G) => G.stats.crafted >= 1 },
   { id: 'suited',      name: 'Suited Up',        desc: 'Wear a full armour set.',      cond: (G) => !!(G.fullSet && G.fullSet()) },
   { id: 'tycoon',      name: 'Tycoon',           desc: 'Hold 1000 gold at once.',      cond: (G) => G.inventory.count('gold') >= 1000 },
@@ -774,4 +913,9 @@ export const ACHIEVEMENTS = [
   { id: 'cinderfall',  name: 'Cinderfall',       desc: 'Defeat the Cinder Colossus.',   cond: (G) => G.stats.bosses.has('cinder_colossus') },
   { id: 'tideturner',  name: 'Tideturner',       desc: 'Defeat the Drowned King.',      cond: (G) => G.stats.bosses.has('drowned_king') },
   { id: 'dungeon_master', name: 'Dungeon Master', desc: 'Defeat all five dungeon bosses.', cond: (G) => ['bonelord', 'warchief', 'prism_tyrant', 'cinder_colossus', 'drowned_king'].every((k) => G.stats.bosses.has(k)) },
+  { id: 'serpentbane', name: 'Serpentbane',  desc: 'Defeat Jorath the Coiled.',     cond: (G) => G.stats.bosses.has('jorath') },
+  { id: 'ashbreaker',  name: 'Ashbreaker',   desc: 'Defeat Ashlord Vurak.',         cond: (G) => G.stats.bosses.has('vurak') },
+  { id: 'stormbreaker',name: 'Stormbreaker', desc: 'Defeat Stormcaller Thruun.',    cond: (G) => G.stats.bosses.has('thruun') },
+  { id: 'faefriend',   name: 'Fae-friend',   desc: 'Banish the Hollow King.',       cond: (G) => G.stats.bosses.has('hollow_king') },
+  { id: 'frontier',    name: 'Frontier Legend', desc: 'Defeat all four frontier bosses.', cond: (G) => ['jorath', 'vurak', 'thruun', 'hollow_king'].every((k) => G.stats.bosses.has(k)) },
 ];
