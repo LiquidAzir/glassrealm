@@ -135,7 +135,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Prayer') return PRAYERS.length;
     if (TABS[tab] === 'Skills') return G.skills.DEFS.length;
     if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
-    if (TABS[tab] === 'Diary') return 2;
+    if (TABS[tab] === 'Diary') return 4;
     return 0;
   }
   function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); }
@@ -162,6 +162,8 @@ export function createUI(G) {
     } else if (TABS[tab] === 'Diary') {
       if (row === 0 && G.audio) { G.audio.toggleMuted(); G.save.save(); renderMenu(); }
       else if (row === 1 && G.requestRestart) G.requestRestart();
+      else if (row === 2 && G.exportSave) G.exportSave();
+      else if (row === 3 && G.importSave) G.importSave();
     }
   }
   function gearRows() {
@@ -203,6 +205,8 @@ export function createUI(G) {
     const sound = G.audio && !G.audio.muted;
     let html = `<div class="row ${row === 0 ? 'sel' : ''}"><span class="row-icon">${sound ? '🔊' : '🔇'}</span><div class="row-main"><div class="row-title">Sound: ${sound ? 'ON' : 'OFF'}</div><div class="row-sub">tap to toggle</div></div></div>`;
     html += `<div class="row ${row === 1 ? 'sel' : ''}"><span class="row-icon">🔄</span><div class="row-main"><div class="row-title">Restart game</div><div class="row-sub">choose a new class · wipes your save</div></div></div>`;
+    html += `<div class="row ${row === 2 ? 'sel' : ''}"><span class="row-icon">📤</span><div class="row-main"><div class="row-title">Export save</div><div class="row-sub">copy a code to carry this save to another device</div></div></div>`;
+    html += `<div class="row ${row === 3 ? 'sel' : ''}"><span class="row-icon">📥</span><div class="row-main"><div class="row-title">Import save</div><div class="row-sub">paste a code from glasses · phone · PC</div></div></div>`;
     html += `<div class="section-head">Achievements · ${done.size}/${ACHIEVEMENTS.length}</div>`;
     html += ACHIEVEMENTS.map((a) => { const u = done.has(a.id); return `<div class="row" style="${u ? '' : 'opacity:.55'}"><span class="row-icon">${u ? '🏆' : '🔒'}</span><div class="row-main"><div class="row-title">${a.name}</div><div class="row-sub">${a.desc}</div></div></div>`; }).join('');
     els.menuBody.innerHTML = html;
@@ -262,10 +266,14 @@ export function createUI(G) {
     els.menuBody.innerHTML = html || `<div class="empty-note">No quests yet. Speak with the villagers around the hearth.</div>`;
   }
   function renderMap() {
-    els.menuBody.innerHTML = `<div class="section-head">World Map</div><canvas id="mapCanvas" width="300" height="300"></canvas>`;
+    els.menuBody.innerHTML = `<div class="section-head">World Map</div><canvas id="mapCanvas" width="300" height="300"></canvas>` +
+      `<div class="map-legend"><b style="color:#caa878">H</b>ome &nbsp;<b style="color:#ffd45f">S</b>tore &nbsp;<b style="color:#6fa0ff">B</b>ank &nbsp;<b style="color:#9bf2ff">W</b>orkshop &nbsp;<b style="color:#e0a050">T</b>avern &nbsp;<b style="color:#ff7a33">F</b>orge &nbsp;·&nbsp; <span style="color:#b07adf">●</span> dungeon &nbsp; <span style="color:#ff6b6b">●</span> foe</div>`;
     drawMap(document.getElementById('mapCanvas').getContext('2d'));
   }
-  const BIOME_MAP_COL = { grass: '#2f7d4a', forest: '#1f5a36', desert: '#d6bd72', snow: '#dbe6f2', volcanic: '#9c5a34', swamp: '#3a5a3e', jungle: '#2faa4a', badlands: '#b5622e', highland: '#7a8290', fae: '#8a3a9a' };
+  const BIOME_MAP_COL = { grass: '#2f7d4a', forest: '#1f5a36', desert: '#d6bd72', snow: '#dbe6f2', volcanic: '#9c5a34', swamp: '#3a5a3e', jungle: '#2faa4a', badlands: '#b5622e', highland: '#7a8290', fae: '#8a3a9a', coast: '#3aa6b0', autumn: '#cf7a2e' };
+  // building-type letters/colours so each building reads distinctly on the map + minimap
+  const BUILD_ICON = { home: 'H', store: 'S', bank: 'B', workshop: 'W', tavern: 'T', forge: 'F' };
+  const BUILD_COL = { home: '#caa878', store: '#ffd45f', bank: '#6fa0ff', workshop: '#9bf2ff', tavern: '#e0a050', forge: '#ff7a33' };
   function drawMap(ctx) {
     const S = 300, pad = 12, R = G.world.regions;
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -280,7 +288,9 @@ export function createUI(G) {
     const cv = G.world.cave; const [cvx, cvy] = to(cv.x, cv.z); ctx.fillStyle = '#5a5550'; ctx.beginPath(); ctx.arc(cvx, cvy, Math.max(3, cv.r * sc), 0, 7); ctx.fill();
     if (G.world.cave2) { const c2 = G.world.cave2; const [c2x, c2y] = to(c2.x, c2.z); ctx.fillStyle = '#5a6a80'; ctx.beginPath(); ctx.arc(c2x, c2y, Math.max(3, c2.r * sc), 0, 7); ctx.fill(); }
     if (G.world.dungeons) { ctx.fillStyle = '#7a4a8a'; G.world.dungeons.forEach((d) => { const [dx, dy] = to(d.x, d.z); ctx.beginPath(); ctx.arc(dx, dy, Math.max(3, d.r * sc), 0, 7); ctx.fill(); }); }
-    ctx.fillStyle = '#ffd45f'; G.world.villages.forEach((v) => { const [x, y] = to(v.x, v.z); ctx.fillRect(x - 3, y - 3, 6, 6); });
+    for (const s of G.world.stations) { if (s.kind !== 'door') continue; const [x, y] = to(s.x, s.z); ctx.fillStyle = BUILD_COL[s.building] || '#caa878'; ctx.beginPath(); ctx.arc(x, y, 2, 0, 7); ctx.fill(); }
+    ctx.textAlign = 'center'; ctx.font = 'bold 9px sans-serif';
+    G.world.villages.forEach((v) => { const [x, y] = to(v.x, v.z); ctx.fillStyle = '#ffd45f'; ctx.fillRect(x - 3, y - 3, 6, 6); ctx.fillStyle = '#ffe9a8'; ctx.fillText(v.name, x, y - 7); });
     ctx.fillStyle = '#5fe3ff'; G.entities.npcs.forEach((n) => { const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill(); });
     G.entities.enemies.forEach((e) => { if (!e.alive) return; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 5 : 2, 0, 7); ctx.fill(); });
     const [hx, hy] = to(G.player.position.x, G.player.position.z);
@@ -302,6 +312,16 @@ export function createUI(G) {
     { const cv = G.world.cave; const [x, y] = to(cv.x, cv.z); ctx.fillStyle = '#5a5550'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, cv.r * sc), 0, 7); ctx.fill(); }
     if (G.world.cave2) { const c2 = G.world.cave2; const [x, y] = to(c2.x, c2.z); ctx.fillStyle = '#5a6a80'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, c2.r * sc), 0, 7); ctx.fill(); }
     ctx.fillStyle = '#ffd45f'; for (const v of G.world.villages) { const [x, y] = to(v.x, v.z); ctx.fillRect(x - 2, y - 2, 4, 4); }
+    // building-type chips (letters) for the local town when zoomed in
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 7px sans-serif';
+    for (const s of G.world.stations) {
+      if (s.kind !== 'door') continue;
+      const dx = s.x - px, dz = s.z - pz; if (dx * dx + dz * dz > R * R) continue;
+      const [x, y] = to(s.x, s.z);
+      ctx.fillStyle = BUILD_COL[s.building] || '#caa878'; ctx.beginPath(); ctx.arc(x, y, 3.4, 0, 7); ctx.fill();
+      ctx.fillStyle = '#08161c'; ctx.fillText(BUILD_ICON[s.building] || '?', x, y + 0.5);
+    }
+    ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#5fe3ff'; for (const n of G.entities.npcs) { const dx = n.pos.x - px, dz = n.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 1.7, 0, 7); ctx.fill(); }
     for (const e of G.entities.enemies) { if (!e.alive) continue; const dx = e.pos.x - px, dz = e.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 3 : 1.7, 0, 7); ctx.fill(); }
     if (G.questGuide) { const [x, y] = to(G.questGuide.x, G.questGuide.z); ctx.fillStyle = '#6db3ff'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#ffffff'; ctx.stroke(); }

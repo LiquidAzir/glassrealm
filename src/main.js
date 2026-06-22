@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createEngine } from './engine.js';
 import { createInput } from './input.js';
+import { createControls } from './controls.js';
 import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
 import { createEntities } from './entities.js';
@@ -30,6 +31,7 @@ try {
   const world = createWorld(engine.scene);
   const player = createPlayer(engine.scene, world);
   const input = createInput();
+  createControls({ app: document.getElementById('app'), canvas, input });
 
   G.engine = engine; G.world = world; G.player = player; G.input = input;
   G.skills = createSkills(saved && saved.skills, saved && saved.prestige);
@@ -387,6 +389,22 @@ try {
     else { restartArmed = now; G.ui.toast('Tap Restart again to confirm — this wipes your save!', 'bad', 4500); }
   };
 
+  // ---------- portable cross-device saves (copy a code between glasses / phone / PC) ----------
+  G.exportSave = () => {
+    G.save.save();
+    const code = G.save.exportCode();
+    if (!code) { G.ui.toast('Could not export save.', 'bad', 2200); return; }
+    const ok = () => G.ui.toast('Save code copied! Paste it via Import on another device.', 'good', 5000);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(ok, () => window.prompt('Copy your save code:', code));
+    else window.prompt('Copy your save code:', code);
+  };
+  G.importSave = () => {
+    const code = window.prompt('Paste a GlassRealm save code from another device:');
+    if (!code) return;
+    if (G.save.importCode(code)) { G.ui.toast('Save loaded — reloading…', 'good', 1500); setTimeout(() => location.reload(), 700); }
+    else G.ui.toast('That save code was invalid.', 'bad', 3200);
+  };
+
   // ---------- enter / exit buildings ----------
   const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge' };
   G.enterBuilding = (door) => {
@@ -539,6 +557,8 @@ try {
 
   input.on((a) => {
     G.audio.resume();
+    // direct menu toggle (touch ☰ button / future bindings) — no wiggle needed
+    if (a === 'menu') { if (mode === 'world' || mode === 'interior') openMenu(); else exitOverlay(); return; }
     // ↑↓↑↓ wiggle: opens the menu in the world (so a stray swipe-down never opens it) and closes any overlay
     if ((a === 'up' || a === 'down') && backGesture(a)) {
       backSeq = [];

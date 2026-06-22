@@ -53,6 +53,9 @@ export function createInput(target = window) {
     }
   }
 
+  // Held-direction control for on-screen / touch d-pads (press-and-hold to walk).
+  function setHeld(dir, on) { if (on) keys.add(dir); else keys.delete(dir); }
+
   // If focus is lost (e.g. app backgrounded) drop held keys so the player doesn't
   // walk forever.
   function clearHeld() { keys.clear(); }
@@ -65,6 +68,7 @@ export function createInput(target = window) {
     keys,
     on(cb) { handlers.push(cb); return () => { const i = handlers.indexOf(cb); if (i >= 0) handlers.splice(i, 1); }; },
     emit, // drive a semantic action directly (used by tests / alt input sources)
+    setHeld,
     clearHeld,
     destroy() {
       target.removeEventListener('keydown', onKeyDown);

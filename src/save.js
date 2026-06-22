@@ -35,5 +35,15 @@ export function createSave(G) {
   return {
     save() { try { localStorage.setItem(KEY, JSON.stringify(snapshot())); } catch (e) {} },
     clear() { try { localStorage.removeItem(KEY); } catch (e) {} },
+    // Portable save string so the same game can move across glasses / phone / PC.
+    exportCode() { try { return btoa(unescape(encodeURIComponent(JSON.stringify(snapshot())))); } catch (e) { return ''; } },
+    importCode(code) {
+      try {
+        const obj = JSON.parse(decodeURIComponent(escape(atob((code || '').trim()))));
+        if (!obj || !obj.player || !obj.skills) return false;
+        localStorage.setItem(KEY, JSON.stringify(obj));
+        return true;
+      } catch (e) { return false; }
+    },
   };
 }

@@ -26,8 +26,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
-  width: 600px;
-  height: 600px;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: var(--bg);              /* transparent on the additive display */
   color: var(--text);
@@ -38,12 +38,49 @@ html, body {
   touch-action: none;
 }
 
+/* On glasses the viewport is exactly 600x600 (scale 1). On phone/PC the 600x600
+   logical app is centred and uniformly scaled (by controls.js fit()) to fit. */
+body { display: flex; align-items: center; justify-content: center; }
+
 #app {
   position: relative;
   width: 600px;
   height: 600px;
+  flex: 0 0 auto;
   overflow: hidden;
+  transform-origin: center center;
 }
+
+/* ---------- Touch / on-screen controls (phone + clickable on PC) ---------- */
+#touchPad { position: absolute; inset: 0; pointer-events: none; z-index: 30; }
+#touchPad .tcbtn {
+  position: absolute; pointer-events: auto;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(14, 20, 28, 0.42); color: var(--accent);
+  border: 1.5px solid rgba(95, 227, 255, 0.45); border-radius: 14px;
+  font-size: 20px; font-weight: 700; backdrop-filter: blur(2px);
+  -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none;
+}
+#touchPad .tcbtn.on { background: rgba(95, 227, 255, 0.32); color: #fff; transform: scale(0.94); }
+#dpad { position: absolute; left: 18px; bottom: 18px; width: 168px; height: 168px; }
+#dpad .tcbtn { width: 54px; height: 54px; }
+#dpad .d-up { left: 57px; top: 0; }
+#dpad .d-down { left: 57px; bottom: 0; }
+#dpad .d-left { left: 0; top: 57px; }
+#dpad .d-right { right: 0; top: 57px; }
+#actpad { position: absolute; right: 18px; bottom: 22px; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+#actpad .act-tap { width: 84px; height: 84px; border-radius: 50%; font-size: 18px; color: var(--gold); border-color: rgba(255, 212, 95, 0.5); background: rgba(40, 30, 12, 0.42); }
+#actpad .act-menu { width: 54px; height: 54px; align-self: center; }
+#tcToggle {
+  position: absolute; top: 8px; right: 132px; z-index: 31; pointer-events: auto;
+  width: 30px; height: 30px; border-radius: 9px; font-size: 15px;
+  background: rgba(14, 20, 28, 0.5); border: 1px solid var(--surface-line);
+  -webkit-tap-highlight-color: transparent; touch-action: none;
+}
+#tcToggle.dim { opacity: 0.4; }
+
+.map-legend { margin-top: 8px; font-size: 11px; line-height: 1.7; color: var(--text-mut); text-align: center; }
+.map-legend b { font-weight: 800; }
 
 #game {
   position: absolute;
