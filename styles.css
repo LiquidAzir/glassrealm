@@ -472,8 +472,19 @@ html, body {
   100% { opacity: 0; transform: translate(-50%, -220%) scale(1); }
 }
 
+/* Minimap (top-right) */
+#minimap {
+  position: absolute;
+  top: var(--safe); right: var(--safe);
+  width: 116px; height: 116px;
+  border-radius: 50%;
+  border: 1px solid var(--surface-line);
+  background: #08222a;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.6);
+}
+
 #xpdrops {
-  position: absolute; top: 78px; right: 10px;
+  position: absolute; top: 134px; right: 10px;
   display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
   pointer-events: none; z-index: 11;
 }

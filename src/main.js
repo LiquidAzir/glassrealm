@@ -599,12 +599,14 @@ try {
       const il = [];
       for (const s of (G.interiorStations || [])) il.push({ id: 'is_' + s.kind + Math.round(s.x) + Math.round(s.z), x: s.x, y: s.y + 2.2, z: s.z, kind: s.kind === 'exit' ? 'quest' : 'item', pip: STATION_PIP[s.kind] || '◆', label: s.label });
       G.ui.setQuestArrow(null);
+      G.questGuide = null;
       G.ui.updateMarkers(il);
       return;
     }
     const list = [];
     const p = player.position;
     const guide = mode === 'world' ? questTarget() : null;
+    G.questGuide = guide;   // shared with the minimap
     if (guide) {
       list.push({ id: 'questguide', x: guide.x, y: guide.y, z: guide.z, kind: 'questguide', pip: '◈', label: guide.label });
       let rel = Math.atan2(guide.x - p.x, guide.z - p.z) - player.state.heading;
@@ -631,7 +633,7 @@ try {
   }
 
   // ---------- loop ----------
-  let running = true, tod = 0.32;
+  let running = true, tod = 0.32, mmTick = 0;
   function frame() {
     if (!running) return;
     const dt = Math.min(engine.clock.getDelta(), 0.05);
@@ -673,6 +675,8 @@ try {
     player.updateCamera(engine.camera, dt);
     G.ui.setCompass(player.state.heading);
     if (mode === 'world' || mode === 'interior') updateMarkers();   // markers are hidden behind overlays
+    if (mode === 'interior') G.ui.setMinimapVisible(false);
+    else { G.ui.setMinimapVisible(true); if (mode === 'world') { mmTick++; if (mmTick % 3 === 0) G.ui.updateMinimap(); } }
     engine.renderer.render(engine.scene, engine.camera);
     requestAnimationFrame(frame);
   }

@@ -47,6 +47,12 @@ export function createUI(G) {
     qgArrow.style.transform = `rotate(${rad}rad)`;
     qgLabel.textContent = label + (dist != null ? `  ·  ${dist}m` : '');
   }
+
+  // minimap (top-right) — a live local map centred on the player
+  const minimap = document.createElement('canvas'); minimap.id = 'minimap'; minimap.width = 116; minimap.height = 116;
+  document.getElementById('hud').appendChild(minimap);
+  const mmCtx = minimap.getContext('2d');
+  function setMinimapVisible(on) { minimap.style.display = on ? '' : 'none'; }
   function showPrompt(t) { els.promptText.textContent = t; els.prompt.classList.remove('hidden'); }
   function hidePrompt() { els.prompt.classList.add('hidden'); }
   function toast(text, type = '', ms = 2400) {
@@ -269,6 +275,30 @@ export function createUI(G) {
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(5, 5); ctx.lineTo(-5, 5); ctx.closePath(); ctx.fill(); ctx.restore();
   }
 
+  function updateMinimap() {
+    const ctx = mmCtx, S = 116, R = 75;                       // 116px canvas shows ~75 world units around the player
+    const px = G.player.position.x, pz = G.player.position.z, sc = (S / 2) / R;
+    const to = (x, z) => [S / 2 + (x - px) * sc, S / 2 + (z - pz) * sc];
+    ctx.clearRect(0, 0, S, S);
+    ctx.save(); ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 1, 0, 7); ctx.clip();
+    ctx.fillStyle = '#08222a'; ctx.fillRect(0, 0, S, S);
+    for (const r of G.world.regions) { const [x, y] = to(r.x, r.z); ctx.fillStyle = BIOME_MAP_COL[r.biome] || '#2f7d4a'; ctx.beginPath(); ctx.arc(x, y, r.r * sc, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = '#cdb98a'; ctx.lineCap = 'round';
+    for (const b of G.world.bridges) { const [x1, y1] = to(b.ax, b.az), [x2, y2] = to(b.bx, b.bz); ctx.lineWidth = Math.max(2, b.halfW * 2 * sc); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    if (G.world.dungeons) { ctx.fillStyle = '#7a4a8a'; for (const d of G.world.dungeons) { const [x, y] = to(d.x, d.z); ctx.beginPath(); ctx.arc(x, y, Math.max(2, d.r * sc), 0, 7); ctx.fill(); } }
+    { const cv = G.world.cave; const [x, y] = to(cv.x, cv.z); ctx.fillStyle = '#5a5550'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, cv.r * sc), 0, 7); ctx.fill(); }
+    if (G.world.cave2) { const c2 = G.world.cave2; const [x, y] = to(c2.x, c2.z); ctx.fillStyle = '#5a6a80'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, c2.r * sc), 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#ffd45f'; for (const v of G.world.villages) { const [x, y] = to(v.x, v.z); ctx.fillRect(x - 2, y - 2, 4, 4); }
+    ctx.fillStyle = '#5fe3ff'; for (const n of G.entities.npcs) { const dx = n.pos.x - px, dz = n.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 1.7, 0, 7); ctx.fill(); }
+    for (const e of G.entities.enemies) { if (!e.alive) continue; const dx = e.pos.x - px, dz = e.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 3 : 1.7, 0, 7); ctx.fill(); }
+    if (G.questGuide) { const [x, y] = to(G.questGuide.x, G.questGuide.z); ctx.fillStyle = '#6db3ff'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#ffffff'; ctx.stroke(); }
+    ctx.restore();
+    ctx.strokeStyle = '#243240'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 1, 0, 7); ctx.stroke();
+    ctx.save(); ctx.translate(S / 2, S / 2); ctx.rotate(Math.PI - G.player.state.heading);
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(4, 4); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.fillStyle = '#5fe3ff'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('N', S / 2, 11);
+  }
+
   // ---- picker (shop / forge / bank) — generic list overlay ----
   const pickerEl = document.createElement('div'); pickerEl.id = 'shop'; pickerEl.className = 'overlay hidden';
   pickerEl.innerHTML = '<div class="panel"><div class="tabs"><div class="tab sel" style="flex:2" id="pickerTitle">Shop</div><div class="tab" id="pickerGold">🪙 0</div></div><div class="menu-body" id="pickerBody"></div><div class="hint" id="pickerHint">↑ ↓ select &nbsp;·&nbsp; tap &nbsp;·&nbsp; ↑↓↑↓ leave</div></div>';
@@ -312,7 +342,7 @@ export function createUI(G) {
 
   const api = {
     menuOpen: false,
-    setCompass, setHealth, setLocation, setPrayer, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers,
+    setCompass, setHealth, setLocation, setPrayer, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible,
     hitsplat, xpDrop, levelBanner,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,
