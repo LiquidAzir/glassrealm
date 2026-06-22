@@ -53,6 +53,14 @@ export const ITEMS = {
   rune_amulet:  { name: 'Runed Amulet', icon: '📿', type: 'amulet', bonus: { magic: 10 },        desc: 'Enchanted. +10 magic.' },
   // Construction — Woodcutting feeds your home: saw logs into planks, build home furniture/services.
   plank:        { name: 'Plank', icon: '🪵', type: 'material', desc: 'Sawn from logs at a sawmill. Build home furniture.' },
+  // Potions (Herblore, brewed at a cauldron) — timed combat buffs + cures. Drunk from the pack.
+  strength_potion: { name: 'Strength Potion', icon: '🧪', type: 'potion', buff: 'strength', mult: 1.18, dur: 90, col: 0xff6a4a, desc: 'Drink: +18% melee damage for 90s.' },
+  ranging_potion:  { name: 'Ranging Potion',  icon: '🧪', type: 'potion', buff: 'ranging',  mult: 1.18, dur: 90, col: 0x6ad06a, desc: 'Drink: +18% ranged damage for 90s.' },
+  magic_potion:    { name: 'Magic Potion',    icon: '🧪', type: 'potion', buff: 'magic',    mult: 1.18, dur: 90, col: 0x6a9aff, desc: 'Drink: +18% magic damage for 90s.' },
+  defence_potion:  { name: 'Defence Potion',  icon: '🧪', type: 'potion', buff: 'defence',  mult: 0.82, dur: 90, col: 0xc0c8d6, desc: 'Drink: take 18% less damage for 90s.' },
+  antidote:        { name: 'Antidote',        icon: '🧴', type: 'potion', cure: 'poison',   dur: 120, col: 0x9ad06a, desc: 'Drink: cures poison + 120s immunity.' },
+  venom_flask:     { name: 'Venom Flask',     icon: '🧪', type: 'potion', buff: 'venom',     mult: 1, dur: 60, col: 0x6ad06a, desc: 'Drink: your hits poison foes for 60s.' },
+  prayer_potion:   { name: 'Prayer Potion',   icon: '🧪', type: 'potion', restorePrayer: 40, col: 0xffe066, desc: 'Drink: restore 40 prayer.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -177,7 +185,16 @@ export const SMELT = [
 ];
 export const COOK = { raw_shrimp: 'cooked_shrimp', raw_trout: 'cooked_trout', crop: 'cooked_greens' };
 // Herblore brewing (cauldron) and Prayer buffs.
-export const BREW = [{ in: { herb: 1 }, out: 'strong_potion', xp: 32 }];
+export const BREW = [
+  { in: { herb: 1 }, out: 'strong_potion', xp: 32, level: 1 },
+  { in: { herb: 1, berry: 2 }, out: 'antidote', xp: 36, level: 4 },
+  { in: { herb: 1, bone_shard: 1 }, out: 'strength_potion', xp: 44, level: 6 },
+  { in: { herb: 1, feather: 2 }, out: 'ranging_potion', xp: 44, level: 8 },
+  { in: { herb: 1, rune_essence: 1 }, out: 'magic_potion', xp: 48, level: 10 },
+  { in: { herb: 1, iron_ore: 1 }, out: 'defence_potion', xp: 50, level: 12 },
+  { in: { herb: 1, vine_coil: 1 }, out: 'venom_flask', xp: 54, level: 16 },
+  { in: { herb: 1, bones: 1 }, out: 'prayer_potion', xp: 58, level: 18 },
+];
 export const PRAYERS = [
   { key: 'stoneskin', name: 'Stone Skin', level: 1,  drain: 0.5, dmgTaken: 0.7, desc: 'Take 30% less damage.' },
   { key: 'keenedge',  name: 'Keen Edge',  level: 8,  drain: 0.6, dmgDealt: 1.2, desc: 'Deal 20% more damage.' },
@@ -330,7 +347,7 @@ export const ENEMIES = {
   wolf:   { name: 'Grey Wolf',    hp: 36,  dmg: 9,  speed: 4.6, xp: 85,  color: 0x9aa0a8, aggro: 13, shape: 'beast',    loot: { pelt: 1, meat: 1, bones: 1 } },
   bandit: { name: 'Ashen Bandit', hp: 52,  dmg: 13, speed: 3.9, xp: 130, color: 0x8a6f9a, aggro: 12, shape: 'humanoid', loot: { gold: 18, coal: 1, bones: 1 } },
   frost_wolf: { name: 'Frost Wolf',  hp: 60, dmg: 15, speed: 4.8, xp: 165, color: 0xcfe0f2, aggro: 14, shape: 'beast', loot: { pelt: 1, bones: 1, coal: 1 } },
-  scorpion:   { name: 'Sand Scorpion', hp: 46, dmg: 12, speed: 3.6, xp: 120, color: 0xd8a85a, aggro: 11, shape: 'beast', loot: { bones: 1, iron_ore: 1 } },
+  scorpion:   { name: 'Sand Scorpion', hp: 46, dmg: 12, speed: 3.6, xp: 120, color: 0xd8a85a, aggro: 11, shape: 'beast', poison: 3, loot: { bones: 1, iron_ore: 1 } },
   ember_boss: { name: 'Emberfang', hp: 170, dmg: 22, speed: 3.7, xp: 520, color: 0xff5a2a, aggro: 18, shape: 'beast', scale: 1.9, boss: true, loot: { gold: 140, relic: 1, iron_ore: 5, bones: 3 }, rare: { item: 'emberheart_amulet', chance: 0.3 } },
   sandwyrm:     { name: 'Sandwyrm',     hp: 220, dmg: 24, speed: 3.4, xp: 640, color: 0xd8a85a, aggro: 18, shape: 'beast',    scale: 2.1, boss: true, loot: { gold: 180, sun_blade: 1, ruby: 1, bones: 4 }, rare: { item: 'wyrmscale_ring', chance: 0.3 } },
   frost_warden: { name: 'Frost Warden', hp: 240, dmg: 26, speed: 3.6, xp: 700, color: 0xbfe0ff, aggro: 18, shape: 'humanoid', scale: 1.8, boss: true, loot: { gold: 200, frost_staff: 1, sapphire: 2, bones: 4 }, rare: { item: 'frostguard_amulet', chance: 0.3 } },
@@ -358,9 +375,9 @@ export const ENEMIES = {
 
   // Kytari Jungle / Overgrown Ziggurat + Glimmer Cavern
   jungle_panther: { name: 'Jungle Panther', hp: 72,  dmg: 17, speed: 5.2, xp: 175, color: 0x2a2d33, aggro: 14, shape: 'beast',    loot: { pelt: 2, meat: 1 } },
-  serpent:        { name: 'Coil Serpent',   hp: 64,  dmg: 16, speed: 4.0, xp: 165, color: 0x3f9a4a, aggro: 12, shape: 'beast', scale: 0.8, loot: { vine_coil: 1, bones: 1 } },
+  serpent:        { name: 'Coil Serpent',   hp: 64,  dmg: 16, speed: 4.0, xp: 165, color: 0x3f9a4a, aggro: 12, shape: 'beast', scale: 0.8, poison: 4, loot: { vine_coil: 1, bones: 1 } },
   glimmer_bat:    { name: 'Glimmer Bat',    hp: 56,  dmg: 14, speed: 5.0, xp: 150, color: 0x9bd0ff, aggro: 13, shape: 'beast', scale: 0.7, loot: { crystal_shard: 1 } },
-  jorath:         { name: 'Jorath the Coiled', hp: 330, dmg: 30, speed: 4.0, xp: 880, color: 0x2f8a3e, aggro: 18, shape: 'beast', scale: 2.3, boss: true, loot: { gold: 280, coilfang_spear: 1, vine_coil: 4, emerald: 2 }, rare: { item: 'serpent_eye', chance: 0.3 } },
+  jorath:         { name: 'Jorath the Coiled', hp: 330, dmg: 30, speed: 4.0, xp: 880, color: 0x2f8a3e, aggro: 18, shape: 'beast', scale: 2.3, boss: true, poison: 6, loot: { gold: 280, coilfang_spear: 1, vine_coil: 4, emerald: 2 }, rare: { item: 'serpent_eye', chance: 0.3 } },
   // Scorched Wastes / The Ashpit
   scorchling: { name: 'Scorchling', hp: 60,  dmg: 16, speed: 4.6, xp: 160, color: 0xff7a3a, aggro: 13, shape: 'beast', scale: 0.8, loot: { coal: 1, demon_ash: 1 } },
   ash_hound:  { name: 'Ash Hound',  hp: 108, dmg: 22, speed: 4.6, xp: 250, color: 0x8a3a2a, aggro: 14, shape: 'beast', scale: 1.3, loot: { demon_ash: 1, coal: 3 } },

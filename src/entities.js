@@ -140,6 +140,12 @@ export function createEntities(scene, world, G) {
       }
       if (e.hurtFlash > 0) e.hurtFlash -= dt;
       if (e.atkAnim > 0) e.atkAnim -= dt;
+      if (e.dot) {   // poison/burn damage-over-time applied by the player
+        e.dot.t -= dt; e.dot.tick -= dt;
+        if (e.dot.tick <= 0) { e.dot.tick = 1.5; damageEnemy(e, e.dot.dmg); if (G.fx) G.fx.burst(e.pos.x, e.pos.y + 1.2, e.pos.z, e.dot.kind === 'burn' ? 0xff7a33 : 0x6ad06a, { n: 5, up: 1.6 }); }
+        if (e.dot.t <= 0) e.dot = null;
+        if (!e.alive) continue;
+      }
       const d = dist2D(e.pos.x, e.pos.z, player.position.x, player.position.z);
       if (d > 70 * WS) { e.group.rotation.z = 0; continue; }   // cull far-away AI — perf with 50+ spawns
       // peaceful by default (RuneScape-style) — chase/attack only once provoked by being

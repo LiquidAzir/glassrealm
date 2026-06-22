@@ -150,7 +150,7 @@ export function createUI(G) {
   function menuSelect() {
     if (TABS[tab] === 'Inventory') {
       const it = G.inventory.list()[row];
-      if (it && it.def.type === 'consumable') { G.useItem(it.key); renderMenu(); }
+      if (it && (it.def.type === 'consumable' || it.def.type === 'potion')) { G.useItem(it.key); renderMenu(); }
     } else if (TABS[tab] === 'Gear') {
       const r = gearRows()[row]; if (r) { G.equipChoice(r); renderMenu(); }
     } else if (TABS[tab] === 'Prayer') {
@@ -231,7 +231,7 @@ export function createUI(G) {
     const items = G.inventory.list();
     let html = `<div class="section-head">Pouch &nbsp;·&nbsp; 🪙 ${gold} Gold</div>`;
     if (!items.length) html += `<div class="empty-note">Your pack is empty. Chop trees, forage bushes, and defeat boars to gather loot.</div>`;
-    else html += items.map((it, i) => `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${it.def.icon}</span><div class="row-main"><div class="row-title">${it.def.name}</div><div class="row-sub">${it.def.desc}${it.def.type === 'consumable' ? ' · tap to use' : ''}</div></div><div class="row-trail">×${it.count}</div></div>`).join('');
+    else html += items.map((it, i) => `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${it.def.icon}</span><div class="row-main"><div class="row-title">${it.def.name}</div><div class="row-sub">${it.def.desc}${(it.def.type === 'consumable' || it.def.type === 'potion') ? ' · tap to use' : ''}</div></div><div class="row-trail">×${it.count}</div></div>`).join('');
     els.menuBody.innerHTML = html;
   }
   function renderSkills() {

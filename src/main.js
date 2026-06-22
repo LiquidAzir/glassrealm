@@ -255,12 +255,7 @@ try {
       G.ui.toast(b > 0 ? `Buried ${b} bones · prayer restored` : 'Prayer restored', 'good', 2000);
       G.save.save(); return;
     } else if (s.kind === 'cauldron') {
-      let n = 0;
-      for (const r of BREW) {
-        while (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k]))) { for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(r.out, 1); G.gainXp('herblore', r.xp); n++; }
-      }
-      G.ui.toast(n ? `Brewed ${n} Strong Salve${n > 1 ? 's' : ''}` : 'Need Glimmerleaf to brew', n ? 'good' : '', 2000);
-      G.save.save(); return;
+      G.openBrew(); return;
     } else if (s.kind === 'chest') {
       if (s.looted) { G.ui.toast('The chest is empty.', '', 1500); return; }
       s.looted = true;
@@ -294,6 +289,11 @@ try {
     let dmg = Math.round(4 + G.skills.level(w.skill) * 1.2 + w.bonus + (gb[sk] || 0));
     if (w.style === 'ranged') { let arrow = null; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'ammo' && (!arrow || d.bonus > arrow.def.bonus)) arrow = it; } if (arrow) { G.inventory.remove(arrow.key, 1); dmg += arrow.def.bonus; } }   // fire your best arrows for bonus damage
     if (w.style === 'magic') { let rune = null; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'rune' && (!rune || d.bonus > rune.def.bonus)) rune = it; } if (rune) { G.inventory.remove(rune.key, 1); dmg += rune.def.bonus; } }   // channel your strongest runes
+    const bf = player.state.buffs;   // combat potions multiply your damage
+    if (bf) { if (w.style === 'ranged' && bf.ranging) dmg = Math.round(dmg * bf.ranging.mult); else if (w.style === 'magic' && bf.magic) dmg = Math.round(dmg * bf.magic.mult); else if (bf.strength && w.style !== 'ranged' && w.style !== 'magic') dmg = Math.round(dmg * bf.strength.mult); }
+    // status: magic hits may burn; a Venom Flask makes melee/ranged hits poison the foe (DoT ticked in entities.js)
+    if (w.style === 'magic' && Math.random() < 0.3) e.dot = { kind: 'burn', dmg: Math.max(2, Math.round(dmg * 0.25)), t: 6, tick: 1.5 };
+    else if (bf && bf.venom && w.style !== 'magic') e.dot = { kind: 'poison', dmg: 4, t: 8, tick: 1.5 };
     const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
     const hitY = e.pos.y + 1.5 * (e.baseScale || 1);
@@ -321,8 +321,9 @@ try {
   }
 
   G.useItem = (key) => {
-    const def = ITEMS[key];
-    if (!def || def.type !== 'consumable') return;
+    const def = ITEMS[key]; if (!def) return;
+    if (def.type === 'potion') { G.drinkPotion(key, def); return; }
+    if (def.type !== 'consumable') return;
     if (player.state.hp >= player.state.maxHp) { G.ui.toast('Already at full health'); return; }
     player.state.hp = Math.min(player.state.maxHp, player.state.hp + def.heal);
     G.inventory.remove(key, 1);
@@ -330,6 +331,16 @@ try {
     G.ui.toast(`Used ${def.name} (+${def.heal} HP)`, 'good', 1600);
     G.fx.burst(player.position.x, player.position.y + 1.5, player.position.z, 0x7CFFB0, { n: 9, up: 2.6 });
     G.save.save();
+  };
+  G.drinkPotion = (key, def) => {
+    const st = player.state, b = st.buffs || (st.buffs = {});
+    if (def.buff) b[def.buff] = { mult: def.mult, t: def.dur };
+    if (def.cure === 'poison') { st.poison = null; b.antipoison = { t: def.dur || 120 }; }
+    if (def.restorePrayer) { st.prayer = Math.min(st.maxPrayer, st.prayer + def.restorePrayer); G.ui.setPrayer(st.prayer, st.maxPrayer); }
+    if (def.heal) { st.hp = Math.min(st.maxHp, st.hp + def.heal); G.ui.setHealth(st.hp, st.maxHp); }
+    G.inventory.remove(key, 1);
+    if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.7, player.position.z, def.col || 0x7cffb0, { n: 10, up: 2.6 });
+    G.ui.toast(`Drank ${def.name}`, 'good', 1700); G.audio.sfx('pickup'); G.save.save();
   };
 
   G.buyItem = (key) => {
@@ -452,6 +463,31 @@ try {
       let made = 0;
       while (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k]))) { for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(out, 1); G.gainXp('smithing', r.xp); made++; }
       if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xff7a33, { n: 12, spread: 2.2, up: 3, life: 0.8 }); G.ui.toast(`Smelted ${made} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
+    });
+  };
+
+  // ---------- interactive herblore: brew potions at a cauldron (level-gated, herb + secondary) ----------
+  const maxBrew = (r) => { let m = Infinity; for (const k in r.in) m = Math.min(m, Math.floor(G.inventory.count(k) / r.in[k])); return m; };
+  const brewCfg = {
+    title: 'Cauldron — Herblore', hint: '↑ ↓ select · tap to brew · ↑↓↑↓ leave', empty: 'Forage Glimmerleaf (herbs) + a secondary to brew.',
+    rows: () => BREW.map((r) => {
+      const locked = G.skills.level('herblore') < (r.level || 1), n = maxBrew(r);
+      if (n < 1 && !locked) return null;
+      return { section: 'Brew potions', icon: ITEMS[r.out].icon, title: ITEMS[r.out].name, sub: Object.keys(r.in).map((k) => `${r.in[k]}× ${ITEMS[k].name}`).join(' + ') + (locked ? ` · needs Herblore ${r.level}` : ''), right: locked ? '🔒' : `×${n}`, data: { out: r.out } };
+    }).filter(Boolean),
+    onSelect: (r) => { G.closePicker(); G.brewItem(r.data.out); },
+  };
+  G.openBrew = () => { setMode('picker'); G.ui.openPicker(brewCfg); };
+  G.brewItem = (out) => {
+    if (G.channel) return;
+    const r = BREW.find((x) => x.out === out); if (!r) return;
+    if (G.skills.level('herblore') < (r.level || 1)) { G.ui.toast(`Needs Herblore level ${r.level}`, 'bad', 2000); return; }
+    if (maxBrew(r) < 1) return;
+    const dur = Math.max(1.6, Math.min(6, maxBrew(r) * 0.9));
+    startChannel(dur, 'forage', `Brewing ${ITEMS[out].name}…`, () => {
+      let made = 0;
+      while (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k])) && made < 40) { for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(out, 1); G.gainXp('herblore', r.xp); made++; }
+      if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0x7cffb0, { n: 12, spread: 2.2, up: 3, life: 0.9 }); G.ui.toast(`Brewed ${made} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
     });
   };
 
@@ -722,16 +758,19 @@ try {
   };
 
   let hurtFlash = 0;
-  G.damagePlayer = (amount) => {
+  G.damagePlayer = (amount, src) => {
     if (player.state.hp <= 0) return;
     const defv = gearBonus().def;
     let taken = Math.max(1, Math.round(amount - defv * 0.6));
     const apT = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apT && apT.dmgTaken) taken = Math.max(1, Math.round(taken * apT.dmgTaken));
+    const bf = player.state.buffs;
+    if (bf && bf.defence) taken = Math.max(1, Math.round(taken * bf.defence.mult));   // defence potion soaks damage
     player.state.hp -= taken;
     hurtFlash = 0.25;
     G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, taken, 'player');
     G.audio.sfx('hurt');
+    if (src && src.def && src.def.poison && !(bf && bf.antipoison) && !player.state.poison) { player.state.poison = { dmg: src.def.poison, t: 12, tick: 2 }; G.ui.toast('You are poisoned!', 'bad', 1600); }
     G.gainXp('defence', Math.max(1, Math.round(taken * 0.6)));
     G.ui.setHealth(player.state.hp, player.state.maxHp);
     if (player.state.hp <= 0) {
@@ -853,6 +892,21 @@ try {
     G.ui.setChannel(0, label);
   }
   function cancelChannel() { if (G.channel) { G.channel = null; G.ui.hideChannel(); } }
+  function updateStatus(dt) {   // tick combat-potion buffs + poison damage-over-time on the player
+    const st = player.state, b = st.buffs;
+    if (b) for (const k in b) { b[k].t -= dt; if (b[k].t <= 0) delete b[k]; }
+    if (st.poison) {
+      if (b && b.antipoison) { st.poison = null; return; }
+      st.poison.t -= dt; st.poison.tick -= dt;
+      if (st.poison.tick <= 0) {
+        st.poison.tick = 2; st.hp = Math.max(1, st.hp - st.poison.dmg);
+        G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, st.poison.dmg, 'player');
+        G.ui.setHealth(st.hp, st.maxHp);
+        if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0x6ad06a, { n: 5, up: 1.6 });
+      }
+      if (st.poison.t <= 0) st.poison = null;
+    }
+  }
   function updateChannel(dt) {
     const c = G.channel; if (!c) return;
     if (player.state.moving) { cancelChannel(); return; }   // any motion (incl. a held touch d-pad) stops gathering
@@ -994,6 +1048,7 @@ try {
       G.fx.update(dt);
       updateChannel(dt);
       updateCombat();
+      updateStatus(dt);
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -1011,6 +1066,7 @@ try {
       G.fx.update(dt);
       updateChannel(dt);
       updateCombat();
+      updateStatus(dt);
       G.currentTarget = G.interact.best();
       updatePrompt();
     }
@@ -1064,7 +1120,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);
