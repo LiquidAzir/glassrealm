@@ -116,6 +116,16 @@ export const ITEMS = {
   iron_shield:   { name: 'Iron Shield',   icon: '🛡️', type: 'shield', defense: 10, desc: 'A heavy iron shield. Blocks 10 damage.' },
   steel_shield:  { name: 'Steel Shield',  icon: '🛡️', type: 'shield', defense: 16, desc: 'A broad steel shield. Blocks 16 damage.' },
 
+  // --- Expansion III: coastal (Saltcrest) + barrow (Amberfell) materials & gear ---
+  barnacle_plate: { name: 'Barnacle Plate', icon: '🦪', type: 'material', desc: 'Crusted shell-plate from the drowned — used in coastal smithing.' },
+  grave_iron:     { name: 'Grave Iron',     icon: '⚰️', type: 'material', desc: 'Cold iron pried from a barrow. It never warms.' },
+  corsair_cutlass: { name: 'Corsair Cutlass', icon: '⚔️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 17, range: 2.7, speed: 0.42, desc: 'A pirate-king’s blade. +17 melee.' },
+  mariner_plate:   { name: 'Mariner Plate',   icon: '🛡️', type: 'armor',  defense: 14, desc: 'Salt-cured plate. -14 damage taken.' },
+  barnacle_shield: { name: 'Barnacle Shield', icon: '🛡️', type: 'shield', defense: 13, desc: 'A reinforced harbour shield. Blocks 13 damage.' },
+  barrow_blade:    { name: 'Barrow Blade',    icon: '⚔️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 16, range: 2.8, speed: 0.44, desc: 'A wight’s cold greatblade. +16 melee.' },
+  grave_plate:     { name: 'Grave Warden Plate', icon: '🛡️', type: 'armor', defense: 16, desc: 'Barrow-iron plate. -16 damage taken.' },
+  wight_crown:     { name: 'Wight Crown',     icon: '👑', type: 'amulet', bonus: { melee: 8, def: 6 }, desc: 'A barrow-king’s crown. +8 melee, +6 defence.' },
+
   // --- tavern fare (bought from a Tavern Keeper) ---
   ale:             { name: 'Frothy Ale',      icon: '🍺', type: 'consumable', heal: 18, desc: 'A foaming mug. Restores 18 HP.' },
   spiced_mead:     { name: 'Spiced Mead',     icon: '🍯', type: 'consumable', heal: 26, desc: 'Warm and sweet. Restores 26 HP.' },
@@ -154,6 +164,10 @@ export const CRAFT = [
   { out: 'tideheart_amulet',    cost: { pearl: 2, emerald: 2 }, xp: 220 },
   { out: 'verdant_charm',       cost: { vine_coil: 3, fae_dust: 2 }, xp: 210 },
   { out: 'stormforged_ring',    cost: { storm_shard: 3, iron_bar: 2 }, xp: 200 },
+  { out: 'mariner_plate',   cost: { barnacle_plate: 3, pearl: 2 }, xp: 200 },
+  { out: 'barnacle_shield', cost: { barnacle_plate: 3, sapphire: 2 }, xp: 180 },
+  { out: 'barrow_blade',    cost: { grave_iron: 2, ruby: 2 }, xp: 210 },
+  { out: 'grave_plate',     cost: { grave_iron: 3, emerald: 2 }, xp: 220 },
 ];
 export const SETS = {
   guardian: { name: 'Guardian', def: 10, melee: 8, maxhp: 20 },
@@ -205,6 +219,11 @@ export const NPCS = [
   { key: 'sefu',   name: 'Chronicler Sefu', color: 0xe3c277, pos: { x: 30, z: 108 },  dialogue: 'saga_sefu' },
   { key: 'itzel',  name: 'Wayfarer Itzel',  color: 0x4fd06a, pos: { x: 180, z: 32 },  dialogue: 'saga_itzel' },
   { key: 'ardith', name: 'Seer Ardith',     color: 0xc6a8ff, pos: { x: -29, z: -104 }, dialogue: 'saga_ardith' },
+  // Expansion III — Saltcrest Harbor (south) + Amberfell (north)
+  { key: 'harbormaster', name: 'Harbourmaster Dell', color: 0x6fd0ff, pos: { x: 86, z: 185 },  dialogue: 'harbormaster' },
+  { key: 'corsair',      name: 'Old Corsair Sabine', color: 0xe0c060, pos: { x: 74, z: 185 },  dialogue: 'saga_corsair' },
+  { key: 'amberwarden',  name: 'Warden Rowan',       color: 0xe0852e, pos: { x: 56, z: -160 }, dialogue: 'amberwarden' },
+  { key: 'loreseeker',   name: 'Loreseeker Wynn',    color: 0xc6a8ff, pos: { x: 44, z: -160 }, dialogue: 'saga_amber' },
 ];
 
 export const ENEMIES = {
@@ -255,6 +274,15 @@ export const ENEMIES = {
   wisp:      { name: 'Fae Wisp',  hp: 62,  dmg: 18, speed: 5.0, xp: 185, color: 0xc6a8ff, aggro: 13, shape: 'beast', scale: 0.6, loot: { fae_dust: 1 } },
   thornling: { name: 'Thornling', hp: 92,  dmg: 20, speed: 3.2, xp: 225, color: 0x6a4a9a, aggro: 12, shape: 'humanoid', scale: 1.2, loot: { fae_dust: 1, herb: 1 } },
   hollow_king: { name: 'The Hollow King', hp: 430, dmg: 36, speed: 3.8, xp: 1160, color: 0xb04acf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 400, faewild_staff: 1, fae_dust: 5, ruby: 2 }, rare: { item: 'fae_crown', chance: 0.3 } },
+
+  // --- Expansion III: Saltcrest coast + The Drowned Galleon ---
+  marsh_crab: { name: 'Marsh Crab',    hp: 70,  dmg: 16, speed: 3.0, xp: 175, color: 0xc0654a, aggro: 10, shape: 'beast',    scale: 0.9, loot: { meat: 1, bones: 1 } },
+  brigand:    { name: 'Coast Brigand', hp: 96,  dmg: 20, speed: 4.0, xp: 235, color: 0x6a7a8a, aggro: 13, shape: 'humanoid', loot: { gold: 24, barnacle_plate: 1, bones: 1 } },
+  drowned_captain: { name: 'Captain Mordrake', hp: 400, dmg: 33, speed: 3.6, xp: 1040, color: 0x2bd6cf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 340, barnacle_plate: 4, pearl: 4, sapphire: 2 }, rare: { item: 'corsair_cutlass', chance: 0.3 } },
+  // --- Amberfell autumn woods + The Hollow Barrow ---
+  blight_wolf: { name: 'Blight Wolf', hp: 84,  dmg: 18, speed: 4.8, xp: 200, color: 0x8a6a3a, aggro: 14, shape: 'beast',    loot: { pelt: 1, bones: 1 } },
+  grave_husk:  { name: 'Grave Husk',  hp: 100, dmg: 21, speed: 3.2, xp: 245, color: 0x9a8a6a, aggro: 12, shape: 'humanoid', scale: 1.1, loot: { grave_iron: 1, bones: 2 } },
+  barrow_wight: { name: 'The Barrow Wight', hp: 430, dmg: 35, speed: 3.4, xp: 1120, color: 0xe0a050, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 380, grave_iron: 4, ruby: 2, emerald: 1 }, rare: { item: 'wight_crown', chance: 0.3 } },
 };
 
 export const ENEMY_SPAWNS = [
@@ -303,6 +331,14 @@ export const ENEMY_SPAWNS = [
   { enemy: 'wisp', x: -15, z: -105 }, { enemy: 'wisp', x: -35, z: -115 }, { enemy: 'thornling', x: -18, z: -118 }, { enemy: 'thornling', x: -12, z: -100 },
   { enemy: 'wisp', x: -11, z: -115 }, { enemy: 'wisp', x: -5, z: -121 }, { enemy: 'thornling', x: -11, z: -121 }, { enemy: 'thornling', x: -5, z: -115 },
   { enemy: 'hollow_king', x: -8, z: -118 },
+  // Saltcrest Harbor (coast) — town fringe + The Drowned Galleon arena (100,206)
+  { enemy: 'marsh_crab', x: 90, z: 195 }, { enemy: 'marsh_crab', x: 68, z: 192 }, { enemy: 'brigand', x: 94, z: 187 }, { enemy: 'brigand', x: 67, z: 189 },
+  { enemy: 'marsh_crab', x: 96, z: 204 }, { enemy: 'marsh_crab', x: 104, z: 204 }, { enemy: 'brigand', x: 98, z: 210 }, { enemy: 'brigand', x: 103, z: 208 },
+  { enemy: 'drowned_captain', x: 100, z: 206 },
+  // Amberfell woods (autumn) — town fringe + The Hollow Barrow arena (36,-182)
+  { enemy: 'blight_wolf', x: 62, z: -150 }, { enemy: 'blight_wolf', x: 40, z: -148 }, { enemy: 'grave_husk', x: 60, z: -170 }, { enemy: 'blight_wolf', x: 38, z: -152 },
+  { enemy: 'grave_husk', x: 32, z: -180 }, { enemy: 'grave_husk', x: 40, z: -180 }, { enemy: 'blight_wolf', x: 34, z: -185 }, { enemy: 'grave_husk', x: 38, z: -184 },
+  { enemy: 'barrow_wight', x: 36, z: -182 },
 ];
 
 export const QUESTS = {
@@ -490,6 +526,23 @@ export const QUESTS = {
   q_saga_g1: { name: 'The Hollow Crown', saga: true, giver: 'ardith', startsAvailable: true, desc: 'Climb the Moonspire and gather moonlit herbs to scry the omen.', objectives: [{ id: 'spire', type: 'visit', x: -34, z: -124, r: 14, name: 'the Moonspire' }, { id: 'wisp', type: 'kill', enemy: 'wisp', count: 4 }, { id: 'herb', type: 'have', item: 'herb', count: 4 }], rewards: { xp: { combat: 300, herblore: 180 }, items: { gold: 190 } } },
   q_saga_g2: { name: 'The Hollow Crown — Storm and Thorn', saga: true, giver: 'ardith', requires: 'q_saga_g1', desc: 'Follow the omen to Thunderpeak Hold and rally Branok.', objectives: [{ id: 'hold', type: 'visit', x: -145, z: -55, r: 14, name: 'Thunderpeak Hold' }, { id: 'harpy', type: 'kill', enemy: 'storm_harpy', count: 4 }, { id: 'branok', type: 'talk', npc: 'stormcaller', name: 'Stormcaller Branok' }], rewards: { xp: { combat: 360, defence: 160 }, items: { gold: 260 } } },
   q_saga_g3: { name: 'The Hollow Crown — King of Thorns', saga: true, giver: 'ardith', requires: 'q_saga_g2', desc: 'Banish the Hollow King, then return to Ardith.', objectives: [{ id: 'boss', type: 'kill', enemy: 'hollow_king', count: 1 }, { id: 'ardith', type: 'talk', npc: 'ardith', name: 'Seer Ardith' }], rewards: { xp: { combat: 1200, magic: 240 }, items: { gold: 480 } } },
+
+  // ===== Expansion III — Saltcrest Harbor / The Drowned Galleon =====
+  q_harbor:  { name: 'Crab Season', giver: 'harbormaster', startsAvailable: true, desc: 'Clear the marsh crabs swarming Saltcrest’s docks.', objectives: [{ id: 'k', type: 'kill', enemy: 'marsh_crab', count: 5 }], rewards: { xp: { combat: 360, fishing: 140 }, items: { gold: 140 } } },
+  q_galleon: { name: 'The Drowned Galleon', giver: 'harbormaster', requires: 'q_harbor', desc: 'Board the low-tide wreck and end Captain Mordrake.', objectives: [{ id: 'boss', type: 'kill', enemy: 'drowned_captain', count: 1 }], rewards: { xp: { combat: 1040, slayer: 240 }, items: { gold: 420 } } },
+  // ===== Amberfell / The Hollow Barrow =====
+  q_amberhunt: { name: 'Blighted Wood', giver: 'amberwarden', startsAvailable: true, desc: 'Put down the blight wolves stalking Amberfell’s groves.', objectives: [{ id: 'k', type: 'kill', enemy: 'blight_wolf', count: 5 }], rewards: { xp: { combat: 380, foraging: 150 }, items: { gold: 150 } } },
+  q_barrow:    { name: 'The Hollow Barrow', giver: 'amberwarden', requires: 'q_amberhunt', desc: 'Descend the barrow and lay the Barrow Wight to rest.', objectives: [{ id: 'boss', type: 'kill', enemy: 'barrow_wight', count: 1 }], rewards: { xp: { combat: 1120, prayer: 260 }, items: { gold: 440 } } },
+
+  // ===== Saga: Salt & Sorrow (Old Corsair Sabine) — ties Saltcrest to desert + Tide Isle =====
+  q_saga_s1: { name: 'Salt & Sorrow', saga: true, giver: 'corsair', startsAvailable: true, desc: 'Sabine’s old crew scattered to the sands. Search the Sunspire Oasis for word of them.', objectives: [{ id: 'oasis', type: 'visit', x: 26, z: 104, r: 14, name: 'the Sunspire Oasis' }, { id: 'brig', type: 'kill', enemy: 'brigand', count: 4 }, { id: 'fish', type: 'have', item: 'raw_trout', count: 4 }], rewards: { xp: { combat: 320, fishing: 180 }, items: { gold: 180 } } },
+  q_saga_s2: { name: 'Salt & Sorrow — The Oracle’s Warning', saga: true, giver: 'corsair', requires: 'q_saga_s1', desc: 'Seek the Oracle at the Sunken Temple and gather pearls for the dead.', objectives: [{ id: 'temple', type: 'visit', x: 60, z: 70, r: 13, name: 'the Sunken Temple' }, { id: 'oracle', type: 'talk', npc: 'oracle', name: 'Oracle Nerida' }, { id: 'pearl', type: 'have', item: 'pearl', count: 3 }], rewards: { xp: { combat: 360, prayer: 160 }, items: { gold: 240 } } },
+  q_saga_s3: { name: 'Salt & Sorrow — Mordrake’s End', saga: true, giver: 'corsair', requires: 'q_saga_s2', desc: 'Confront Captain Mordrake aboard the Drowned Galleon, then return to Sabine.', objectives: [{ id: 'boss', type: 'kill', enemy: 'drowned_captain', count: 1 }, { id: 'sabine', type: 'talk', npc: 'corsair', name: 'Old Corsair Sabine' }], rewards: { xp: { combat: 1080, slayer: 240 }, items: { gold: 460, tideheart_amulet: 1 } } },
+
+  // ===== Saga: The Amber Blight (Loreseeker Wynn) — ties Amberfell to the glade + snow =====
+  q_saga_a1: { name: 'The Amber Blight', saga: true, giver: 'loreseeker', startsAvailable: true, desc: 'A rot creeps through Amberfell. Climb the Moonspire for moonlit herbs to read the omen.', objectives: [{ id: 'spire', type: 'visit', x: -34, z: -124, r: 14, name: 'the Moonspire' }, { id: 'wolf', type: 'kill', enemy: 'blight_wolf', count: 4 }, { id: 'herb', type: 'have', item: 'herb', count: 4 }], rewards: { xp: { combat: 320, herblore: 180 }, items: { gold: 190 } } },
+  q_saga_a2: { name: 'The Amber Blight — Fading Light', saga: true, giver: 'loreseeker', requires: 'q_saga_a1', desc: 'The blight is fae-born. Counsel Oona in the glade, and bring coal to ward the groves.', objectives: [{ id: 'frost', type: 'visit', x: 98, z: -92, r: 14, name: 'Frostpeak' }, { id: 'oona', type: 'talk', npc: 'faewarden', name: 'Oona the Fae' }, { id: 'coal', type: 'have', item: 'coal', count: 5 }], rewards: { xp: { combat: 360, mining: 150 }, items: { gold: 250 } } },
+  q_saga_a3: { name: 'The Amber Blight — The Crowned Dead', saga: true, giver: 'loreseeker', requires: 'q_saga_a2', desc: 'The blight’s heart is the Barrow Wight. End it, then return to Wynn.', objectives: [{ id: 'boss', type: 'kill', enemy: 'barrow_wight', count: 1 }, { id: 'wynn', type: 'talk', npc: 'loreseeker', name: 'Loreseeker Wynn' }], rewards: { xp: { combat: 1120, herblore: 240 }, items: { gold: 480, verdant_charm: 1 } } },
 };
 
 export function objectiveText(obj, n) {
@@ -987,6 +1040,56 @@ export const DIALOGUE = {
     { id: 'q_saga_g2', intro: 'Follow the omen to Thunderpeak Hold. Ground the storm harpies that herald the shadow, and rally Stormcaller Branok — we will need the mountain’s strength for what comes.', accept: 'I’ll rally the Highlands.', active: 'The harpies still wheel over the Hold, and Branok is not yet won.', done: 'Branok stands with us, and the harpies are grounded. Now I can speak the shadow’s name: the Hollow King. And I must tell you the terrible truth of him.' },
     { id: 'q_saga_g3', intro: 'Hear me before you go. The Hollow King was the glade’s own protector — he hollowed himself, gave up his very heart, to seal a deeper darkness beneath the Feywild. Banishing him may free what he chained. But left as he is, he will twist the whole glade to nightmare. He must be stopped. Banish him, and return to me.', accept: 'I’ll do what must be done.', active: 'The Hollow King still holds his court in the deep Feywild.', done: 'The Hollow King is banished, and the glade is clean — for now. But I felt something stir as he fell. I will keep watch over the seal he leaves behind. You may have saved us, or only bought us time. Either way, you were magnificent.' },
   ], 'The Hollow Crown is broken. I keep my vigil now — but the Fae will sing of you in the moonlight, always.'),
+
+  // ===== Expansion III — Saltcrest + Amberfell NPCs =====
+  harbormaster: dungeonChain('Harbourmaster Dell', {
+    q1: 'q_harbor', n1: 5, foe1: 'marsh crabs', verb1: 'clatter across my piers', where1: 'They scuttle along the shoreline.',
+    q2: 'q_galleon',
+    intro1: 'Storm-season again, and the crabs have claimed my docks. Clear five off the piers and I’ll talk salvage with you.',
+    accept1: 'I’ll clear the docks.',
+    a1: 'Mind the claws — they’ve taken fingers off better folk than you.',
+    done1: 'Hah! The piers are mine again. Here, you’ve earned it.',
+    t1: 'Now — that wreck offshore. Something still captains it.',
+    intro2: 'The Drowned Galleon runs aground each low tide, and its captain walks the deck. Mordrake. Put him under for good.',
+    accept2: 'I’ll board the wreck.',
+    a2: 'Low tide bares the hull to the east. Go armed, go hard, and don’t drink the bilge.',
+    hint2: 'Mordrake holds the captain’s cabin. The wreck lies east of the harbour at low tide.',
+    done2: 'Mordrake’s gone? Saltcrest will drink your name till dawn!',
+    t2: 'Take the harbour’s thanks — and its purse.',
+    outro: 'Calm seas, captain. There’s a berth here whenever you make port.',
+    idle: 'Tide’s turning. Always is.',
+    lore: 'Saltcrest was a free port once — too free. Mordrake’s crew sank a king’s galleon for its gold, and the sea took them all in a night. Trouble is, they never quite noticed they’d drowned.',
+    loreAsk: 'What is the Drowned Galleon?',
+  }),
+  amberwarden: dungeonChain('Warden Rowan', {
+    q1: 'q_amberhunt', n1: 5, foe1: 'blight wolves', verb1: 'prowl the groves', where1: 'They hunt beneath the amber canopy, south of the hall.',
+    q2: 'q_barrow',
+    intro1: 'The wolves came with the rot — eyes gone amber, tempers gone wild. Thin them for me. Five should break the pack.',
+    accept1: 'I’ll thin the pack.',
+    a1: 'They run the low woods south of the hall. Watch the treeline; they circle.',
+    done1: 'The groves breathe easier. My thanks, wanderer.',
+    t1: 'But the rot has a source — the old barrow, west of here. It woke.',
+    intro2: 'In the Hollow Barrow stirs a Wight — a barrow-king the blight has crowned anew. Lay him back down.',
+    accept2: 'I’ll enter the barrow.',
+    a2: 'The mound lies west, ringed in dead stone. Bring light, and a strong arm.',
+    hint2: 'The Barrow Wight holds the deepest chamber, west of Amberfell.',
+    done2: 'The air is clean. You’ve done what three wardens before me could not.',
+    t2: 'Amberfell owes you its autumn. Take this, with our gratitude.',
+    outro: 'Walk easy under the amber leaves, friend.',
+    idle: 'The leaves never green here — only burn brighter, then fall.',
+    lore: 'Amberfell sits on graves far older than our hall. When the fae-blight seeped down, it found a king already dead — and gave him a reason to rise. We name him only the Wight now.',
+    loreAsk: 'What is the Hollow Barrow?',
+  }),
+  saga_corsair: sagaDialogue('Old Corsair Sabine', [
+    { id: 'q_saga_s1', intro: 'You’ve a sailor’s stance — good. My old crew scattered the night Mordrake drowned us. Search the Sunspire sands for any still breathing, and watch for brigands wearing our colours.', accept: 'I’ll find your crew.', active: 'The desert keeps its secrets, and brigands keep the rest.', done: 'Brigands in my crew’s own colours… so that’s where the cowards washed up. Sit. There’s more to this than salt.' },
+    { id: 'q_saga_s2', intro: 'The Oracle on the Tide Isle saw Mordrake’s end once, in a tide-pool. Ask Nerida what she glimpsed — and bring pearls. The drowned are fond of them.', accept: 'I’ll seek the Oracle.', active: 'Nerida speaks in tides. Listen close, and gather your pearls.', done: 'So the sea itself wants him gone. Then we give the sea its wish — and soon.' },
+    { id: 'q_saga_s3', intro: 'No more waiting. Board the Galleon at low tide and end Mordrake — for the crew, and for me. I’m too old for the climb, but my heart sails with you.', accept: 'It ends tonight.', active: 'Mordrake walks the captain’s cabin still. Send him down.', done: 'It’s done. They can rest now — and so, at last, can I. Take this; a pearl-diver gave it me a lifetime ago. It belongs with a captain.' },
+  ], 'You gave my crew their grave and me my peace. Fair winds, captain — always.'),
+  saga_amber: sagaDialogue('Loreseeker Wynn', [
+    { id: 'q_saga_a1', intro: 'This amber rot is no ordinary blight — it thinks. Climb the Moonspire for moonlit herbs; under their light I can read the shape of the thing. Mind the blight wolves on the way.', accept: 'I’ll climb the Moonspire.', active: 'Moonlit herbs grow only on the Moonspire’s heights, where the veil is thin.', done: 'Fae-script — woven into the rot’s own veins. This was sent. Something willed the blight into being.' },
+    { id: 'q_saga_a2', intro: 'Only the fae understand fae-craft. Oona of the Moonlit Glade owes the woods a debt; seek her counsel. And bring coal — the wardfires must stay lit while you’re away.', accept: 'I’ll counsel Oona.', active: 'Oona keeps to the glade. The wardfires hunger for coal while you travel.', done: 'A barrow-king, crowned by the blight to spread it root and branch. Of course. The dead make such willing gardeners.' },
+    { id: 'q_saga_a3', intro: 'Cut the blight at its root — the Barrow Wight itself. End the crowned dead, and the amber rot withers with him.', accept: 'I’ll end the Wight.', active: 'The Wight holds the heart of the Hollow Barrow, west of here.', done: 'The leaves… look, they’re greening at the very tips. You’ve given Amberfell a spring it had forgotten. Take this charm — the woods wove it for you.' },
+  ], 'The woods remember their healer. Rest beneath the amber leaves whenever the road wearies you.'),
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.
@@ -1013,6 +1116,7 @@ export const SHOP = {
     vine_coil: 12, demon_ash: 16, storm_shard: 18, fae_dust: 20,
     coilfang_spear: 150, ashbringer: 200, tempest_bow: 140, faewild_staff: 170,
     bronze_dagger: 12, wooden_shield: 12, iron_shield: 45, steel_shield: 80,
+    barnacle_plate: 18, grave_iron: 18, corsair_cutlass: 120, mariner_plate: 90, barnacle_shield: 70, barrow_blade: 110, grave_plate: 100, wight_crown: 160,
   },
 };
 

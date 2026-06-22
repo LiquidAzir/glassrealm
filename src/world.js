@@ -21,6 +21,8 @@ const BIOMES = {
   badlands: { sea: 0x2a4a52, sand: 0xc99a5a, low: 0xb5622e, low2: 0x9a4f28, high: 0x7a3a22, peak: 0xe0b080, fol: [0x8a6a3a, 0xa07a44], trunk: 0x5a3a22 },
   highland: { sea: 0x2a4a66, sand: 0x9aa0a8, low: 0x6a7a6a, low2: 0x566a58, high: 0x8a93a0, peak: 0xf4f8ff, fol: [0x4a6a52, 0x6a8a6a], trunk: 0x55534e },
   fae:      { sea: 0x241a5a, sand: 0x8a7ab0, low: 0x6a4a9a, low2: 0x7a3a9a, high: 0x9a6abf, peak: 0xe0c8ff, fol: [0xb04acf, 0x6a8aff], trunk: 0x9a8ab0 },
+  coast:    { sea: 0x1aa6b8, sand: 0xf0e2b2, low: 0x6ec98a, low2: 0x54b6a2, high: 0x9aa6b2, peak: 0xeaf2ff, fol: [0x4fae84, 0x6ec98a], trunk: 0x6e4a2b },
+  autumn:   { sea: 0x123842, sand: 0xd8c89a, low: 0xd07a2e, low2: 0xb5602a, high: 0x8a7a5a, peak: 0xf0d0a0, fol: [0xe0852e, 0xf0b040], trunk: 0x5c4326 },
 };
 
 const REGIONS = [
@@ -35,8 +37,11 @@ const REGIONS = [
   { key: 'badlands', x: 150, z: 118, r: 44, biome: 'badlands',                                                                            peak: { x: 160, z: 126, r: 16, h: 10 }, tree: 'cactus', nTree: 16, nBush: 2,  nRock: 20, nFish: 2, ore: [['iron', 5], ['coal', 5]] },
   { key: 'highland', x: -158, z: -38, r: 48, biome: 'highland', village: { name: 'Stormhold', x: -158, z: -32, hut: [0x6a7280, 0x3a4a58] }, peak: { x: -168, z: -52, r: 22, h: 15 }, tree: 'pine', nTree: 28, nBush: 6,  nRock: 18, nFish: 3, ore: [['coal', 4], ['iron', 4]] },
   { key: 'glade',    x: -25, z: -110, r: 46, biome: 'fae',      village: { name: 'Moonwell', x: -25, z: -100, hut: [0x6a4a9a, 0x3a2a6a] }, peak: { x: -34, z: -124, r: 14, h: 8 },  tree: 'pine',   nTree: 44, nBush: 20, nRock: 8,  nFish: 4, ore: [['copper', 3]] },
+  // --- Expansion III: a southern harbour town + a northern autumn town ---
+  { key: 'saltcrest', x: 80, z: 185, r: 46, biome: 'coast',  village: { name: 'Saltcrest Harbor', x: 80, z: 185, hut: [0x8aa6b6, 0x355a68], smithy: true }, tree: 'pine', nTree: 20, nBush: 8,  nRock: 12, nFish: 8, ore: [['iron', 4], ['copper', 3]] },
+  { key: 'amberfell', x: 50, z: -160, r: 42, biome: 'autumn', village: { name: 'Amberfell',       x: 50, z: -160, hut: [0xb5752e, 0x6a3a22] }, peak: { x: 58, z: -172, r: 14, h: 8 }, tree: 'pine', nTree: 48, nBush: 16, nRock: 8,  nFish: 4, ore: [['copper', 4], ['coal', 3]] },
 ];
-const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow'], ['forest', 'mistmoor'], ['desert', 'tideisle'], ['ember', 'jungle'], ['jungle', 'badlands'], ['forest', 'highland'], ['verdant', 'glade']];
+const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow'], ['forest', 'mistmoor'], ['desert', 'tideisle'], ['ember', 'jungle'], ['jungle', 'badlands'], ['forest', 'highland'], ['verdant', 'glade'], ['desert', 'saltcrest'], ['badlands', 'saltcrest'], ['glade', 'amberfell'], ['snow', 'amberfell']];
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
 // Modular dungeons — themed spire rings (SW entrance gap) with a loot chest + a
@@ -53,6 +58,8 @@ const DUNGEONS = [
   { key: 'ashpit',    name: 'The Ashpit',          x: 140, z: 108, r: 12, style: 'spike',   spire: 0x3a2230, orb: 0xff5a2a, chest: { label: 'Cinder Hoard',    gold: 320, loot: { demon_ash: 3, magma_core: 2 } }, ore: [['coal', 4]] },
   { key: 'thunderhold', name: 'Thunderpeak Hold',  x: -145, z: -55, r: 12, style: 'pillar', spire: 0x6a7280, orb: 0x9bdcff, chest: { label: 'Storm Vault',     gold: 340, loot: { storm_shard: 3, iron_bar: 2 } }, ore: [['iron', 3]] },
   { key: 'feywild',   name: 'Feywild Hollow',      x: -8, z: -118, r: 12, style: 'fungal',  spire: 0xff7af0, orb: 0xb04acf, chest: { label: 'Fae Cache',       gold: 300, loot: { fae_dust: 3, sapphire: 2 } }, ore: [] },
+  { key: 'galleon',   name: 'The Drowned Galleon', x: 100, z: 206, r: 11, flat: true, style: 'pillar',  spire: 0x35434c, orb: 0x2bd6cf, chest: { label: "Captain's Hold",  gold: 360, loot: { barnacle_plate: 2, pearl: 3, sapphire: 2 } }, ore: [['iron', 3]] },
+  { key: 'barrow',    name: 'The Hollow Barrow',   x: 36, z: -182, r: 11, flat: true, style: 'spire',   spire: 0x6a5a44, orb: 0xe0852e, chest: { label: 'Barrow Hoard',    gold: 380, loot: { grave_iron: 2, ruby: 2, emerald: 1 } }, ore: [['coal', 3]] },
 ];
 const SHORTCUT_LINKS = [
   { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
@@ -89,6 +96,8 @@ export function createWorld(scene, seed = 1337) {
     // flatten bridges into level causeways so noise dips never break the path
     for (const b of BRIDGES) { const fl = smoothstep(clamp((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / 4, 0, 1)); h = h * (1 - fl) + 1.8 * fl; }
     for (const v of villages) { const flat = smoothstep(clamp((11 - dist2D(x, z, v.x, v.z)) / 11, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
+    // flatten the new dungeon floors into level arenas so the boss/chest never sink underwater near a coast
+    for (const dg of DUNGEONS) { if (!dg.flat) continue; const flat = smoothstep(clamp((dg.r - 3 - dist2D(x, z, dg.x, dg.z)) / 6, 0, 1)); h = h * (1 - flat) + 1.8 * flat; }
     return h;
   }
   const isWalkable = (x, z) => height(x, z) > 0.35;
@@ -444,7 +453,9 @@ export function createWorld(scene, seed = 1337) {
   locations.push({ name: 'Scorched Wastes', x: byKey.badlands.x, z: byKey.badlands.z });
   locations.push({ name: 'Stormhold Highlands', x: byKey.highland.x, z: byKey.highland.z });
   locations.push({ name: 'Moonlit Glade', x: byKey.glade.x, z: byKey.glade.z });
-  function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak', jungle: 'Kytari Spire', badlands: 'Red Mesa', highland: 'Thunderpeak', glade: 'Moonspire' })[key] || 'Peak'; }
+  locations.push({ name: 'Saltcrest Shoals', x: 80, z: 200 });
+  locations.push({ name: 'Amberfell Woods', x: 50, z: -148 });
+  function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak', jungle: 'Kytari Spire', badlands: 'Red Mesa', highland: 'Thunderpeak', glade: 'Moonspire', amberfell: 'Amber Tor' })[key] || 'Peak'; }
 
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
   function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }
