@@ -75,7 +75,7 @@ export function createWorld(scene, seed = 1337) {
     h += (land - 1) * 1.6;
     // flatten bridges into level causeways so noise dips never break the path
     for (const b of BRIDGES) { const fl = smoothstep(clamp((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / 4, 0, 1)); h = h * (1 - fl) + 1.8 * fl; }
-    for (const v of villages) { const flat = smoothstep(clamp((9 - dist2D(x, z, v.x, v.z)) / 9, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
+    for (const v of villages) { const flat = smoothstep(clamp((11 - dist2D(x, z, v.x, v.z)) / 11, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
     return h;
   }
   const isWalkable = (x, z) => height(x, z) > 0.35;
@@ -215,7 +215,46 @@ export function createWorld(scene, seed = 1337) {
     roof.position.set(x, y + 3.05, z); roof.rotation.y = a + Math.PI / 4;
     group.add(wall, roof);
   }
-  function fire(x, z) { const y = height(x, z); const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 0), new THREE.MeshBasicMaterial({ color: 0xffb347 })); m.position.set(x, y + 0.7, z); group.add(m); fireMeshes.push({ m, baseY: y + 0.7, seed: x }); stations.push({ kind: 'cook', label: 'Cooking Fire', x, z, y }); }
+  // An enterable town building: walls + pitched roof + door + lit windows + a
+  // coloured sign, and a 'door' station out front that opens its interior.
+  const SIGN_COL = { home: 0x9a4f3a, store: 0xffd45f, bank: 0x5b7cff, workshop: 0x9bf2ff, tavern: 0xc9742e, forge: 0xff7a33 };
+  const BLD_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge' };
+  function building(bx, bz, vcx, vcz, type, pal) {
+    const y = height(bx, bz);
+    const faceA = Math.atan2(vcx - bx, vcz - bz);                 // face the plaza
+    const fx = Math.sin(faceA), fz = Math.cos(faceA), rx = Math.cos(faceA), rz = -Math.sin(faceA);
+    const W = 4.6, H = 3.0, D = 4.6;
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), lmat(pal[0])); wall.position.set(bx, y + H / 2, bz); wall.rotation.y = faceA; group.add(wall);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 2.1, 4), lmat(pal[1])); roof.position.set(bx, y + H + 0.95, bz); roof.rotation.y = faceA + Math.PI / 4; group.add(roof);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.0, 0.25), lmat(0x3a2a1c)); door.position.set(bx + fx * (D / 2 - 0.02), y + 1.0, bz + fz * (D / 2 - 0.02)); door.rotation.y = faceA; group.add(door);
+    for (const s of [-1.6, 1.6]) { const win = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 0.12), new THREE.MeshBasicMaterial({ color: 0xffd47a })); win.position.set(bx + fx * (D / 2) + rx * s, y + 1.75, bz + fz * (D / 2) + rz * s); win.rotation.y = faceA; group.add(win); }
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 0.12), lmat(SIGN_COL[type] || 0xcaa878)); sign.position.set(bx + fx * (D / 2 + 0.08), y + 2.4, bz + fz * (D / 2 + 0.08)); sign.rotation.y = faceA; group.add(sign);
+    const sx = bx + fx * (D / 2 + 1.0), sz = bz + fz * (D / 2 + 1.0);
+    stations.push({ kind: 'door', label: 'Enter ' + (BLD_NAME[type] || 'building'), x: sx, z: sz, y: height(sx, sz), building: type });
+  }
+  function well(x, z) {
+    const y = height(x, z);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.1, 1.0, 10), lmat(0x8a8a92)); ring.position.set(x, y + 0.5, z); group.add(ring);
+    const water = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.1, 10), new THREE.MeshBasicMaterial({ color: 0x2bd6cf })); water.position.set(x, y + 0.95, z); group.add(water);
+    for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.9, 0.16), lmat(0x6e4a2b)); post.position.set(x + s, y + 1.45, z); group.add(post); }
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 4), lmat(0x7a8aa0)); roof.position.set(x, y + 2.7, z); roof.rotation.y = Math.PI / 4; group.add(roof);
+  }
+  function lampPost(x, z) {
+    const y = height(x, z);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 2.6, 6), lmat(0x40434a)); post.position.set(x, y + 1.3, z); group.add(post);
+    const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lamp.position.set(x, y + 2.7, z); group.add(lamp);
+  }
+  const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+  function fire(x, z) {   // a proper cast-iron stove with a flickering fire window + pot
+    const y = height(x, z);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.3, 1.4), lmat(0x55585f)); body.position.set(x, y + 0.65, z); group.add(body);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.18, 1.6), lmat(0x3a3d44)); top.position.set(x, y + 1.35, z); group.add(top);
+    const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 1.7, 6), lmat(0x40434a)); chimney.position.set(x + 0.7, y + 2.1, z - 0.3); group.add(chimney);
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.34, 0.42, 8), lmat(0x2a2d33)); pot.position.set(x - 0.4, y + 1.62, z); group.add(pot);
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.12), new THREE.MeshBasicMaterial({ color: 0xff7a33 })); glow.position.set(x, y + 0.6, z + 0.72); group.add(glow);
+    fireMeshes.push({ m: glow, baseY: y + 0.6, seed: x });
+    stations.push({ kind: 'cook', label: 'Stove', x, z, y });
+  }
   function bankChest(x, z) {
     const y = height(x, z);
     const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0x5b7cff, flatShading: true })); chest.position.set(x, y + 0.5, z);
@@ -276,23 +315,24 @@ export function createWorld(scene, seed = 1337) {
   }
 
   // Build the standard kit for every village (smithy only where flagged).
+  // Each village is a ring of enterable typed buildings around a plaza (well, stove,
+  // altar, market stall, lamps) with a farm garden off to the side. Bank/forge/craft/
+  // cauldron services now live INSIDE their buildings (entered via the door).
   for (const v of villages) {
-    const huts = 5;
-    for (let i = 0; i < huts; i++) { const a = (i / huts) * TAU + 0.3; hut(v.x + Math.cos(a) * 5.2, v.z + Math.sin(a) * 5.2, a, v.hut[0], v.hut[1]); }
-    fire(v.x, v.z + 5);
-    bankChest(v.x + 7, v.z - 2);
-    altar(v.x - 6, v.z - 4);
-    cauldron(v.x + 9, v.z + 3);
-    stall(v.x - 9, v.z + 4);
-    plot(v.x + 11, v.z - 6); plot(v.x + 13, v.z - 6); plot(v.x + 12, v.z - 8);
-    craftBench(v.x - 4, v.z + 9);
-    if (v.smithy) smithy(v.x + 4, v.z - 1);
+    const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
+    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * 8.5, v.z + Math.sin(a) * 8.5, v.x, v.z, types[i], v.hut); }
+    well(v.x, v.z);
+    fire(v.x - 3.5, v.z + 3.5);
+    altar(v.x + 3.5, v.z + 3.5);
+    stall(v.x - 4, v.z - 3.5);
+    lampPost(v.x + 4.6, v.z - 4.6); lampPost(v.x - 4.6, v.z + 4.6);
+    plot(v.x + 12, v.z + 2); plot(v.x + 13.4, v.z + 3.2); plot(v.x + 12.6, v.z + 4.6);
   }
 
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
   const trophyMeshes = {};
   (function house() {
-    const vA = byKey.verdant.village, hx = vA.x, hz = vA.z - 9, y = height(hx, hz);
+    const vA = byKey.verdant.village, hx = vA.x - 15, hz = vA.z, y = height(hx, hz);
     const wall = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.6, 4), new THREE.MeshLambertMaterial({ color: 0xb9a07a, flatShading: true })); wall.position.set(hx, y + 1.3, hz);
     const roof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 1.9, 4), new THREE.MeshLambertMaterial({ color: 0x7a8aa0, flatShading: true })); roof.position.set(hx, y + 3.5, hz); roof.rotation.y = Math.PI / 4;
     const bed = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 1.8), new THREE.MeshLambertMaterial({ color: 0x9b6bff, flatShading: true })); bed.position.set(hx - 1.4, y + 0.4, hz);

@@ -9,11 +9,12 @@ export function createSave(G) {
   function snapshot() {
     return {
       v: 1,
-      player: {
-        x: G.player.position.x, z: G.player.position.z,
-        heading: G.player.state.heading, hp: G.player.state.hp,
-        equipment: { ...G.player.state.equipment },
-      },
+      player: (() => {
+        // while inside a building the player sits on a far interior plot — persist
+        // the door we came in by instead, so reloads put us back in town.
+        const r = (G.inInterior && G.returnPos) ? G.returnPos : { x: G.player.position.x, z: G.player.position.z, heading: G.player.state.heading };
+        return { x: r.x, z: r.z, heading: r.heading, hp: G.player.state.hp, equipment: { ...G.player.state.equipment } };
+      })(),
       skills: G.skills.serialize(),
       prestige: G.skills.serializePrestige(),
       inventory: G.inventory.serialize(),

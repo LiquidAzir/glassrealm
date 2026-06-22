@@ -84,6 +84,7 @@ export function createPlayer(scene, world) {
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
     equipment: { weapon: null, armor: null, amulet: null, ring: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
+    bounds: null,   // set while inside a building → clamp movement to the room
   };
 
   function weapon() { return weaponOf(state.equipment.weapon); }
@@ -100,14 +101,22 @@ export function createPlayer(scene, world) {
   function playAttack(style) { if (state.toolActive) showTool(false); state.attackStyle = style || weapon().style; state.attackAnim = ATTACK_DUR; state.animDur = ATTACK_DUR; }
   function playGather(kind) { setToolMesh(kind); showTool(true); state.attackStyle = kind; state.attackAnim = GATHER_DUR; state.animDur = GATHER_DUR; }
 
+  const inB = (b, x, z) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ;
   function tryMove(dt) {
     const f = forwardVec();
     const step = SPEED * dt;
     const x = group.position.x, z = group.position.z;
     const nx = x + f.x * step, nz = z + f.z * step;
-    if (world.isWalkable(nx, nz)) { group.position.x = nx; group.position.z = nz; }
-    else if (world.isWalkable(nx, z)) { group.position.x = nx; }
-    else if (world.isWalkable(x, nz)) { group.position.z = nz; }
+    const b = state.bounds;
+    if (b) {
+      if (inB(b, nx, nz)) { group.position.x = nx; group.position.z = nz; }
+      else if (inB(b, nx, z)) { group.position.x = nx; }
+      else if (inB(b, x, nz)) { group.position.z = nz; }
+    } else {
+      if (world.isWalkable(nx, nz)) { group.position.x = nx; group.position.z = nz; }
+      else if (world.isWalkable(nx, z)) { group.position.x = nx; }
+      else if (world.isWalkable(x, nz)) { group.position.z = nz; }
+    }
   }
 
   function update(dt, input) {
@@ -125,7 +134,7 @@ export function createPlayer(scene, world) {
     state.moving = walking;
     if (walking) tryMove(dt);
 
-    group.position.y = world.height(group.position.x, group.position.z);
+    group.position.y = state.bounds ? state.bounds.y : world.height(group.position.x, group.position.z);
     group.rotation.y = state.heading;
     if (walking) { state.bob += dt * 11; body.position.y = Math.abs(Math.sin(state.bob)) * 0.08; }
     else { body.position.y *= (1 - damp(8, dt)); }
@@ -158,10 +167,11 @@ export function createPlayer(scene, world) {
   function updateCamera(camera, dt) {
     const f = forwardVec();
     const px = group.position.x, py = group.position.y, pz = group.position.z;
-    const dX = px - f.x * CAM_DIST, dZ = pz - f.z * CAM_DIST, dY = py + CAM_HEIGHT;
+    const dist = state.bounds ? 5.2 : CAM_DIST, ht = state.bounds ? 7.0 : CAM_HEIGHT, look = state.bounds ? 1.5 : CAM_LOOK;
+    const dX = px - f.x * dist, dZ = pz - f.z * dist, dY = py + ht;
     if (!camReady) { camera.position.set(dX, dY, dZ); camReady = true; }
     else { const k = damp(6, dt); camera.position.x += (dX - camera.position.x) * k; camera.position.y += (dY - camera.position.y) * k; camera.position.z += (dZ - camera.position.z) * k; }
-    tmpTarget.set(px + f.x * CAM_LOOK, py + HEAD_Y, pz + f.z * CAM_LOOK);
+    tmpTarget.set(px + f.x * look, py + HEAD_Y, pz + f.z * look);
     camera.lookAt(tmpTarget);
   }
 
@@ -172,6 +182,7 @@ export function createPlayer(scene, world) {
   return {
     group, state, update, updateCamera, impulseForward, impulseTurn, forwardVec,
     playAttack, playGather, refreshEquipment, weapon, handPosition,
+    setBounds(b) { state.bounds = b; }, snapCamera() { camReady = false; },
     get position() { return group.position; },
   };
 }

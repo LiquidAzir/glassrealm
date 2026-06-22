@@ -14,6 +14,7 @@ import { loadSave, createSave } from './save.js';
 import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { createFx } from './fx.js';
+import { createInteriors } from './interiors.js';
 import { createAudio } from './audio.js';
 import { dist2D } from './util.js';
 
@@ -40,6 +41,8 @@ try {
   G.dialogue = createDialogue(G);
   G.projectiles = createProjectiles(engine.scene);
   G.fx = createFx(engine.scene);
+  G.interiors = createInteriors(engine.scene);
+  G.inInterior = false; G.interiorStations = [];
   G.bankItems = (saved && saved.bank) || {};
   G.audio = createAudio(saved && saved.audioMuted);
   G.save = createSave(G);
@@ -169,7 +172,7 @@ try {
   };
   G.talkTo = (n) => {
     setMode('dialogue'); G.ui.hidePrompt();
-    G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else setMode('world'); });
+    G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else setMode(G.inInterior ? 'interior' : 'world'); });
   };
 
   const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal' };
@@ -248,6 +251,9 @@ try {
       G.audio.sfx('pickup');
       G.fx.burst(s.x, s.y + 1, s.z, 0xffd45f, { n: 12, spread: 3, up: 3.5, life: 0.8 });
       G.ui.toast(`Looted ${s.label}: ${parts.join(', ')}`, 'gold', 3400); G.save.save(); return;
+    } else if (s.kind === 'door') { G.enterBuilding(s); return;
+    } else if (s.kind === 'exit') { G.exitInterior(); return;
+    } else if (s.kind === 'shop') { G.openShop(); return;
     }
     G.save.save();
   };
@@ -341,7 +347,35 @@ try {
   G.openShop = () => { setMode('picker'); G.ui.openPicker(shopCfg); };
   G.openForge = () => { setMode('picker'); G.ui.openPicker(forgeCfg); };
   G.openBank = () => { setMode('picker'); G.ui.openPicker(bankCfg); };
-  G.closePicker = () => { G.ui.closePicker(); setMode('world'); };
+  G.closePicker = () => { G.ui.closePicker(); setMode(G.inInterior ? 'interior' : 'world'); };
+
+  // ---------- enter / exit buildings ----------
+  const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge' };
+  G.enterBuilding = (door) => {
+    G.returnPos = { x: door.x, z: door.z, heading: player.state.heading };
+    const info = G.interiors.enter(door.building);
+    G.interiorStations = info.stations;
+    G.inInterior = true;
+    player.setBounds(info.bounds);
+    player.group.position.set(info.entry.x, info.bounds.y, info.entry.z);
+    player.state.heading = Math.PI;
+    player.snapCamera();
+    setMode('interior');
+    G.audio.sfx('ui');
+    G.ui.setLocation(BUILDING_NAME[door.building] || 'Building');
+    G.ui.toast(`Entered the ${BUILDING_NAME[door.building] || 'building'}`, '', 1600);
+  };
+  G.exitInterior = () => {
+    G.interiors.leave();
+    G.inInterior = false; G.interiorStations = [];
+    player.setBounds(null);
+    const r = G.returnPos || { x: world.village.x, z: world.village.z + 12, heading: Math.PI };
+    player.group.position.set(r.x, world.height(r.x, r.z), r.z);
+    player.state.heading = r.heading;
+    player.snapCamera();
+    setMode('world');
+    G.audio.sfx('ui');
+  };
 
   G.forgeItem = (out) => {
     const rec = FORGE.find((r) => r.out === out); if (!rec) return;
@@ -441,7 +475,7 @@ try {
   let mode = 'world';
   function setMode(m) { mode = m; if (m !== 'world') G.ui.hidePrompt(); }
   function openMenu() { setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
-  function closeMenu() { G.ui.closeMenu(); setMode('world'); }
+  function closeMenu() { G.ui.closeMenu(); setMode(G.inInterior ? 'interior' : 'world'); }
 
   // Universal "back" — an up-down-up-down swipe wiggle (double-tap doesn't register
   // on-device). Tracked only in overlays; the swipes still navigate as normal.
@@ -458,7 +492,7 @@ try {
   input.on((a) => {
     G.audio.resume();
     if (mode !== 'world' && (a === 'up' || a === 'down') && backGesture(a)) { exitOverlay(); return; }
-    if (mode === 'world') {
+    if (mode === 'world' || mode === 'interior') {
       if (a === 'up') player.impulseForward();
       else if (a === 'left') player.impulseTurn(-1);
       else if (a === 'right') player.impulseTurn(1);
@@ -515,7 +549,7 @@ try {
   }
 
   function updatePrompt() {
-    if (mode !== 'world') return;
+    if (mode !== 'world' && mode !== 'interior') return;
     const t = G.currentTarget;
     if (t) G.ui.showPrompt(t.label); else G.ui.hidePrompt();
   }
@@ -555,7 +589,15 @@ try {
     return best;
   }
 
+  const STATION_PIP = { cook: '🍳', bank: '🏦', anvil: '⚒️', furnace: '🔥', craft: '💍', cauldron: '⚗️', bed: '🛏️', shop: '🛒', exit: '🚪' };
   function updateMarkers() {
+    if (mode === 'interior') {
+      const il = [];
+      for (const s of (G.interiorStations || [])) il.push({ id: 'is_' + s.kind + Math.round(s.x) + Math.round(s.z), x: s.x, y: s.y + 2.2, z: s.z, kind: s.kind === 'exit' ? 'quest' : 'item', pip: STATION_PIP[s.kind] || '◆', label: s.label });
+      G.ui.setQuestArrow(null);
+      G.ui.updateMarkers(il);
+      return;
+    }
     const list = [];
     const p = player.position;
     const guide = mode === 'world' ? questTarget() : null;
@@ -616,6 +658,11 @@ try {
       G.currentTarget = G.interact.best();
       updatePrompt();
       updateLocation();
+    } else if (mode === 'interior') {
+      player.update(dt, input);
+      G.fx.update(dt);
+      G.currentTarget = G.interact.best();
+      updatePrompt();
     }
     if (hurtFlash > 0) { hurtFlash -= dt; document.body.style.boxShadow = `inset 0 0 ${Math.round(120 * (hurtFlash / 0.25))}px rgba(255,40,40,0.6)`; }
     else if (document.body.style.boxShadow) document.body.style.boxShadow = '';
@@ -665,7 +712,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

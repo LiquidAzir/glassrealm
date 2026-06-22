@@ -19,6 +19,11 @@ export function createInteraction(G) {
 
   function best() {
     const p = G.player.position;
+    if (G.inInterior) {   // inside a building: only the room's stations are interactable
+      let bc = null, bd = 3.6;
+      for (const s of (G.interiorStations || [])) { const d = dist2D(p.x, p.z, s.x, s.z); if (d <= bd) { bd = d; bc = { kind: 'station', ref: s, x: s.x, z: s.z, label: s.label, dist: d }; } }
+      return bc;
+    }
     const w = G.player.weapon();
     let bestC = null, bestD = Infinity;
     const consider = (kind, ref, x, z, label) => {
