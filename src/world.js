@@ -204,6 +204,8 @@ export function createWorld(scene, seed = 1337) {
   group.add(fishIM);
 
   // --- settlements + stations (modular kit per village) ------------------
+  let animT = 0;
+  const fireMeshes = [], orbMeshes = [];   // ambient meshes animated in tick()
   const stations = [];
   function hut(x, z, a, wallHex, roofHex) {
     const y = height(x, z);
@@ -213,7 +215,7 @@ export function createWorld(scene, seed = 1337) {
     roof.position.set(x, y + 3.05, z); roof.rotation.y = a + Math.PI / 4;
     group.add(wall, roof);
   }
-  function fire(x, z) { const y = height(x, z); const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 0), new THREE.MeshBasicMaterial({ color: 0xffb347 })); m.position.set(x, y + 0.7, z); group.add(m); stations.push({ kind: 'cook', label: 'Cooking Fire', x, z, y }); }
+  function fire(x, z) { const y = height(x, z); const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 0), new THREE.MeshBasicMaterial({ color: 0xffb347 })); m.position.set(x, y + 0.7, z); group.add(m); fireMeshes.push({ m, baseY: y + 0.7, seed: x }); stations.push({ kind: 'cook', label: 'Cooking Fire', x, z, y }); }
   function bankChest(x, z) {
     const y = height(x, z);
     const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0x5b7cff, flatShading: true })); chest.position.set(x, y + 0.5, z);
@@ -345,7 +347,7 @@ export function createWorld(scene, seed = 1337) {
       col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.25, hh, 1.25); col.rotation.y = rng() * TAU; group.add(col);
     }
     const cy = height(dg.x, dg.z);
-    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshBasicMaterial({ color: dg.orb })); orb.position.set(dg.x, cy + 4.6, dg.z); group.add(orb);
+    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshBasicMaterial({ color: dg.orb })); orb.position.set(dg.x, cy + 4.6, dg.z); group.add(orb); orbMeshes.push({ m: orb, baseY: cy + 4.6, seed: dg.x });
     const cx = dg.x + 2.6, cz = dg.z + 2.6, ccy = height(cx, cz);
     const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true })); chest.position.set(cx, ccy + 0.5, cz); group.add(chest);
     stations.push({ kind: 'chest', label: dg.chest.label, x: cx, z: cz, y: ccy, looted: false, gold: dg.chest.gold, loot: dg.chest.loot });
@@ -408,6 +410,10 @@ export function createWorld(scene, seed = 1337) {
     harvestPlot(pl) { pl.state = 'empty'; plotVisual(pl); },
     showTrophy(key) { const m = trophyMeshes[key]; if (m) m.forEach((x) => (x.visible = true)); },
     tick(dt) {
+      animT += dt;
+      for (const f of fireMeshes) { f.m.scale.setScalar(0.82 + Math.sin(animT * 9 + f.seed) * 0.18); f.m.position.y = f.baseY + Math.sin(animT * 13 + f.seed) * 0.05; }
+      for (const o of orbMeshes) { o.m.rotation.y = animT * 0.8; o.m.position.y = o.baseY + Math.sin(animT * 1.4 + o.seed) * 0.4; }
+      water.position.y = WATER_Y + Math.sin(animT * 0.5) * 0.08;
       for (const o of oreNodes) if (!o.alive) { o.respawn -= dt; if (o.respawn <= 0) { o.alive = true; setOreScale(o, 1); } }
       for (const pl of plots) if (pl.state === 'growing') { pl.grow -= dt; if (pl.grow <= 0) { pl.state = 'grown'; plotVisual(pl); } }
       for (const s of stalls) if (s.cooldown > 0) s.cooldown -= dt;

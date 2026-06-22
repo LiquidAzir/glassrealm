@@ -13,6 +13,7 @@ import { createDialogue } from './dialogue.js';
 import { loadSave, createSave } from './save.js';
 import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES } from './content.js';
 import { createProjectiles } from './projectiles.js';
+import { createFx } from './fx.js';
 import { createAudio } from './audio.js';
 import { dist2D } from './util.js';
 
@@ -38,6 +39,7 @@ try {
   G.interact = createInteraction(G);
   G.dialogue = createDialogue(G);
   G.projectiles = createProjectiles(engine.scene);
+  G.fx = createFx(engine.scene);
   G.bankItems = (saved && saved.bank) || {};
   G.audio = createAudio(saved && saved.audioMuted);
   G.save = createSave(G);
@@ -84,7 +86,7 @@ try {
   const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
   G.slayerAssign = () => { const enemy = SLAYER_POOL[Math.floor(Math.random() * SLAYER_POOL.length)]; const count = 6 + Math.floor(Math.random() * 7); G.slayer = { active: true, enemy, count, progress: 0 }; G.ui.toast(`Slayer task: ${count} ${ENEMIES[enemy].name}s`, 'good', 2600); G.save.save(); };
   G.slayerClaim = () => { const s = G.slayer; if (!s.active || s.progress < s.count) return; const reward = s.count * 8; G.inventory.add('gold', reward); G.gainXp('slayer', s.count * 15); s.active = false; G.ui.toast(`Slayer contract complete! +${reward}g`, 'good', 2800); G.ach.evaluate(); G.save.save(); };
-  G.prestigeSkill = (key) => { if (!G.skills.canPrestige(key)) { G.ui.toast('Reach level 20 to prestige', 'bad', 1800); return; } if (G.skills.doPrestige(key)) { G.ui.toast(`⭐ Prestiged ${skillName(key)}!`, 'good', 3000); G.ui.levelBanner(`Prestige — ${skillName(key)}`); G.audio.sfx('ach'); G.ach.evaluate(); G.save.save(); } };
+  G.prestigeSkill = (key) => { if (!G.skills.canPrestige(key)) { G.ui.toast('Reach level 20 to prestige', 'bad', 1800); return; } if (G.skills.doPrestige(key)) { G.ui.toast(`⭐ Prestiged ${skillName(key)}!`, 'good', 3000); G.ui.levelBanner(`Prestige — ${skillName(key)}`); G.audio.sfx('ach'); if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, 0xffd45f, { n: 20, spread: 3.6, up: 4.6, life: 0.9 }); G.ach.evaluate(); G.save.save(); } };
   G.trackQuest = (id) => { G.trackedQuest = (G.trackedQuest === id) ? null : id; G.ui.toast(G.trackedQuest ? `Tracking: ${QUESTS[id].name}` : 'Tracking cleared', 'good', 1600); G.save.save(); };
   G.ach = {
     unlocked: new Set((saved && saved.achievements) || []),
@@ -101,7 +103,7 @@ try {
   G.gainXp = (key, amt) => {
     const r = G.skills.addXp(key, amt);
     G.ui.xpDrop(`+${amt} ${skillName(key)}`);
-    if (r.leveled) { G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`); if (G.audio) G.audio.sfx('level'); if (G.ach) G.ach.evaluate(); }
+    if (r.leveled) { G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`); if (G.audio) G.audio.sfx('level'); if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, 0xffd45f, { n: 14, spread: 3.2, up: 4.2, life: 0.8 }); if (G.ach) G.ach.evaluate(); }
   };
 
   const readyToasted = new Set();
@@ -117,6 +119,7 @@ try {
   G.chopTree = (t) => {
     world.removeTree(t.idx);
     player.playGather('chop');
+    G.fx.burst(t.x, t.y + 1.6, t.z, 0x9a6a3a, { n: 9, up: 2.6 });
     G.inventory.add('wood', 1);
     G.ui.toast('Chopped Driftwood', 'gold', 1400); G.audio.sfx('pickup');
     G.gainXp('woodcutting', 14);
@@ -125,6 +128,7 @@ try {
   G.forageBush = (b) => {
     world.harvestBush(b.idx);
     player.playGather('forage');
+    G.fx.burst(b.x, b.y + 0.8, b.z, 0x4f9a40, { n: 7, up: 2.0 });
     const herb = Math.random() < 0.3;
     G.inventory.add(herb ? 'herb' : 'berry', 1);
     G.ui.toast(herb ? 'Foraged Glimmerleaf' : 'Foraged Sunberries', 'gold', 1400);
@@ -172,6 +176,7 @@ try {
   G.mineOre = (o) => {
     world.depleteOre(o);
     player.playGather('mine');
+    G.fx.burst(o.x, o.y + 0.6, o.z, 0x9aa0a8, { n: 9, up: 2.4 });
     const item = ORE_ITEM[o.type];
     G.inventory.add(item, 1);
     G.ui.toast('Mined ' + ITEMS[item].name, 'gold', 1400); G.audio.sfx('pickup');
@@ -180,8 +185,9 @@ try {
     if (gem) { G.inventory.add(gem, 1); G.ui.toast('Found a ' + ITEMS[gem].name + '!', 'gold', 1900); }
     checkQuestReady(); G.save.save();
   };
-  G.fishSpot = () => {
+  G.fishSpot = (f) => {
     player.playGather('fish');
+    if (f) G.fx.burst(f.x, (f.y || 0) + 0.3, f.z, 0x9bf2ff, { n: 8, up: 2.2 });
     const item = Math.random() < 0.55 ? 'raw_shrimp' : 'raw_trout';
     G.inventory.add(item, 1);
     G.ui.toast('Caught ' + ITEMS[item].name, 'gold', 1400);
@@ -240,6 +246,7 @@ try {
       if (s.gold) { G.inventory.add('gold', s.gold); parts.push('+' + s.gold + 'g'); }
       for (const k in (s.loot || {})) { G.inventory.add(k, s.loot[k]); parts.push(`${ITEMS[k].name}×${s.loot[k]}`); }
       G.audio.sfx('pickup');
+      G.fx.burst(s.x, s.y + 1, s.z, 0xffd45f, { n: 12, spread: 3, up: 3.5, life: 0.8 });
       G.ui.toast(`Looted ${s.label}: ${parts.join(', ')}`, 'gold', 3400); G.save.save(); return;
     }
     G.save.save();
@@ -290,6 +297,7 @@ try {
     G.inventory.remove(key, 1);
     G.ui.setHealth(player.state.hp, player.state.maxHp);
     G.ui.toast(`Used ${def.name} (+${def.heal} HP)`, 'good', 1600);
+    G.fx.burst(player.position.x, player.position.y + 1.5, player.position.z, 0x7CFFB0, { n: 9, up: 2.6 });
     G.save.save();
   };
 
@@ -595,6 +603,7 @@ try {
       G.entities.update(dt, player);
       world.tick(dt);
       G.projectiles.update(dt);
+      G.fx.update(dt);
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -656,7 +665,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);
