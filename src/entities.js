@@ -117,6 +117,13 @@ export function createEntities(scene, world, G) {
   }
   ENEMY_SPAWNS.forEach((s) => spawnEnemy(s.enemy, s.x, s.z));
 
+  const telegraphs = [];   // boss slam warnings: a growing ground ring that hits its area after a windup
+  function spawnTelegraph(x, z, dmg, delay) {
+    const y = world.height(x, z) + 0.12;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(2.0, 2.7, 24), new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(x, y, z); scene.add(ring);
+    telegraphs.push({ mesh: ring, x, z, r: 2.7, t: delay || 1.2, dmg: dmg || 22 });
+  }
   function update(dt, player) {
     T += dt;
     for (const e of enemies) {
@@ -158,6 +165,11 @@ export function createEntities(scene, world, G) {
 
       let moving = false;
       if (e.state === 'chase') {
+        if (e.def.boss) {   // boss mechanics: enrage at half health, periodic telegraphed slam to dodge
+          if (!e.enraged && e.hp < e.maxHp * 0.5) { e.enraged = true; if (G.ui) G.ui.toast(`${e.def.name} enrages!`, 'bad', 2200); }
+          e.slamCd = (e.slamCd == null ? 4 : e.slamCd) - dt;
+          if (e.slamCd <= 0 && d < e.def.aggro * 2 + 6) { e.slamCd = (e.enraged ? 4.5 : 6.5) + Math.random() * 2; spawnTelegraph(player.position.x, player.position.z, Math.round(e.def.dmg * 1.6), e.enraged ? 0.95 : 1.25); }
+        }
         e.heading = Math.atan2(player.position.x - e.pos.x, player.position.z - e.pos.z);
         if (d > 1.7) {
           const nx = e.pos.x + Math.sin(e.heading) * e.def.speed * dt;
@@ -165,7 +177,7 @@ export function createEntities(scene, world, G) {
           if (world.isWalkable(nx, nz)) { e.group.position.x = nx; e.group.position.z = nz; moving = true; }
         } else {
           e.attackCd -= dt;
-          if (e.attackCd <= 0) { e.attackCd = 1.3; e.atkAnim = ATK_ANIM; G.damagePlayer(e.def.dmg, e); }
+          if (e.attackCd <= 0) { e.attackCd = e.enraged ? 0.85 : 1.3; e.atkAnim = ATK_ANIM; G.damagePlayer(Math.round(e.def.dmg * (e.enraged ? 1.25 : 1)), e); }
         }
       } else {
         const homeDist = dist2D(e.pos.x, e.pos.z, e.home.x, e.home.z);
@@ -256,6 +268,16 @@ export function createEntities(scene, world, G) {
         const gait = moving ? Math.sin(m.walkPhase) * 0.5 : 0, k = Math.min(1, dt * 10);
         a.legL.rotation.x += (gait - a.legL.rotation.x) * k; a.legR.rotation.x += (-gait - a.legR.rotation.x) * k;
         a.armL.rotation.x += (-gait - a.armL.rotation.x) * k; a.armR.rotation.x += (gait - a.armR.rotation.x) * k;
+      }
+    }
+    // grow each boss slam-warning ring, then deal AoE if the player didn't step out in time
+    for (let i = telegraphs.length - 1; i >= 0; i--) {
+      const tg = telegraphs[i]; tg.t -= dt;
+      const k = 1 + 0.35 * Math.abs(Math.sin(T * 14)); tg.mesh.scale.set(k, k, 1); tg.mesh.material.opacity = 0.4 + 0.3 * Math.abs(Math.sin(T * 14));
+      if (tg.t <= 0) {
+        if (dist2D(player.position.x, player.position.z, tg.x, tg.z) < tg.r + 0.6) G.damagePlayer(tg.dmg);
+        if (G.fx) G.fx.burst(tg.x, world.height(tg.x, tg.z) + 0.5, tg.z, 0xff5a2a, { n: 22, spread: 3.6, up: 3.2, life: 1 });
+        scene.remove(tg.mesh); telegraphs.splice(i, 1);
       }
     }
   }

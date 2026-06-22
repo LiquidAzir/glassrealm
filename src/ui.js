@@ -36,6 +36,12 @@ export function createUI(G) {
   const prayerFill = prayerBar.querySelector('#prayerFill');
   const prayerLabel = prayerBar.querySelector('#prayerLabel');
   function setPrayer(cur, mx) { prayerFill.style.width = Math.max(0, Math.min(100, (cur / mx) * 100)) + '%'; prayerLabel.textContent = `✨ ${Math.ceil(cur)}/${mx}`; }
+  const specBar = document.createElement('div'); specBar.className = 'bar spec-bar';
+  specBar.innerHTML = '<span class="bar-fill" id="specFill"></span><span class="bar-label" id="specLabel">⚡</span>';
+  document.getElementById('vitals').insertBefore(specBar, els.loc);
+  const specFill = specBar.querySelector('#specFill'); specFill.style.background = 'linear-gradient(90deg,#ffb02e,#ffe066)';
+  const specLabel = specBar.querySelector('#specLabel');
+  function setSpec(cur) { const v = Math.max(0, Math.min(100, cur)); specFill.style.width = v + '%'; specLabel.textContent = v >= 100 ? '⚡ SPEC!' : `⚡ ${Math.round(v)}`; }
 
   // quest guidance arrow (points toward current objective, relative to facing)
   const questGuide = document.createElement('div'); questGuide.id = 'questGuide'; questGuide.className = 'hidden';
@@ -395,7 +401,7 @@ export function createUI(G) {
 
   const api = {
     menuOpen: false,
-    setCompass, setHealth, setLocation, setPrayer, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible, setChannel, hideChannel,
+    setCompass, setHealth, setLocation, setPrayer, setSpec, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible, setChannel, hideChannel,
     hitsplat, xpDrop, levelBanner,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,

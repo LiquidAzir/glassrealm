@@ -296,6 +296,11 @@ try {
     else if (bf && bf.venom && w.style !== 'magic') e.dot = { kind: 'poison', dmg: 4, t: 8, tick: 1.5 };
     const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
+    // special attack: a spec bar charges per hit and auto-unleashes when full (×2.4 + AoE splash)
+    let special = false;
+    if ((player.state.spec || 0) >= 100) { special = true; player.state.spec = 0; dmg = Math.round(dmg * 2.4); }
+    else player.state.spec = Math.min(100, (player.state.spec || 0) + 6);
+    G.ui.setSpec(player.state.spec || 0);
     const hitY = e.pos.y + 1.5 * (e.baseScale || 1);
     e._lastSkill = w.skill;
     if (w.style === 'ranged' || w.style === 'magic') {
@@ -305,6 +310,11 @@ try {
     } else {
       G.ui.hitsplat(e.pos.x, hitY, e.pos.z, dmg, 'enemy');
       G.entities.damageEnemy(e, dmg);
+    }
+    if (special) {
+      G.audio.sfx('ach'); G.ui.toast('✦ Special attack!', 'gold', 1300);
+      if (G.fx) G.fx.burst(e.pos.x, hitY, e.pos.z, 0xffd24a, { n: 24, spread: 4, up: 4, life: 1.1 });
+      for (const o of G.entities.enemies) { if (o.alive && o !== e && dist2D(o.pos.x, o.pos.z, e.pos.x, e.pos.z) < 4.5) { const sd = Math.round(dmg * 0.5); G.ui.hitsplat(o.pos.x, o.pos.y + 1.5, o.pos.z, sd, 'enemy'); G.entities.damageEnemy(o, sd); } }
     }
   };
   function quickAttack() {
@@ -895,6 +905,7 @@ try {
   function updateStatus(dt) {   // tick combat-potion buffs + poison damage-over-time on the player
     const st = player.state, b = st.buffs;
     if (b) for (const k in b) { b[k].t -= dt; if (b[k].t <= 0) delete b[k]; }
+    if ((st.spec || 0) < 100) { st.spec = Math.min(100, (st.spec || 0) + 2 * dt); G.ui.setSpec(st.spec); }   // spec energy slowly recharges
     if (st.poison) {
       if (b && b.antipoison) { st.poison = null; return; }
       st.poison.t -= dt; st.poison.tick -= dt;
