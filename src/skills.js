@@ -23,7 +23,9 @@ const DEFS = [
 const DEFAULTS = {};
 DEFS.forEach((d) => (DEFAULTS[d.key] = 0));
 
-const xpForLevel = (l) => Math.round(8 * Math.pow(l - 1, 1.85));
+// Steep RuneScape-like curve: levels come fast early, then a real long-term grind
+// (e.g. lvl 10 ≈ 1.3k xp, lvl 30 ≈ 21k, lvl 50 ≈ 74k, lvl 99 ≈ 416k).
+const xpForLevel = (l) => Math.round(8 * Math.pow(l - 1, 2.3));
 function levelForXp(xp) { let l = 1; while (l < 99 && xpForLevel(l + 1) <= xp) l++; return l; }
 const PRESTIGE_AT = 20;
 

@@ -110,6 +110,12 @@ export const ITEMS = {
   verdant_charm:    { name: 'Verdant Charm',    icon: '📿', type: 'amulet', bonus: { maxhp: 40, def: 6 },   desc: 'Crafted. +40 max HP, +6 defence.' },
   stormforged_ring: { name: 'Stormforged Ring', icon: '💍', type: 'ring',   bonus: { ranged: 9, melee: 6 }, desc: 'Crafted. +9 ranged, +6 melee.' },
 
+  // --- starter weapon + shields (shield is its own equip slot) ---
+  bronze_dagger: { name: 'Bronze Dagger', icon: '🗡️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 3, range: 2.4, speed: 0.32, desc: 'A quick bronze dagger. +3 melee, very fast.' },
+  wooden_shield: { name: 'Wooden Shield', icon: '🛡️', type: 'shield', defense: 5,  desc: 'A sturdy wooden shield. Blocks 5 damage.' },
+  iron_shield:   { name: 'Iron Shield',   icon: '🛡️', type: 'shield', defense: 10, desc: 'A heavy iron shield. Blocks 10 damage.' },
+  steel_shield:  { name: 'Steel Shield',  icon: '🛡️', type: 'shield', defense: 16, desc: 'A broad steel shield. Blocks 16 damage.' },
+
   // --- tavern fare (bought from a Tavern Keeper) ---
   ale:             { name: 'Frothy Ale',      icon: '🍺', type: 'consumable', heal: 18, desc: 'A foaming mug. Restores 18 HP.' },
   spiced_mead:     { name: 'Spiced Mead',     icon: '🍯', type: 'consumable', heal: 26, desc: 'Warm and sweet. Restores 26 HP.' },
@@ -167,6 +173,9 @@ export const FORGE = [
   { out: 'leather_armor', cost: { pelt: 4 }, xp: 45 },
   { out: 'iron_armor',   cost: { iron_bar: 5 }, xp: 120 },
   { out: 'steel_armor',  cost: { iron_bar: 8, coal: 5 }, xp: 210 },
+  { out: 'wooden_shield', cost: { wood: 6 }, xp: 40 },
+  { out: 'iron_shield',   cost: { iron_bar: 4 }, xp: 110 },
+  { out: 'steel_shield',  cost: { iron_bar: 7, coal: 4 }, xp: 190 },
 ];
 
 // NPC anchor positions are relative to the village; entities.js drops them to ground.
@@ -1003,8 +1012,17 @@ export const SHOP = {
     wraithblade: 130, stormstring_bow: 110, prism_staff: 135, cinderforge_axe: 150, tidecaller_trident: 180,
     vine_coil: 12, demon_ash: 16, storm_shard: 18, fae_dust: 20,
     coilfang_spear: 150, ashbringer: 200, tempest_bow: 140, faewild_staff: 170,
+    bronze_dagger: 12, wooden_shield: 12, iron_shield: 45, steel_shield: 80,
   },
 };
+
+// Starter classes — chosen on a new game; each grants a loadout.
+export const CLASSES = [
+  { key: 'warrior', name: 'Warrior', icon: '⚔️', desc: 'Sword & shield — sturdy frontline melee.', grant: { weapon: 'bronze_sword', shield: 'wooden_shield', armor: 'leather_armor', items: { potion: 2, gold: 40 } } },
+  { key: 'archer',  name: 'Archer',  icon: '🏹', desc: 'Oak bow — strike foes from afar.',         grant: { weapon: 'oak_bow', armor: 'leather_armor', items: { potion: 2, gold: 40 } } },
+  { key: 'mage',    name: 'Mage',    icon: '🪄', desc: 'Apprentice staff — hurl arcane bolts.',     grant: { weapon: 'apprentice_staff', armor: 'leather_armor', items: { potion: 2, gold: 40 } } },
+  { key: 'rogue',   name: 'Rogue',   icon: '🗡️', desc: 'Bronze dagger — fast, nimble strikes.',     grant: { weapon: 'bronze_dagger', armor: 'leather_armor', items: { potion: 3, gold: 60 } } },
+];
 
 // Tavern Keeper's drink/food menu, and idle rumours patrons murmur when chatted to.
 export const TAVERN = [

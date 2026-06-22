@@ -53,6 +53,14 @@ export function createUI(G) {
   document.getElementById('hud').appendChild(minimap);
   const mmCtx = minimap.getContext('2d');
   function setMinimapVisible(on) { minimap.style.display = on ? '' : 'none'; }
+
+  // gathering channel progress bar (bottom-centre)
+  const channelEl = document.createElement('div'); channelEl.id = 'channelBar'; channelEl.className = 'hidden';
+  channelEl.innerHTML = '<span class="ch-label"></span><span class="ch-track"><span class="ch-fill"></span></span>';
+  document.getElementById('hud').appendChild(channelEl);
+  const chLabel = channelEl.querySelector('.ch-label'), chFill = channelEl.querySelector('.ch-fill');
+  function setChannel(frac, label) { channelEl.classList.remove('hidden'); chLabel.textContent = label; chFill.style.width = Math.round(frac * 100) + '%'; }
+  function hideChannel() { channelEl.classList.add('hidden'); }
   function showPrompt(t) { els.promptText.textContent = t; els.prompt.classList.remove('hidden'); }
   function hidePrompt() { els.prompt.classList.add('hidden'); }
   function toast(text, type = '', ms = 2400) {
@@ -127,7 +135,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Prayer') return PRAYERS.length;
     if (TABS[tab] === 'Skills') return G.skills.DEFS.length;
     if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
-    if (TABS[tab] === 'Diary') return 1;
+    if (TABS[tab] === 'Diary') return 2;
     return 0;
   }
   function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); }
@@ -153,6 +161,7 @@ export function createUI(G) {
       if (q) { G.trackQuest(q.id); renderMenu(); }
     } else if (TABS[tab] === 'Diary') {
       if (row === 0 && G.audio) { G.audio.toggleMuted(); G.save.save(); renderMenu(); }
+      else if (row === 1 && G.requestRestart) G.requestRestart();
     }
   }
   function gearRows() {
@@ -164,6 +173,8 @@ export function createUI(G) {
     G.inventory.list().filter((it) => it.def.type === 'amulet').forEach((it) => rows.push({ kind: 'amulet', key: it.key }));
     rows.push({ kind: 'unequipR', label: 'No ring' });
     G.inventory.list().filter((it) => it.def.type === 'ring').forEach((it) => rows.push({ kind: 'ring', key: it.key }));
+    rows.push({ kind: 'unequipS', label: 'No shield' });
+    G.inventory.list().filter((it) => it.def.type === 'shield').forEach((it) => rows.push({ kind: 'shield', key: it.key }));
     return rows;
   }
   function renderGear() {
@@ -174,13 +185,14 @@ export function createUI(G) {
     let html = `<div class="section-head">⚔️${gb.melee} 🏹${gb.ranged} 🪄${gb.magic} 🛡️${gb.def} ❤️+${gb.maxhp}${set ? ` &nbsp;·&nbsp; <span style="color:var(--gold)">${set} set!</span>` : ''}</div>`;
     rows.forEach((r, i) => {
       const d = r.key ? ITEMS[r.key] : null;
-      const equipped = (r.kind === 'weapon' && eq.weapon === r.key) || (r.kind === 'armor' && eq.armor === r.key) || (r.kind === 'amulet' && eq.amulet === r.key) || (r.kind === 'ring' && eq.ring === r.key) || (r.kind === 'unequipW' && !eq.weapon) || (r.kind === 'unequipA' && !eq.armor) || (r.kind === 'unequipAm' && !eq.amulet) || (r.kind === 'unequipR' && !eq.ring);
+      const equipped = (r.kind === 'weapon' && eq.weapon === r.key) || (r.kind === 'armor' && eq.armor === r.key) || (r.kind === 'amulet' && eq.amulet === r.key) || (r.kind === 'ring' && eq.ring === r.key) || (r.kind === 'shield' && eq.shield === r.key) || (r.kind === 'unequipW' && !eq.weapon) || (r.kind === 'unequipA' && !eq.armor) || (r.kind === 'unequipAm' && !eq.amulet) || (r.kind === 'unequipR' && !eq.ring) || (r.kind === 'unequipS' && !eq.shield);
       const icon = d ? d.icon : (r.kind === 'unequipW' ? '✊' : '🚫');
       const title = d ? d.name : r.label;
       let sub;
       if (!d) sub = 'tap to unequip';
       else if (d.type === 'weapon') sub = `${d.style} · +${d.bonus} dmg`;
       else if (d.type === 'armor') sub = `armor · -${d.defense} dmg${d.set ? ' · ' + d.set : ''}`;
+      else if (d.type === 'shield') sub = `shield · -${d.defense} dmg`;
       else sub = Object.keys(d.bonus || {}).map((k) => `+${d.bonus[k]} ${k}`).join(', ') + (d.set ? ' · ' + d.set : '');
       html += `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${icon}</span><div class="row-main"><div class="row-title">${title}${equipped ? ' <span style="color:var(--gold)">✓</span>' : ''}</div><div class="row-sub">${sub}</div></div></div>`;
     });
@@ -190,6 +202,7 @@ export function createUI(G) {
     const done = G.ach.unlocked;
     const sound = G.audio && !G.audio.muted;
     let html = `<div class="row ${row === 0 ? 'sel' : ''}"><span class="row-icon">${sound ? '🔊' : '🔇'}</span><div class="row-main"><div class="row-title">Sound: ${sound ? 'ON' : 'OFF'}</div><div class="row-sub">tap to toggle</div></div></div>`;
+    html += `<div class="row ${row === 1 ? 'sel' : ''}"><span class="row-icon">🔄</span><div class="row-main"><div class="row-title">Restart game</div><div class="row-sub">choose a new class · wipes your save</div></div></div>`;
     html += `<div class="section-head">Achievements · ${done.size}/${ACHIEVEMENTS.length}</div>`;
     html += ACHIEVEMENTS.map((a) => { const u = done.has(a.id); return `<div class="row" style="${u ? '' : 'opacity:.55'}"><span class="row-icon">${u ? '🏆' : '🔒'}</span><div class="row-main"><div class="row-title">${a.name}</div><div class="row-sub">${a.desc}</div></div></div>`; }).join('');
     els.menuBody.innerHTML = html;
@@ -342,7 +355,7 @@ export function createUI(G) {
 
   const api = {
     menuOpen: false,
-    setCompass, setHealth, setLocation, setPrayer, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible,
+    setCompass, setHealth, setLocation, setPrayer, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible, setChannel, hideChannel,
     hitsplat, xpDrop, levelBanner,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,

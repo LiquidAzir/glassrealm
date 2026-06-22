@@ -11,7 +11,7 @@ import { createInventory } from './inventory.js';
 import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
 import { loadSave, createSave } from './save.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { createFx } from './fx.js';
 import { createInteriors } from './interiors.js';
@@ -58,7 +58,7 @@ try {
       player.group.position.z = saved.player.z;
       player.state.heading = saved.player.heading;
       player.state.hp = Math.max(1, saved.player.hp || player.state.maxHp);
-      if (saved.player.equipment) { const e = saved.player.equipment; player.state.equipment = { weapon: e.weapon || null, armor: e.armor || null, amulet: e.amulet || null, ring: e.ring || null }; }
+      if (saved.player.equipment) { const e = saved.player.equipment; player.state.equipment = { weapon: e.weapon || null, armor: e.armor || null, amulet: e.amulet || null, ring: e.ring || null, shield: e.shield || null }; }
       player.refreshEquipment();
     }
   }
@@ -76,7 +76,7 @@ try {
   G.fullSet = fullSet;
   function gearBonus() {
     const eq = player.state.equipment, b = { def: 0, melee: 0, ranged: 0, magic: 0, maxhp: 0 };
-    for (const slot of ['armor', 'amulet', 'ring']) { const it = eq[slot] ? ITEMS[eq[slot]] : null; if (!it) continue; if (it.defense) b.def += it.defense; if (it.bonus) for (const k in it.bonus) b[k] += it.bonus[k]; }
+    for (const slot of ['armor', 'amulet', 'ring', 'shield']) { const it = eq[slot] ? ITEMS[eq[slot]] : null; if (!it) continue; if (it.defense) b.def += it.defense; if (it.bonus) for (const k in it.bonus) b[k] += it.bonus[k]; }
     const s = fullSet(); if (s && SETS[s]) for (const k in SETS[s]) if (k !== 'name') b[k] += SETS[s][k];
     return b;
   }
@@ -364,9 +364,33 @@ try {
     else G.ui.toast('Not enough gold', 'bad', 1400);
   };
 
+  // ---------- starter classes + restart ----------
+  G.startClass = (key) => {
+    const c = CLASSES.find((x) => x.key === key) || CLASSES[0];
+    const g = c.grant;
+    player.state.equipment = { weapon: g.weapon || null, armor: g.armor || null, amulet: null, ring: null, shield: g.shield || null };
+    for (const k in (g.items || {})) G.inventory.add(k, g.items[k]);
+    player.refreshEquipment(); applyMaxHp();
+    player.state.hp = player.state.maxHp; G.ui.setHealth(player.state.hp, player.state.maxHp);
+    G.ui.toast(`You begin as a ${c.name}!`, 'good', 3200); G.audio.sfx('level'); G.save.save();
+  };
+  const classCfg = {
+    title: 'Choose your class', hint: '↑ ↓ select · tap to begin',
+    rows: () => CLASSES.map((c) => ({ icon: c.icon, title: c.name, sub: c.desc, data: { key: c.key } })),
+    onSelect: (r) => { G.startClass(r.data.key); G.closePicker(); },
+  };
+  G.openClassPicker = () => { setMode('picker'); G.ui.openPicker(classCfg); };
+  let restartArmed = 0;
+  G.requestRestart = () => {
+    const now = performance.now();
+    if (restartArmed && now - restartArmed < 5000) { G.save.clear(); location.reload(); }
+    else { restartArmed = now; G.ui.toast('Tap Restart again to confirm — this wipes your save!', 'bad', 4500); }
+  };
+
   // ---------- enter / exit buildings ----------
   const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge' };
   G.enterBuilding = (door) => {
+    cancelChannel();
     G.returnPos = { x: door.x, z: door.z, heading: player.state.heading };
     const info = G.interiors.enter(door.building);
     G.interiorStations = info.stations;
@@ -414,10 +438,12 @@ try {
     else if (r.kind === 'unequipA') eq.armor = null;
     else if (r.kind === 'unequipAm') eq.amulet = null;
     else if (r.kind === 'unequipR') eq.ring = null;
+    else if (r.kind === 'unequipS') eq.shield = null;
     else if (r.kind === 'weapon') eq.weapon = r.key;
     else if (r.kind === 'armor') eq.armor = r.key;
     else if (r.kind === 'amulet') eq.amulet = r.key;
     else if (r.kind === 'ring') eq.ring = r.key;
+    else if (r.kind === 'shield') eq.shield = r.key;
     player.refreshEquipment(); applyMaxHp();
     G.ui.toast(r.key ? `Equipped ${ITEMS[r.key].name}` : 'Unequipped', 'good', 1200); G.ach.evaluate(); G.save.save();
   };
@@ -465,6 +491,7 @@ try {
     G.gainXp('defence', Math.max(1, Math.round(taken * 0.6)));
     G.ui.setHealth(player.state.hp, player.state.maxHp);
     if (player.state.hp <= 0) {
+      cancelChannel();
       player.state.hp = player.state.maxHp;
       const sx = world.village.x, sz = world.village.z + 12;
       player.group.position.set(sx, world.height(sx, sz), sz);
@@ -495,7 +522,7 @@ try {
   // ---------- mode state machine ----------
   let mode = 'world';
   function setMode(m) { mode = m; if (m !== 'world') G.ui.hidePrompt(); }
-  function openMenu() { setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
+  function openMenu() { cancelChannel(); setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
   function closeMenu() { G.ui.closeMenu(); setMode(G.inInterior ? 'interior' : 'world'); }
 
   // Universal "back" — an up-down-up-down swipe wiggle (double-tap doesn't register
@@ -512,12 +539,19 @@ try {
 
   input.on((a) => {
     G.audio.resume();
-    if (mode !== 'world' && (a === 'up' || a === 'down') && backGesture(a)) { exitOverlay(); return; }
+    // ↑↓↑↓ wiggle: opens the menu in the world (so a stray swipe-down never opens it) and closes any overlay
+    if ((a === 'up' || a === 'down') && backGesture(a)) {
+      backSeq = [];
+      if (mode === 'world' || mode === 'interior') openMenu();
+      else exitOverlay();
+      return;
+    }
     if (mode === 'world' || mode === 'interior') {
+      if (G.channel && a !== 'tap') cancelChannel();   // any move stops gathering
       if (a === 'up') player.impulseForward();
       else if (a === 'left') player.impulseTurn(-1);
       else if (a === 'right') player.impulseTurn(1);
-      else if (a === 'down') openMenu();
+      else if (a === 'down') player.impulseBack();
       else if (a === 'tap') doInteract();
       else if (a === 'doubletap') quickAttack();
     } else if (mode === 'menu') {
@@ -541,18 +575,38 @@ try {
   });
 
   function doInteract() {
+    if (G.channel) { cancelChannel(); return; }   // tapping again stops gathering
     const t = G.currentTarget;
     if (!t) return;
-    if (t.kind === 'tree') G.chopTree(t.ref);
-    else if (t.kind === 'bush') G.forageBush(t.ref);
-    else if (t.kind === 'ore') G.mineOre(t.ref);
-    else if (t.kind === 'fish') G.fishSpot(t.ref);
+    const lvl = (k) => G.skills.level(k);
+    if (t.kind === 'tree') startChannel(Math.max(2.8, 4 - lvl('woodcutting') * 0.03), 'chop', 'Chopping…', () => G.chopTree(t.ref));
+    else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
+    else if (t.kind === 'ore') startChannel(Math.max(5, 7 - lvl('mining') * 0.04), 'mine', 'Mining…', () => G.mineOre(t.ref));
+    else if (t.kind === 'fish') startChannel(Math.max(5, 7 - lvl('fishing') * 0.04), 'fish', 'Fishing…', () => G.fishSpot(t.ref));
     else if (t.kind === 'station') G.useStation(t.ref);
     else if (t.kind === 'plot') G.plotAction(t.ref);
     else if (t.kind === 'stall') G.thieveStall(t.ref);
     else if (t.kind === 'shortcut') G.useShortcut(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
     else if (t.kind === 'enemy') G.attackEnemy(t.ref);
+  }
+
+  // ---------- channelled gathering (timed action: progress bar + looping tool animation) ----------
+  let channelAnimT = 0;
+  function startChannel(dur, anim, label, onDone) {
+    G.channel = { t: 0, dur, anim, label, onDone };
+    channelAnimT = 0;
+    player.playGather(anim);
+    G.audio.sfx(anim === 'fish' ? 'cast' : 'hit');
+    G.ui.setChannel(0, label);
+  }
+  function cancelChannel() { if (G.channel) { G.channel = null; G.ui.hideChannel(); } }
+  function updateChannel(dt) {
+    const c = G.channel; if (!c) return;
+    c.t += dt; channelAnimT += dt;
+    if (channelAnimT >= 0.55) { channelAnimT = 0; player.playGather(c.anim); G.audio.sfx(c.anim === 'fish' ? 'cast' : 'hit'); }   // keep the tool swinging
+    G.ui.setChannel(Math.min(1, c.t / c.dur), c.label);
+    if (c.t >= c.dur) { const done = c.onDone; G.channel = null; G.ui.hideChannel(); done(); }
   }
 
   // ---------- HUD helpers ----------
@@ -572,6 +626,7 @@ try {
 
   function updatePrompt() {
     if (mode !== 'world' && mode !== 'interior') return;
+    if (G.channel) { G.ui.hidePrompt(); return; }   // channel bar shows instead
     const t = G.currentTarget;
     if (t) G.ui.showPrompt(t.label); else G.ui.hidePrompt();
   }
@@ -672,6 +727,7 @@ try {
       world.tick(dt);
       G.projectiles.update(dt);
       G.fx.update(dt);
+      updateChannel(dt);
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -687,6 +743,7 @@ try {
     } else if (mode === 'interior') {
       player.update(dt, input);
       G.fx.update(dt);
+      updateChannel(dt);
       G.currentTarget = G.interact.best();
       updatePrompt();
     }
@@ -721,8 +778,8 @@ try {
   requestAnimationFrame(frame);
 
   if (!saved) {
-    setTimeout(() => G.ui.toast('Welcome to the Verdant Isle', 'good', 4200), 1000);
-    setTimeout(() => G.ui.toast('Swipe ↑ walk · ←/→ turn · tap to act · swipe ↓ for menu', '', 6000), 2400);
+    setTimeout(() => G.openClassPicker(), 900);
+    setTimeout(() => G.ui.toast('↑ walk · ↓ back · ←/→ turn · tap to act · ↑↓↑↓ for menu', '', 7000), 3400);
   }
 
   // ---------- test hooks ----------
@@ -740,7 +797,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

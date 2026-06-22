@@ -13,7 +13,7 @@ const GATHER_DUR = 0.6;
 // Per-item held models: [shape, tint]. Shape drives the mesh, tint the colour, so
 // every weapon shows a distinct, type-appropriate model in the hand.
 const WEAPON_MODEL = {
-  bronze_sword: ['sword', 0xb87333], iron_sword: ['sword', 0xc2ccd6], steel_sword: ['greatsword', 0xeaf2ff],
+  bronze_sword: ['sword', 0xb87333], iron_sword: ['sword', 0xc2ccd6], steel_sword: ['greatsword', 0xeaf2ff], bronze_dagger: ['dagger', 0xb87333],
   sun_blade: ['greatsword', 0xffd45f], wraithblade: ['greatsword', 0xcfc8b0], ashbringer: ['greatsword', 0xff5a2a],
   cinderforge_axe: ['axe', 0xff7a3a], coilfang_spear: ['spear', 0x4fd06a], tidecaller_trident: ['trident', 0x2bd6cf],
   oak_bow: ['bow', 0x8a5a2e], yew_bow: ['bow', 0x6e4a2b], stormstring_bow: ['longbow', 0x9bdcff], tempest_bow: ['longbow', 0xbfe6ff],
@@ -24,6 +24,7 @@ const ARMOR_MODEL = {
   leather_armor: { color: 0x8a5a2e }, iron_armor: { color: 0x9aa0a8, shoulders: true }, steel_armor: { color: 0xeaf2ff, shoulders: true, helm: true },
   guardian_armor: { color: 0xd8c070, shoulders: true, helm: true }, ranger_armor: { color: 0x4f8f5a, hood: true }, sorcerer_robes: { color: 0x8a6abf, hood: true },
 };
+const SHIELD_COL = { wooden_shield: 0x8a5a2e, iron_shield: 0x9aa0a8, steel_shield: 0xeaf2ff };
 
 export function createPlayer(scene, world) {
   const group = new THREE.Group();
@@ -49,6 +50,7 @@ export function createPlayer(scene, world) {
 
   // armor overlay group — rebuilt to match the equipped armor (chest/shoulders/helm/hood)
   const armorGroup = new THREE.Group(); body.add(armorGroup);
+  const shieldGroup = new THREE.Group(); body.add(shieldGroup);   // shield on the left arm
 
   // right arm: pivots at the shoulder so it can swing; holds the weapon
   const rightArm = new THREE.Group(); rightArm.position.set(0.5, 1.5, 0); body.add(rightArm);
@@ -63,6 +65,7 @@ export function createPlayer(scene, world) {
     const m = new THREE.MeshLambertMaterial({ color: tint, flatShading: true });
     const glow = new THREE.MeshBasicMaterial({ color: tint });
     if (model === 'sword') { weaponHolder.add(mkBox(0.08, 1.0, 0.16, m, 0, -0.55, 0)); weaponHolder.add(mkBox(0.34, 0.1, 0.2, dark, 0, -0.04, 0)); }
+    else if (model === 'dagger') { weaponHolder.add(mkBox(0.07, 0.55, 0.14, m, 0, -0.35, 0)); weaponHolder.add(mkBox(0.22, 0.08, 0.16, dark, 0, -0.05, 0)); }
     else if (model === 'greatsword') { weaponHolder.add(mkBox(0.13, 1.5, 0.22, m, 0, -0.8, 0)); weaponHolder.add(mkBox(0.5, 0.12, 0.24, dark, 0, -0.04, 0)); }
     else if (model === 'axe') { weaponHolder.add(mkBox(0.07, 1.25, 0.07, woodMat, 0, -0.62, 0)); weaponHolder.add(mkBox(0.5, 0.5, 0.14, m, 0.24, -1.05, 0)); }
     else if (model === 'spear') { weaponHolder.add(mkBox(0.06, 1.8, 0.06, woodMat, 0, -0.85, 0)); const t = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.45, 6), m); t.position.set(0, -1.78, 0); t.rotation.x = Math.PI; weaponHolder.add(t); }
@@ -88,6 +91,13 @@ export function createPlayer(scene, world) {
     if (a.helm) armorGroup.add(mkBox(0.44, 0.34, 0.44, m, 0, 2.0, 0));
     if (a.hood) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.55, 6), m); h.position.set(0, 2.05, 0); armorGroup.add(h); }
   }
+  function buildShield(key) {
+    while (shieldGroup.children.length) shieldGroup.remove(shieldGroup.children[0]);
+    if (!key) return;
+    const m = new THREE.MeshLambertMaterial({ color: SHIELD_COL[key] || 0x9aa0a8, flatShading: true });
+    const sh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.72, 0.56), m); sh.position.set(-0.62, 1.2, 0.08); shieldGroup.add(sh);
+    const boss = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), steel); boss.position.set(-0.7, 1.2, 0.08); shieldGroup.add(boss);
+  }
   function setToolMesh(kind) {
     while (toolHolder.children.length) toolHolder.remove(toolHolder.children[0]);
     if (kind === 'mine') {                                                    // pickaxe
@@ -109,10 +119,10 @@ export function createPlayer(scene, world) {
   const state = {
     heading: Math.PI,
     hp: 100, maxHp: 100,
-    coastFwd: 0, coastTurn: 0, coastTurnDir: 0,
+    coastFwd: 0, coastBack: 0, coastTurn: 0, coastTurnDir: 0,
     moving: false, bob: 0,
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
-    equipment: { weapon: null, armor: null, amulet: null, ring: null },
+    equipment: { weapon: null, armor: null, amulet: null, ring: null, shield: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
     bounds: null,   // set while inside a building → clamp movement to the room
     solids: null,   // circular obstacles (buildings outdoors, furniture/NPCs indoors)
@@ -122,11 +132,13 @@ export function createPlayer(scene, world) {
   function refreshEquipment() {
     setWeaponMesh(state.equipment.weapon);
     buildArmor(state.equipment.armor);
+    buildShield(state.equipment.shield);
   }
   refreshEquipment();
 
   const forwardVec = () => ({ x: Math.sin(state.heading), z: Math.cos(state.heading) });
   const impulseForward = () => { state.coastFwd = COAST_FWD; };
+  const impulseBack = () => { state.coastBack = COAST_FWD; };
   const impulseTurn = (dir) => { state.coastTurnDir = dir; state.coastTurn = COAST_TURN; };
   function showTool(on) { toolHolder.visible = on; weaponHolder.visible = !on; state.toolActive = on; }
   function playAttack(style) { if (state.toolActive) showTool(false); state.attackStyle = style || weapon().style; state.attackAnim = ATTACK_DUR; state.animDur = ATTACK_DUR; }
@@ -140,9 +152,9 @@ export function createPlayer(scene, world) {
     if (s) for (let i = 0; i < s.length; i++) { const o = s[i], dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return false; }
     return true;
   }
-  function tryMove(dt) {
+  function tryMove(dt, dir) {
     const f = forwardVec();
-    const step = SPEED * dt;
+    const step = SPEED * dt * dir;
     const x = group.position.x, z = group.position.z;
     const nx = x + f.x * step, nz = z + f.z * step;
     if (clear(nx, nz)) { group.position.x = nx; group.position.z = nz; }      // full move
@@ -162,8 +174,11 @@ export function createPlayer(scene, world) {
 
     const walking = input.keys.has('up') || state.coastFwd > 0;
     state.coastFwd = Math.max(0, state.coastFwd - dt);
-    state.moving = walking;
-    if (walking) tryMove(dt);
+    const backing = !walking && (input.keys.has('down') || state.coastBack > 0);
+    state.coastBack = Math.max(0, state.coastBack - dt);
+    state.moving = walking || backing;
+    if (walking) tryMove(dt, 1);
+    else if (backing) tryMove(dt, -0.55);   // slower back-pedal
 
     group.position.y = state.bounds ? state.bounds.y : world.height(group.position.x, group.position.z);
     group.rotation.y = state.heading;
@@ -211,7 +226,7 @@ export function createPlayer(scene, world) {
   function handPosition() { hand.getWorldPosition(handWorld); return handWorld; }
 
   return {
-    group, state, update, updateCamera, impulseForward, impulseTurn, forwardVec,
+    group, state, update, updateCamera, impulseForward, impulseBack, impulseTurn, forwardVec,
     playAttack, playGather, refreshEquipment, weapon, handPosition,
     setBounds(b) { state.bounds = b; }, setSolids(s) { state.solids = s; }, snapCamera() { camReady = false; },
     get position() { return group.position; },
