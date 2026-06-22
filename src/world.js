@@ -486,6 +486,14 @@ export function createWorld(scene, seed = 1337) {
     const gem = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0x9bf2ff })); gem.position.set(x, y + 1.2, z);
     group.add(top, gem); stations.push({ kind: 'craft', label: 'Crafting Bench', x, z, y });
   }
+  function fletchBench(x, z) {
+    const y = height(x, z);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.25, 1.1), lmat(0x7a5a36)); top.position.set(x, y + 0.95, z); group.add(top);
+    for (const lx of [-0.7, 0.7]) for (const lz of [-0.35, 0.35]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.95, 0.14), lmat(0x5e4326)); leg.position.set(x + lx, y + 0.48, z + lz); group.add(leg); }
+    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.05, 6, 10, Math.PI), lmat(0x9a6a3a)); bow.position.set(x, y + 1.5, z + 0.1); bow.rotation.z = Math.PI / 2; group.add(bow);   // a bowstave on the bench
+    const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.7, 7), lmat(0x6e4a2b)); quiver.position.set(x + 0.6, y + 1.4, z); group.add(quiver);
+    stations.push({ kind: 'fletch', label: 'Fletching Bench', x, z, y });
+  }
   function smithy(x, z) {
     const fy = height(x, z);
     const furnace = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.0, 1.8), new THREE.MeshLambertMaterial({ color: 0x7a6f66, flatShading: true })); furnace.position.set(x, fy + 1.0, z);
@@ -531,6 +539,7 @@ export function createWorld(scene, seed = 1337) {
     fire(v.x - 3.5, v.z + 3.5);
     altar(v.x + 3.5, v.z + 3.5);
     stall(v.x - 4, v.z - 3.5);
+    fletchBench(v.x + 5, v.z - 3);
     lampPost(v.x + 4.6, v.z - 4.6); lampPost(v.x - 4.6, v.z + 4.6);
     plot(v.x + 12, v.z + 2); plot(v.x + 13.4, v.z + 3.2); plot(v.x + 12.6, v.z + 4.6);
     { const lx = v.x - 2.4, lz = v.z - 5.0; signpost(lx, lz, 0xffd45f); stations.push({ kind: 'ledger', label: 'Merchants’ Guild', x: lx, z: lz, y: height(lx, lz) }); }

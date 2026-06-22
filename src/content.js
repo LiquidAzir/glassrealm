@@ -35,6 +35,14 @@ export const ITEMS = {
   iron_harpoon:    { name: 'Iron Harpoon',    icon: '🔱', type: 'tool', tool: 'fishing',     tier: 2, speed: 0.72, desc: 'Fish ~28% faster.' },
   steel_harpoon:   { name: 'Steel Harpoon',   icon: '🔱', type: 'tool', tool: 'fishing',     tier: 3, speed: 0.62, desc: 'Fish ~38% faster.' },
   mithril_harpoon: { name: 'Mithril Harpoon', icon: '🔱', type: 'tool', tool: 'fishing',     tier: 4, speed: 0.52, desc: 'Fish ~48% faster.' },
+  // Fletching — Woodcutting feeds Ranged: carve bows + arrow shafts, then feather them into arrows (ammo).
+  feather:       { name: 'Feather',        icon: '🪶', type: 'material', desc: 'Fletch arrows. Foraged in the wild.' },
+  arrow_shaft:   { name: 'Arrow Shafts',   icon: '🪵', type: 'material', desc: 'Carved from logs; tip + feather them into arrows.' },
+  shortbow:      { name: 'Shortbow',       icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 4,  range: 12, speed: 0.5,  desc: 'Quick, light draw. +4 ranged.' },
+  longbow:       { name: 'Longbow',        icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 10, range: 17, speed: 0.82, desc: 'Long reach, slow draw. +10 ranged.' },
+  bronze_arrow:  { name: 'Bronze Arrows',  icon: '🏹', type: 'ammo', bonus: 3,  desc: 'Tipped with bronze. +3 ranged damage per shot.' },
+  iron_arrow:    { name: 'Iron Arrows',    icon: '🏹', type: 'ammo', bonus: 6,  desc: 'Tipped with iron. +6 ranged damage per shot.' },
+  mithril_arrow: { name: 'Mithril Arrows', icon: '🏹', type: 'ammo', bonus: 11, desc: 'Tipped with mithril. +11 ranged damage per shot.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -216,6 +224,16 @@ export const FORGE = [
   { out: 'bronze_pickaxe', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_pickaxe', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_pickaxe', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_pickaxe', cost: { mithril_bar: 2 }, xp: 230 },
   { out: 'bronze_hatchet', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_hatchet', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_hatchet', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_hatchet', cost: { mithril_bar: 2 }, xp: 230 },
   { out: 'bronze_harpoon', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_harpoon', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_harpoon', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_harpoon', cost: { mithril_bar: 2 }, xp: 230 },
+];
+
+// Fletching bench recipes (Woodcutting -> Ranged). qty = how many you get per craft; level gates the tier.
+export const FLETCH = [
+  { out: 'shortbow',      cost: { wood: 1 }, xp: 20, qty: 1, level: 1 },
+  { out: 'longbow',       cost: { wood: 2 }, xp: 48, qty: 1, level: 10 },
+  { out: 'arrow_shaft',   cost: { wood: 1 }, xp: 8,  qty: 8, level: 1 },
+  { out: 'bronze_arrow',  cost: { arrow_shaft: 8, feather: 4, bronze_bar: 1 }, xp: 24, qty: 8, level: 1 },
+  { out: 'iron_arrow',    cost: { arrow_shaft: 8, feather: 4, iron_bar: 1 },   xp: 42, qty: 8, level: 15 },
+  { out: 'mithril_arrow', cost: { arrow_shaft: 8, feather: 4, mithril_bar: 1 }, xp: 80, qty: 8, level: 35 },
 ];
 
 // NPC anchor positions are relative to the village; entities.js drops them to ground.

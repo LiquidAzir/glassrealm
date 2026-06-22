@@ -14,7 +14,7 @@ import { createDialogue } from './dialogue.js';
 import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -150,6 +150,7 @@ try {
     G.fx.burst(b.x, b.y + 0.8, b.z, 0x4f9a40, { n: 7, up: 2.0 });
     const herb = Math.random() < 0.3;
     G.inventory.add(herb ? 'herb' : 'berry', 1);
+    if (Math.random() < 0.5) G.inventory.add('feather', Math.random() < 0.35 ? 2 : 1);   // feathers for fletching
     G.ui.toast(herb ? 'Foraged Glimmerleaf' : 'Foraged Sunberries', 'gold', 1400);
     G.gainXp('foraging', 10);
     checkQuestReady(); G.save.save();
@@ -232,6 +233,8 @@ try {
       G.openBank(); return;
     } else if (s.kind === 'craft') {
       G.openCraft(); return;
+    } else if (s.kind === 'fletch') {
+      G.openFletch(); return;
     } else if (s.kind === 'bed') {
       player.state.hp = player.state.maxHp; player.state.prayer = player.state.maxPrayer;
       G.ui.setHealth(player.state.hp, player.state.maxHp); G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
@@ -282,6 +285,7 @@ try {
     G.audio.sfx(w.style === 'magic' || w.style === 'ranged' ? 'cast' : 'hit');
     const gb = gearBonus(); const sk = w.style === 'ranged' ? 'ranged' : w.style === 'magic' ? 'magic' : 'melee';
     let dmg = Math.round(4 + G.skills.level(w.skill) * 1.2 + w.bonus + (gb[sk] || 0));
+    if (w.style === 'ranged') { let arrow = null; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'ammo' && (!arrow || d.bonus > arrow.def.bonus)) arrow = it; } if (arrow) { G.inventory.remove(arrow.key, 1); dmg += arrow.def.bonus; } }   // fire your best arrows for bonus damage
     const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
     const hitY = e.pos.y + 1.5 * (e.baseScale || 1);
@@ -440,6 +444,31 @@ try {
       let made = 0;
       while (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k]))) { for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(out, 1); G.gainXp('smithing', r.xp); made++; }
       if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xff7a33, { n: 12, spread: 2.2, up: 3, life: 0.8 }); G.ui.toast(`Smelted ${made} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
+    });
+  };
+
+  // ---------- interactive fletching: carve bows + arrows at the bench (Woodcutting → Ranged) ----------
+  const maxFletch = (r) => { let m = Infinity; for (const k in r.cost) m = Math.min(m, Math.floor(G.inventory.count(k) / r.cost[k])); return m; };
+  const fletchCfg = {
+    title: 'Fletching Bench', hint: '↑ ↓ select · tap to fletch · ↑↓↑↓ leave', empty: 'Chop logs and forage feathers to fletch bows & arrows.',
+    rows: () => FLETCH.map((r) => {
+      const locked = G.skills.level('fletching') < (r.level || 1), n = maxFletch(r);
+      if (n < 1 && !locked) return null;
+      return { section: ITEMS[r.out].type === 'weapon' ? 'Bows' : 'Arrows & parts', icon: ITEMS[r.out].icon, title: ITEMS[r.out].name + (r.qty > 1 ? ` ×${r.qty}` : ''), sub: Object.keys(r.cost).map((k) => `${r.cost[k]}× ${ITEMS[k].name}`).join(' + ') + (locked ? ` · needs Fletching ${r.level}` : ''), right: locked ? '🔒' : `×${n}`, data: { out: r.out } };
+    }).filter(Boolean),
+    onSelect: (r) => { G.closePicker(); G.fletchItem(r.data.out); },
+  };
+  G.openFletch = () => { setMode('picker'); G.ui.openPicker(fletchCfg); };
+  G.fletchItem = (out) => {
+    if (G.channel) return;
+    const r = FLETCH.find((x) => x.out === out); if (!r) return;
+    if (G.skills.level('fletching') < (r.level || 1)) { G.ui.toast(`Needs Fletching level ${r.level}`, 'bad', 2000); return; }
+    if (maxFletch(r) < 1) return;
+    const dur = Math.max(1.4, Math.min(5, maxFletch(r) * 0.5));
+    startChannel(dur, 'forage', `Fletching ${ITEMS[out].name}…`, () => {
+      let made = 0;
+      while (Object.keys(r.cost).every((k) => G.inventory.has(k, r.cost[k])) && made < 40) { for (const k in r.cost) G.inventory.remove(k, r.cost[k]); G.inventory.add(out, r.qty || 1); G.gainXp('fletching', r.xp); made++; }
+      if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xd8c08a, { n: 10, spread: 2, up: 2.6, life: 0.8 }); G.ui.toast(`Fletched ${made * (r.qty || 1)} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
     });
   };
 
