@@ -68,9 +68,9 @@ body { display: flex; align-items: center; justify-content: center; }
 #dpad .d-down { left: 57px; bottom: 0; }
 #dpad .d-left { left: 0; top: 57px; }
 #dpad .d-right { right: 0; top: 57px; }
-#actpad { position: absolute; right: 18px; bottom: 56px; width: 84px; height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 12px; }
-#actpad .act-tap { width: 84px; height: 84px; border-radius: 50%; font-size: 18px; color: var(--gold); border-color: rgba(255, 212, 95, 0.5); background: rgba(40, 30, 12, 0.42); }
-#actpad .act-menu { width: 54px; height: 54px; align-self: center; }
+#actpad { position: absolute; right: 18px; bottom: 56px; width: 84px; height: 150px; }
+#actpad .act-tap { position: absolute; left: 0; bottom: 0; width: 84px; height: 84px; border-radius: 50%; font-size: 18px; color: var(--gold); border-color: rgba(255, 212, 95, 0.5); background: rgba(40, 30, 12, 0.42); }
+#actpad .act-menu { position: absolute; left: 15px; top: 0; width: 54px; height: 54px; }
 #tcToggle {
   position: absolute; top: 8px; right: 132px; z-index: 31; pointer-events: auto;
   width: 30px; height: 30px; border-radius: 9px; font-size: 15px;

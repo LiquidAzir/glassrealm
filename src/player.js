@@ -107,6 +107,9 @@ export function createPlayer(scene, world) {
       toolHolder.add(mkBox(0.55, 0.09, 0.09, steel, 0, -0.92, 0));
     } else if (kind === 'fish') {                                             // fishing rod
       toolHolder.add(mkBox(0.05, 1.3, 0.05, woodMat, 0, -0.64, 0));
+    } else if (kind === 'cook') {                                             // ladle
+      toolHolder.add(mkBox(0.05, 0.75, 0.05, woodMat, 0, -0.38, 0));
+      toolHolder.add(mkBox(0.2, 0.12, 0.2, steel, 0, -0.76, 0));
     } else {                                                                  // axe (chop / forage)
       toolHolder.add(mkBox(0.06, 0.9, 0.06, woodMat, 0, -0.46, 0));
       toolHolder.add(mkBox(0.3, 0.16, 0.1, steel, 0.12, -0.86, 0));
@@ -205,6 +208,7 @@ export function createPlayer(scene, world) {
         case 'chop':   rightArm.rotation.x = -2.4 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two overhead chops
         case 'mine':   rightArm.rotation.x = -2.1 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two pick swings
         case 'fish':   rightArm.rotation.x = -1.5 + 0.6 * s; break;                               // cast & settle
+        case 'cook':   rightArm.rotation.x = -0.9 + 0.3 * Math.sin(t * Math.PI * 3); break;       // stir the pot
         case 'forage': rightArm.rotation.x = -1.0 * s; break;                                     // reach down
         default:       rightArm.rotation.x = -2.3 * s;   // melee / unarmed swing
       }

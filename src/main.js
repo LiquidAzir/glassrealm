@@ -210,13 +210,7 @@ try {
     checkQuestReady(); G.save.save();
   };
   G.useStation = (s) => {
-    if (s.kind === 'cook') {
-      let n = 0;
-      for (const raw in COOK) {
-        const c = G.inventory.count(raw);
-        if (c > 0) { G.inventory.remove(raw, c); G.inventory.add(COOK[raw], c); n += c; G.gainXp('cooking', 12 * c); }
-      }
-      G.ui.toast(n ? `Cooked ${n} item${n > 1 ? 's' : ''}` : 'Nothing raw to cook', n ? 'good' : '', 1800);
+    if (s.kind === 'cook') { G.openCook(); return;
     } else if (s.kind === 'furnace') {
       let bars = 0, progress = true;
       while (progress) {
@@ -404,6 +398,27 @@ try {
     G.save.save();
   };
   G.workJob = (j) => { if (!j || G.channel) return; startChannel(j.dur, j.anim, 'Working: ' + j.name, () => { G.inventory.add('gold', j.pay); G.ui.toast(`Shift done · +${j.pay}g`, 'gold', 2200); G.gainXp(j.skill, j.xp); G.audio.sfx('pickup'); checkQuestReady(); G.save.save(); }); };
+
+  // ---------- interactive cooking: pick a raw food at the stove, watch it cook (progress bar + stir) ----------
+  const cookCfg = {
+    title: 'Cooking Pot', hint: '↑ ↓ select · tap to cook · ↑↓↑↓ leave', empty: 'No raw food to cook — catch some fish or harvest a crop first.',
+    rows: () => Object.keys(COOK).filter((raw) => G.inventory.count(raw) > 0).map((raw) => ({ icon: ITEMS[raw].icon, title: `Cook ${ITEMS[raw].name}`, sub: `→ ${ITEMS[COOK[raw]].name}`, right: `×${G.inventory.count(raw)}`, data: { raw } })),
+    onSelect: (r) => { G.closePicker(); G.cookItem(r.data.raw); },
+  };
+  G.openCook = () => { setMode('picker'); G.ui.openPicker(cookCfg); };
+  G.cookItem = (raw) => {
+    if (G.channel || !COOK[raw]) return;
+    const n = G.inventory.count(raw); if (!n) return;
+    const cooked = COOK[raw], dur = Math.max(1.6, Math.min(6, n * 0.9));
+    startChannel(dur, 'cook', `Cooking ${ITEMS[raw].name}…`, () => {
+      const have = G.inventory.count(raw); if (!have) return;
+      G.inventory.remove(raw, have); G.inventory.add(cooked, have);
+      G.gainXp('cooking', 12 * have);
+      if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0xffe2b0, { n: 12, spread: 2.4, up: 3, life: 0.9 });
+      G.ui.toast(`Cooked ${have} × ${ITEMS[cooked].name}`, 'good', 2600);
+      G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
+    });
+  };
 
   const tavernCfg = {
     title: 'Tavern Keeper', hint: '↑ ↓ select · tap to order · ↑↓↑↓ leave',
