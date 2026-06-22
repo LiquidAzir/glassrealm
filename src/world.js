@@ -43,7 +43,18 @@ const REGIONS = [
   { key: 'saltcrest', x: 80, z: 185, r: 46, biome: 'coast',  village: { name: 'Saltcrest Harbor', x: 80, z: 185, hut: [0x8aa6b6, 0x355a68], smithy: true }, tree: 'pine', nTree: 20, nBush: 8,  nRock: 12, nFish: 8, ore: [['iron', 4], ['copper', 3]] },
   { key: 'amberfell', x: 50, z: -160, r: 42, biome: 'autumn', village: { name: 'Amberfell',       x: 50, z: -160, hut: [0xb5752e, 0x6a3a22] }, peak: { x: 58, z: -172, r: 14, h: 8 }, tree: 'pine', nTree: 48, nBush: 16, nRock: 8,  nFish: 4, ore: [['copper', 4], ['coal', 3]] },
 ];
-const BRIDGE_LINKS = [['verdant', 'ember'], ['verdant', 'forest'], ['verdant', 'desert'], ['ember', 'snow'], ['forest', 'mistmoor'], ['desert', 'tideisle'], ['ember', 'jungle'], ['jungle', 'badlands'], ['forest', 'highland'], ['verdant', 'glade'], ['desert', 'saltcrest'], ['badlands', 'saltcrest'], ['glade', 'amberfell'], ['snow', 'amberfell']];
+// Region links with a transition TYPE: 'causeway' = rustic plank land bridge (the classic),
+// 'isthmus' = a wide natural land neck where the islands nearly merge (clean, no built deck),
+// 'span' = a grand built stone-arch bridge (distinct). A bare [a,b] defaults to causeway.
+// The last two are extra cross-links so the world is a connected NETWORK with loops, not a chain.
+const BRIDGE_LINKS = [
+  ['verdant', 'ember', 'span'], ['verdant', 'forest', 'isthmus'], ['verdant', 'desert', 'causeway'],
+  ['verdant', 'glade', 'isthmus'], ['ember', 'snow', 'span'], ['ember', 'jungle', 'causeway'],
+  ['forest', 'mistmoor', 'isthmus'], ['forest', 'highland', 'span'], ['desert', 'tideisle', 'causeway'],
+  ['desert', 'saltcrest', 'span'], ['badlands', 'saltcrest', 'causeway'], ['jungle', 'badlands', 'isthmus'],
+  ['glade', 'amberfell', 'causeway'], ['snow', 'amberfell', 'span'],
+  ['verdant', 'tideisle', 'isthmus'], ['ember', 'tideisle', 'causeway'],
+];
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
 // Dedicated mining sites — ore clustered near the mountains (RuneScape-style), each with a
@@ -131,18 +142,20 @@ export function createWorld(scene, seed = 1337) {
   const byKey = {}; REGIONS.forEach((r) => (byKey[r.key] = r));
   const villages = REGIONS.filter((r) => r.village).map((r) => { r.village.biome = r.biome; return r.village; });
 
-  // bridges: edge-to-edge segments between linked regions
-  const BRIDGES = BRIDGE_LINKS.map(([a, b]) => {
-    const A = byKey[a], B = byKey[b];
+  // bridges: edge-to-edge segments between linked regions, varied by transition type.
+  // isthmus is wide + bites deep into both islands (natural merge); span/causeway are narrower.
+  const BRIDGE_CFG = { causeway: { w: 6, inset: 5, fall: 5, flat: 1.8 }, isthmus: { w: 11, inset: 9, fall: 9, flat: 0 }, span: { w: 5, inset: 4, fall: 5, flat: 2.0 } };
+  const BRIDGES = BRIDGE_LINKS.map(([a, b, type = 'causeway']) => {
+    const A = byKey[a], B = byKey[b], cfg = BRIDGE_CFG[type] || BRIDGE_CFG.causeway;
     const dx = B.x - A.x, dz = B.z - A.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
-    return { ax: A.x + ux * (A.r - 5), az: A.z + uz * (A.r - 5), bx: B.x - ux * (B.r - 5), bz: B.z - uz * (B.r - 5), halfW: 6 };
+    return { ax: A.x + ux * (A.r - cfg.inset), az: A.z + uz * (A.r - cfg.inset), bx: B.x - ux * (B.r - cfg.inset), bz: B.z - uz * (B.r - cfg.inset), halfW: cfg.w, fall: cfg.fall, flat: cfg.flat, type };
   });
 
   // --- height field -------------------------------------------------------
   function landMask(x, z) {
     let m = 0;
     for (const r of REGIONS) m = Math.max(m, smoothstep((r.r - Math.hypot(x - r.x, z - r.z)) / (16 * WS)));   // coastline width scales with the world so beaches stay proportional (rim features stay on land)
-    for (const b of BRIDGES) m = Math.max(m, smoothstep((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / 5));
+    for (const b of BRIDGES) m = Math.max(m, smoothstep((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / b.fall));
     return m;
   }
   function height(x, z) {
@@ -152,7 +165,11 @@ export function createWorld(scene, seed = 1337) {
     for (const r of REGIONS) if (r.peak) h += smoothstep(clamp(1 - Math.hypot(x - r.peak.x, z - r.peak.z) / r.peak.r, 0, 1)) * r.peak.h * land;
     h += (land - 1) * 1.6;
     // flatten bridges into level causeways so noise dips never break the path
-    for (const b of BRIDGES) { const fl = smoothstep(clamp((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / 4, 0, 1)); h = h * (1 - fl) + 1.8 * fl; }
+    for (const b of BRIDGES) {
+      const d = distToSeg(x, z, b.ax, b.az, b.bx, b.bz);
+      if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.4 * fl); }   // natural neck: raise troughs only, keep rolling land
+      else { const fl = smoothstep(clamp((b.halfW - d) / 4, 0, 1)); h = h * (1 - fl) + b.flat * fl; }   // causeway/span: flat walkway
+    }
     for (const v of villages) { const flat = smoothstep(clamp((11 - dist2D(x, z, v.x, v.z)) / 11, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
     // flatten the new dungeon floors into level arenas so the boss/chest never sink underwater near a coast
     for (const dg of DUNGEONS) { if (!dg.flat) continue; const flat = smoothstep(clamp((dg.r - 3 - dist2D(x, z, dg.x, dg.z)) / 6, 0, 1)); h = h * (1 - flat) + 1.8 * flat; }
@@ -603,15 +620,30 @@ export function createWorld(scene, seed = 1337) {
   const snapLand = (x, z) => { if (isWalkable(x, z)) return { x, z }; for (let r = 3; r <= 44; r += 3) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz)) return { x: nx, z: nz }; } return { x, z }; };
   for (const s of SHORTCUT_LINKS) { const a = snapLand(s.a.x, s.a.z), b = snapLand(s.b.x, s.b.z); pad(a.x, a.z, b.x, b.z, s.level, s.name); pad(b.x, b.z, a.x, a.z, s.level, s.name); }
 
-  // visible bridge decks + railings so crossings read as solid causeways (not just flat water)
+  // crossing visuals vary by type: a grand stone-arch span, a rustic plank causeway, or
+  // nothing for a natural isthmus (it's just blended land you walk straight across).
   for (const b of BRIDGES) {
+    if (b.type === 'isthmus') continue;                                             // natural land neck — no built deck
     const mx = (b.ax + b.bx) / 2, mz = (b.az + b.bz) / 2;
     const len = Math.hypot(b.bx - b.ax, b.bz - b.az), ang = Math.atan2(b.bx - b.ax, b.bz - b.az);
     const ex = Math.cos(ang), ez = -Math.sin(ang);                                  // perpendicular (across the deck)
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.4, len + 2.5), lmat(0x8a6a45)); deck.position.set(mx, 1.66, mz); deck.rotation.y = ang; group.add(deck);
-    for (const s of [-2.5, 2.5]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, len + 2.5), lmat(0x5a4630)); rail.position.set(mx + ex * s, 2.15, mz + ez * s); rail.rotation.y = ang; group.add(rail);
-      for (let t = -len / 2; t <= len / 2 + 0.1; t += 3) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, 0.3), lmat(0x5a4630)); post.position.set(mx + Math.sin(ang) * t + ex * s, 1.95, mz + Math.cos(ang) * t + ez * s); group.add(post); }
+    if (b.type === 'span') {
+      const dy = 1.7;
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.5, len + 2.5), lmat(0xcfc7b4)); deck.position.set(mx, dy, mz); deck.rotation.y = ang; group.add(deck);   // pale stone roadway
+      for (const s of [-2.3, 2.3]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.95, len + 2.5), lmat(0xb8b09a)); rail.position.set(mx + ex * s, dy + 0.7, mz + ez * s); rail.rotation.y = ang; group.add(rail);   // stone balustrade
+      }
+      for (let t = -len / 2; t <= len / 2 + 0.1; t += 4.5) {
+        const px = mx + Math.sin(ang) * t, pz = mz + Math.cos(ang) * t;
+        for (const s of [-2.3, 2.3]) { const pil = new THREE.Mesh(new THREE.BoxGeometry(0.55, 3.4, 0.55), lmat(0xbdb59f)); pil.position.set(px + ex * s, dy - 1.4, pz + ez * s); group.add(pil); }   // arch pillars dipping toward the water
+        const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lamp.position.set(px + ex * 2.3, dy + 1.55, pz + ez * 2.3); group.add(lamp);   // warm lamp on the rail
+      }
+    } else {
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.4, len + 2.5), lmat(0x8a6a45)); deck.position.set(mx, 1.66, mz); deck.rotation.y = ang; group.add(deck);   // rustic planks
+      for (const s of [-2.5, 2.5]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, len + 2.5), lmat(0x5a4630)); rail.position.set(mx + ex * s, 2.15, mz + ez * s); rail.rotation.y = ang; group.add(rail);
+        for (let t = -len / 2; t <= len / 2 + 0.1; t += 3) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, 0.3), lmat(0x5a4630)); post.position.set(mx + Math.sin(ang) * t + ex * s, 1.95, mz + Math.cos(ang) * t + ez * s); group.add(post); }
+      }
     }
   }
 
