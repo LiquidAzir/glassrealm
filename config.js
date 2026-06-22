@@ -9,4 +9,4 @@
 // just bookmark your personal link once (copy it from the Diary > Cloud sync menu).
 //
 // Leave cloudUrl blank to keep saves local-only (Export/Import codes still work).
-window.GLASSREALM_CONFIG = { cloudUrl: '' };
+window.GLASSREALM_CONFIG = { cloudUrl: 'https://glassrealm-saves.liquidazir.workers.dev' };

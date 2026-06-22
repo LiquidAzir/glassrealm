@@ -5,4 +5,4 @@ compatibility_date = "2024-11-01"
 # Run `wrangler kv namespace create SAVES` and paste the printed id below.
 [[kv_namespaces]]
 binding = "SAVES"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "1bbea76e61404d0899ec1cbe1f3bfb53"
