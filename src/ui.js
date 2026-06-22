@@ -38,7 +38,7 @@ export function createUI(G) {
 
   // quest guidance arrow (points toward current objective, relative to facing)
   const questGuide = document.createElement('div'); questGuide.id = 'questGuide'; questGuide.className = 'hidden';
-  questGuide.innerHTML = '<span class="qg-arrow">▲</span><span class="qg-label"></span>';
+  questGuide.innerHTML = '<svg class="qg-arrow" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M12 2.5 L12 21.5 M12 2.5 L5 10 M12 2.5 L19 10" fill="none" stroke="#8fd0ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="qg-label"></span>';
   document.getElementById('hud').appendChild(questGuide);
   const qgArrow = questGuide.querySelector('.qg-arrow'), qgLabel = questGuide.querySelector('.qg-label');
   function setQuestArrow(rad, label, dist) {

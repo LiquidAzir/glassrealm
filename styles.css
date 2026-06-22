@@ -246,7 +246,7 @@ body { display: flex; align-items: center; justify-content: center; }
   animation: qgGlow 1.6s ease-in-out infinite;
 }
 @keyframes qgGlow { 0%, 100% { box-shadow: 0 0 16px rgba(91, 155, 255, 0.4); } 50% { box-shadow: 0 0 28px rgba(91, 155, 255, 0.75); } }
-.qg-arrow { display: inline-block; color: #8fd0ff; font-size: 28px; line-height: 1; text-shadow: 0 0 12px rgba(91, 155, 255, 0.85); }
+.qg-arrow { display: inline-block; filter: drop-shadow(0 0 7px rgba(91, 155, 255, 0.9)); transition: transform 120ms linear; }
 .qg-label { font-size: 14px; font-weight: 800; color: #dcefff; white-space: nowrap; letter-spacing: 0.3px; }
 
 /* Gathering channel progress bar */
@@ -440,6 +440,9 @@ body { display: flex; align-items: center; justify-content: center; }
 
 /* ---------- Dialogue ---------- */
 #dialogue { align-items: flex-end; justify-content: center; background: rgba(0,0,0,0.35); }
+/* When the on-screen touch controls are shown, lift the dialogue box above them so the
+   d-pad / action buttons (bottom corners) don't cover the text + choices. */
+body.controls-on .dialogue-box { margin-bottom: 226px; }
 .dialogue-box {
   margin: var(--safe);
   width: 584px;

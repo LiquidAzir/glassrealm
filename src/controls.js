@@ -77,7 +77,7 @@ export function createControls({ app, canvas, input }) {
   const toggle = document.createElement('button');
   toggle.id = 'tcToggle'; toggle.textContent = '🎮'; toggle.title = 'Toggle touch controls';
   app.appendChild(toggle);
-  function apply() { pad.classList.toggle('hidden', !on); toggle.classList.toggle('dim', !on); }
+  function apply() { pad.classList.toggle('hidden', !on); toggle.classList.toggle('dim', !on); document.body.classList.toggle('controls-on', on); }
   toggle.addEventListener('pointerdown', (e) => { e.preventDefault(); on = !on; try { localStorage.setItem(UIKEY, on ? '1' : '0'); } catch (e2) {} apply(); });
   apply();
 
