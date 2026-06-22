@@ -11,8 +11,9 @@ import { createSkills } from './skills.js';
 import { createInventory } from './inventory.js';
 import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
-import { loadSave, createSave } from './save.js';
+import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
+import { createCloud } from './cloud.js';
 import { ITEMS, QUESTS, SMELT, COOK, FORGE, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { createFx } from './fx.js';
@@ -27,6 +28,9 @@ const G = {};
 try {
   const canvas = document.getElementById('game');
   const engine = createEngine(canvas);
+  // cloud save sync (if configured): pull the latest before loading so any device shares one save
+  const cloud = createCloud(); G.cloud = cloud;
+  if (cloud.enabled) { try { const remote = await cloud.pull(); if (remote) mergeRemoteSave(remote); } catch (e) {} }
   const saved = loadSave();
 
   const world = createWorld(engine.scene);
@@ -449,6 +453,13 @@ try {
     if (!code) return;
     if (G.save.importCode(code)) { wiping = true; G.ui.toast('Save loaded — reloading…', 'good', 1500); setTimeout(() => location.reload(), 700); }
     else G.ui.toast('That save code was invalid.', 'bad', 3200);
+  };
+  G.copySyncLink = () => {
+    if (!G.cloud || !G.cloud.enabled) { G.ui.toast('Cloud sync is off — set cloudUrl in config.js (see /worker).', '', 4200); return; }
+    const link = G.cloud.link();
+    const ok = () => G.ui.toast('Sync link copied! Open it on your other devices to share this save.', 'good', 5200);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, () => window.prompt('Your sync link:', link));
+    else window.prompt('Your sync link:', link);
   };
 
   // ---------- enter / exit buildings ----------

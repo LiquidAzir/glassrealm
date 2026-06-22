@@ -1,0 +1,8 @@
+name = "glassrealm-saves"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Run `wrangler kv namespace create SAVES` and paste the printed id below.
+[[kv_namespaces]]
+binding = "SAVES"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

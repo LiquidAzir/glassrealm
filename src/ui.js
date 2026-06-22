@@ -135,7 +135,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Prayer') return PRAYERS.length;
     if (TABS[tab] === 'Skills') return G.skills.DEFS.length;
     if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
-    if (TABS[tab] === 'Diary') return 4;
+    if (TABS[tab] === 'Diary') return 5;
     return 0;
   }
   function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); }
@@ -164,6 +164,7 @@ export function createUI(G) {
       else if (row === 1 && G.requestRestart) G.requestRestart();
       else if (row === 2 && G.exportSave) G.exportSave();
       else if (row === 3 && G.importSave) G.importSave();
+      else if (row === 4 && G.copySyncLink) G.copySyncLink();
     }
   }
   function gearRows() {
@@ -207,6 +208,8 @@ export function createUI(G) {
     html += `<div class="row ${row === 1 ? 'sel' : ''}"><span class="row-icon">🔄</span><div class="row-main"><div class="row-title">Restart game</div><div class="row-sub">choose a new class · wipes your save</div></div></div>`;
     html += `<div class="row ${row === 2 ? 'sel' : ''}"><span class="row-icon">📤</span><div class="row-main"><div class="row-title">Export save</div><div class="row-sub">copy a code to carry this save to another device</div></div></div>`;
     html += `<div class="row ${row === 3 ? 'sel' : ''}"><span class="row-icon">📥</span><div class="row-main"><div class="row-title">Import save</div><div class="row-sub">paste a code from glasses · phone · PC</div></div></div>`;
+    const cloudOn = G.cloud && G.cloud.enabled;
+    html += `<div class="row ${row === 4 ? 'sel' : ''}"><span class="row-icon">☁️</span><div class="row-main"><div class="row-title">Cloud sync: ${cloudOn ? 'ON' : 'off'}</div><div class="row-sub">${cloudOn ? 'tap to copy your sync link for other devices' : 'enable in config.js (see /worker)'}</div></div></div>`;
     html += `<div class="section-head">Achievements · ${done.size}/${ACHIEVEMENTS.length}</div>`;
     html += ACHIEVEMENTS.map((a) => { const u = done.has(a.id); return `<div class="row" style="${u ? '' : 'opacity:.55'}"><span class="row-icon">${u ? '🏆' : '🔒'}</span><div class="row-main"><div class="row-title">${a.name}</div><div class="row-sub">${a.desc}</div></div></div>`; }).join('');
     els.menuBody.innerHTML = html;

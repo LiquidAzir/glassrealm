@@ -5,10 +5,23 @@ export function loadSave() {
   catch (e) { return null; }
 }
 
+// Adopt a cloud save iff it is newer-or-equal to the local one (last-write-wins).
+export function mergeRemoteSave(remote) {
+  if (!remote || !remote.player) return false;
+  try {
+    let local = null; try { local = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+    const lt = (local && local.t) || 0, rt = remote.t || 0;
+    if (!local || rt >= lt) { localStorage.setItem(KEY, JSON.stringify(remote)); return true; }
+  } catch (e) {}
+  return false;
+}
+
 export function createSave(G) {
   function snapshot() {
     return {
       v: 1,
+      t: Date.now(),                 // timestamp for cross-device last-write-wins merge
+
       player: (() => {
         // while inside a building the player sits on a far interior plot — persist
         // the door we came in by instead, so reloads put us back in town.
@@ -34,7 +47,7 @@ export function createSave(G) {
     };
   }
   return {
-    save() { try { localStorage.setItem(KEY, JSON.stringify(snapshot())); } catch (e) {} },
+    save() { try { const snap = snapshot(); localStorage.setItem(KEY, JSON.stringify(snap)); if (G.cloud) G.cloud.push(snap); } catch (e) {} },
     clear() { try { localStorage.removeItem(KEY); } catch (e) {} },
     // Portable save string so the same game can move across glasses / phone / PC.
     exportCode() { try { return btoa(unescape(encodeURIComponent(JSON.stringify(snapshot())))); } catch (e) { return ''; } },
