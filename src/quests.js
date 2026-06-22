@@ -44,11 +44,33 @@ export function createQuests(G, saved) {
         });
       }
     },
+    // reaching a place satisfies 'visit' objectives; returns true if something changed
+    notifyVisit(x, z) {
+      let changed = false;
+      for (const id in QUESTS) {
+        if (state[id].status !== 'active') continue;
+        QUESTS[id].objectives.forEach((o) => {
+          if (o.type === 'visit' && !state[id].progress[o.id]) {
+            const r = o.r || 9;
+            if ((x - o.x) ** 2 + (z - o.z) ** 2 <= r * r) { state[id].progress[o.id] = 1; changed = true; }
+          }
+        });
+      }
+      return changed;
+    },
+    // talking to an NPC satisfies 'talk' objectives that name them
+    notifyTalk(npcKey) {
+      for (const id in QUESTS) {
+        if (state[id].status !== 'active') continue;
+        QUESTS[id].objectives.forEach((o) => { if (o.type === 'talk' && o.npc === npcKey) state[id].progress[o.id] = 1; });
+      }
+    },
     objectives(id) {
       const def = QUESTS[id];
       return def.objectives.map((o) => {
-        const n = o.type === 'have' ? Math.min(o.count, G.inventory.count(o.item)) : (state[id].progress[o.id] || 0);
-        return { text: objectiveText(o, n), done: n >= o.count };
+        const cnt = o.count || 1;
+        const n = o.type === 'have' ? Math.min(cnt, G.inventory.count(o.item)) : Math.min(cnt, state[id].progress[o.id] || 0);
+        return { text: objectiveText(o, n), done: n >= cnt };
       });
     },
     isReady(id) { return state[id] && state[id].status === 'active' && this.objectives(id).every((o) => o.done); },

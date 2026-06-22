@@ -172,6 +172,7 @@ try {
   };
   G.talkTo = (n) => {
     setMode('dialogue'); G.ui.hidePrompt();
+    G.quests.notifyTalk(n.def.key); checkQuestReady();   // 'talk' objectives complete on conversation
     G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else setMode(G.inInterior ? 'interior' : 'world'); });
   };
 
@@ -550,6 +551,7 @@ try {
     let rk = null, rb = Infinity;
     for (const rg of world.regions) { const d = Math.hypot(player.position.x - rg.x, player.position.z - rg.z); if (d < rg.r && d < rb) { rb = d; rk = rg.key; } }
     if (rk && !G.stats.regions.has(rk)) { G.stats.regions.add(rk); if (G.ach) G.ach.evaluate(); }
+    if (G.quests.notifyVisit(player.position.x, player.position.z)) { checkQuestReady(); G.save.save(); }
   }
 
   function updatePrompt() {
@@ -581,6 +583,8 @@ try {
       const o = def.objectives[i];
       if (o.type === 'kill') { const e = nearestEnemyOf(o.enemy); if (e) return { x: e.pos.x, z: e.pos.z, y: e.pos.y + 2.6, label: 'Defeat ' + ENEMIES[o.enemy].name }; }
       else if (o.type === 'have') { const s = itemSource(o.item); if (s) return { x: s.x, z: s.z, y: (s.y || 0) + 2.2, label: 'Gather ' + ITEMS[o.item].name }; }
+      else if (o.type === 'visit') return { x: o.x, z: o.z, y: 2.6, label: o.name };
+      else if (o.type === 'talk') { const n = npcByKey(o.npc); if (n) return { x: n.pos.x, z: n.pos.z, y: n.pos.y + 2.9, label: 'Speak with ' + o.name }; }
     }
     return null;
   }

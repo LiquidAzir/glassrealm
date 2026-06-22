@@ -455,26 +455,33 @@ export const QUESTS = {
   q_fey: { name: 'Tangled Thorns', giver: 'faewarden', startsAvailable: true, desc: 'Clear the thornlings creeping out of the Feywild Hollow.', objectives: [{ id: 'k', type: 'kill', enemy: 'thornling', count: 3 }], rewards: { xp: { combat: 360, herblore: 150 }, items: { gold: 150 } } },
   q_hollow: { name: 'The Hollow King', giver: 'faewarden', requires: 'q_fey', desc: 'Banish the Hollow King in the heart of the Feywild.', objectives: [{ id: 'boss', type: 'kill', enemy: 'hollow_king', count: 1 }], rewards: { xp: { combat: 1200, magic: 240 }, items: { gold: 460 } } },
 
-  // ===== Sagas — long, multi-objective, multi-stage questlines =====
-  q_saga_v1: { name: 'The Verdant Pact', saga: true, giver: 'vael', startsAvailable: true, desc: 'Loremaster Vael’s first trial: gather Verdant driftwood and copper, and cull the boars.', objectives: [{ id: 'wood', type: 'have', item: 'wood', count: 6 }, { id: 'cu', type: 'have', item: 'copper_ore', count: 4 }, { id: 'boar', type: 'kill', enemy: 'boar', count: 3 }], rewards: { xp: { woodcutting: 200, mining: 150, combat: 200 }, items: { gold: 120 } } },
-  q_saga_v2: { name: 'The Verdant Pact — Emberfall', saga: true, giver: 'vael', requires: 'q_saga_v1', desc: 'End Emberfang at the peak, and break the bandits who serve the flame.', objectives: [{ id: 'boss', type: 'kill', enemy: 'ember_boss', count: 1 }, { id: 'bandit', type: 'kill', enemy: 'bandit', count: 3 }], rewards: { xp: { combat: 700, defence: 150 }, items: { gold: 300, vigor_amulet: 1 } } },
+  // ===== Sagas — long, multi-stage story questlines (travel / investigate / speak / recover / confront) =====
+  q_saga_v1: { name: 'The Verdant Pact', saga: true, giver: 'vael', startsAvailable: true, desc: 'Wake the Founders’ shrine on the North Peak and learn the old verse.', objectives: [{ id: 'shrine', type: 'visit', x: 0, z: -36, r: 13, name: 'the North Peak shrine' }, { id: 'wood', type: 'have', item: 'wood', count: 6 }, { id: 'elder', type: 'talk', npc: 'elder', name: 'Elder Maren' }], rewards: { xp: { woodcutting: 180, combat: 120 }, items: { gold: 120 } } },
+  q_saga_v2: { name: 'The Verdant Pact — Ashes of the Oath', saga: true, giver: 'vael', requires: 'q_saga_v1', desc: 'Descend the Emberdeep, scatter the cult, and forge a new seal.', objectives: [{ id: 'cave', type: 'visit', x: 138, z: -14, r: 13, name: 'the Emberdeep Cave' }, { id: 'bandit', type: 'kill', enemy: 'bandit', count: 3 }, { id: 'cu', type: 'have', item: 'copper_ore', count: 4 }], rewards: { xp: { combat: 300, mining: 150 }, items: { gold: 180 } } },
+  q_saga_v3: { name: 'The Verdant Pact — Emberfall', saga: true, giver: 'vael', requires: 'q_saga_v2', desc: 'Put down the corrupted guardian Emberfang, then return to Vael.', objectives: [{ id: 'boss', type: 'kill', enemy: 'ember_boss', count: 1 }, { id: 'vael', type: 'talk', npc: 'vael', name: 'Loremaster Vael' }], rewards: { xp: { combat: 700, defence: 150 }, items: { gold: 320, vigor_amulet: 1 } } },
 
-  q_saga_f1: { name: 'Trials of Frost', saga: true, giver: 'eira', startsAvailable: true, desc: 'Skald Eira tests you against the long cold: frost wolves, coal, and trout.', objectives: [{ id: 'fw', type: 'kill', enemy: 'frost_wolf', count: 4 }, { id: 'coal', type: 'have', item: 'coal', count: 6 }, { id: 'trout', type: 'have', item: 'raw_trout', count: 3 }], rewards: { xp: { combat: 240, fishing: 160, mining: 120 }, items: { gold: 140 } } },
-  q_saga_f2: { name: 'Trials of Frost — Warden’s End', saga: true, giver: 'eira', requires: 'q_saga_f1', desc: 'Face the Frost Warden and scatter the last of the pack.', objectives: [{ id: 'boss', type: 'kill', enemy: 'frost_warden', count: 1 }, { id: 'fw', type: 'kill', enemy: 'frost_wolf', count: 3 }], rewards: { xp: { combat: 780, defence: 200 }, items: { gold: 320 } } },
+  q_saga_f1: { name: 'Trials of Frost', saga: true, giver: 'eira', startsAvailable: true, desc: 'Retrace the lost expedition to the Frost Cavern.', objectives: [{ id: 'cavern', type: 'visit', x: 118, z: -98, r: 13, name: 'the Frost Cavern' }, { id: 'fw', type: 'kill', enemy: 'frost_wolf', count: 4 }, { id: 'trout', type: 'have', item: 'raw_trout', count: 3 }], rewards: { xp: { combat: 200, fishing: 160 }, items: { gold: 140 } } },
+  q_saga_f2: { name: 'Trials of Frost — Cold Trail', saga: true, giver: 'eira', requires: 'q_saga_f1', desc: 'Relight the signal fires on Frostpeak and find the last witness.', objectives: [{ id: 'peak', type: 'visit', x: 98, z: -92, r: 14, name: 'Frostpeak' }, { id: 'coal', type: 'have', item: 'coal', count: 6 }, { id: 'nessa', type: 'talk', npc: 'frostkeeper', name: 'Frostkeeper Nessa' }], rewards: { xp: { mining: 160, combat: 180 }, items: { gold: 170 } } },
+  q_saga_f3: { name: 'Trials of Frost — Warden’s End', saga: true, giver: 'eira', requires: 'q_saga_f2', desc: 'Lay the Frost Warden to rest, then return to Eira.', objectives: [{ id: 'boss', type: 'kill', enemy: 'frost_warden', count: 1 }, { id: 'eira', type: 'talk', npc: 'eira', name: 'Skald Eira' }], rewards: { xp: { combat: 780, defence: 200 }, items: { gold: 340 } } },
 
-  q_saga_d1: { name: 'The Buried Wyrm', saga: true, giver: 'sefu', startsAvailable: true, desc: 'Chronicler Sefu seeks the truth beneath the dunes: scorpions and iron ore.', objectives: [{ id: 'scorp', type: 'kill', enemy: 'scorpion', count: 5 }, { id: 'iron', type: 'have', item: 'iron_ore', count: 6 }], rewards: { xp: { combat: 240, mining: 180 }, items: { gold: 140 } } },
-  q_saga_d2: { name: 'The Buried Wyrm — Wyrmfall', saga: true, giver: 'sefu', requires: 'q_saga_d1', desc: 'Slay the Sandwyrm that sleeps in the deep desert.', objectives: [{ id: 'boss', type: 'kill', enemy: 'sandwyrm', count: 1 }, { id: 'scorp', type: 'kill', enemy: 'scorpion', count: 4 }], rewards: { xp: { combat: 820, slayer: 200 }, items: { gold: 340 } } },
+  q_saga_d1: { name: 'The Buried Wyrm', saga: true, giver: 'sefu', startsAvailable: true, desc: 'Search the Sunspire ruins for proof of the swallowed city.', objectives: [{ id: 'ruins', type: 'visit', x: 26, z: 104, r: 14, name: 'the Sunspire ruins' }, { id: 'scorp', type: 'kill', enemy: 'scorpion', count: 5 }, { id: 'iron', type: 'have', item: 'iron_ore', count: 6 }], rewards: { xp: { combat: 200, mining: 180 }, items: { gold: 150 } } },
+  q_saga_d2: { name: 'The Buried Wyrm — The Sleeper’s Seal', saga: true, giver: 'sefu', requires: 'q_saga_d1', desc: 'Reach the deep desert and learn the old wards from Zara.', objectives: [{ id: 'deep', type: 'visit', x: 26, z: 118, r: 13, name: 'the deep desert' }, { id: 'cu', type: 'have', item: 'copper_ore', count: 4 }, { id: 'zara', type: 'talk', npc: 'nomad', name: 'Zara the Nomad' }], rewards: { xp: { combat: 260, mining: 140 }, items: { gold: 200 } } },
+  q_saga_d3: { name: 'The Buried Wyrm — Wyrmfall', saga: true, giver: 'sefu', requires: 'q_saga_d2', desc: 'Lay the Sandwyrm low, then bring the truth to Sefu.', objectives: [{ id: 'boss', type: 'kill', enemy: 'sandwyrm', count: 1 }, { id: 'sefu', type: 'talk', npc: 'sefu', name: 'Chronicler Sefu' }], rewards: { xp: { combat: 820, slayer: 200 }, items: { gold: 360 } } },
 
-  q_saga_j1: { name: 'The Coiled Throne', saga: true, giver: 'itzel', startsAvailable: true, desc: 'Wayfarer Itzel guides you into the deep jungle: serpents and panthers.', objectives: [{ id: 'serp', type: 'kill', enemy: 'serpent', count: 5 }, { id: 'panther', type: 'kill', enemy: 'jungle_panther', count: 3 }], rewards: { xp: { combat: 300, woodcutting: 160 }, items: { gold: 170 } } },
-  q_saga_j2: { name: 'The Coiled Throne — Jorath', saga: true, giver: 'itzel', requires: 'q_saga_j1', desc: 'Ascend the ziggurat and end Jorath the Coiled.', objectives: [{ id: 'boss', type: 'kill', enemy: 'jorath', count: 1 }, { id: 'bat', type: 'kill', enemy: 'glimmer_bat', count: 4 }], rewards: { xp: { combat: 1000, slayer: 220 }, items: { gold: 400 } } },
+  q_saga_j1: { name: 'The Coiled Throne', saga: true, giver: 'itzel', startsAvailable: true, desc: 'Carve a path through the jungle to the Overgrown Ziggurat.', objectives: [{ id: 'zig', type: 'visit', x: 205, z: 55, r: 14, name: 'the Overgrown Ziggurat' }, { id: 'serp', type: 'kill', enemy: 'serpent', count: 5 }, { id: 'panther', type: 'kill', enemy: 'jungle_panther', count: 3 }], rewards: { xp: { combat: 300, woodcutting: 160 }, items: { gold: 180 } } },
+  q_saga_j2: { name: 'The Coiled Throne — The Old Crown', saga: true, giver: 'itzel', requires: 'q_saga_j1', desc: 'Seek the crown’s light in the Glimmer Cavern and counsel Anouk.', objectives: [{ id: 'glim', type: 'visit', x: 178, z: 52, r: 13, name: 'the Glimmer Cavern' }, { id: 'bat', type: 'kill', enemy: 'glimmer_bat', count: 4 }, { id: 'anouk', type: 'talk', npc: 'pathfinder', name: 'Pathfinder Anouk' }], rewards: { xp: { combat: 320, mining: 140 }, items: { gold: 220 } } },
+  q_saga_j3: { name: 'The Coiled Throne — Jorath', saga: true, giver: 'itzel', requires: 'q_saga_j2', desc: 'End Jorath the Coiled, then return to Itzel.', objectives: [{ id: 'boss', type: 'kill', enemy: 'jorath', count: 1 }, { id: 'itzel', type: 'talk', npc: 'itzel', name: 'Wayfarer Itzel' }], rewards: { xp: { combat: 1000, slayer: 220 }, items: { gold: 420 } } },
 
-  q_saga_g1: { name: 'The Hollow Crown', saga: true, giver: 'ardith', startsAvailable: true, desc: 'Seer Ardith reads a dark omen: wisps, thornlings, and moonlit herbs.', objectives: [{ id: 'wisp', type: 'kill', enemy: 'wisp', count: 4 }, { id: 'thorn', type: 'kill', enemy: 'thornling', count: 3 }, { id: 'herb', type: 'have', item: 'herb', count: 4 }], rewards: { xp: { combat: 340, herblore: 180 }, items: { gold: 180 } } },
-  q_saga_g2: { name: 'The Hollow Crown — King of Thorns', saga: true, giver: 'ardith', requires: 'q_saga_g1', desc: 'Banish the Hollow King and ground the storm harpies that herald him.', objectives: [{ id: 'boss', type: 'kill', enemy: 'hollow_king', count: 1 }, { id: 'harpy', type: 'kill', enemy: 'storm_harpy', count: 4 }], rewards: { xp: { combat: 1200, magic: 240 }, items: { gold: 460 } } },
+  q_saga_g1: { name: 'The Hollow Crown', saga: true, giver: 'ardith', startsAvailable: true, desc: 'Climb the Moonspire and gather moonlit herbs to scry the omen.', objectives: [{ id: 'spire', type: 'visit', x: -34, z: -124, r: 14, name: 'the Moonspire' }, { id: 'wisp', type: 'kill', enemy: 'wisp', count: 4 }, { id: 'herb', type: 'have', item: 'herb', count: 4 }], rewards: { xp: { combat: 300, herblore: 180 }, items: { gold: 190 } } },
+  q_saga_g2: { name: 'The Hollow Crown — Storm and Thorn', saga: true, giver: 'ardith', requires: 'q_saga_g1', desc: 'Follow the omen to Thunderpeak Hold and rally Branok.', objectives: [{ id: 'hold', type: 'visit', x: -145, z: -55, r: 14, name: 'Thunderpeak Hold' }, { id: 'harpy', type: 'kill', enemy: 'storm_harpy', count: 4 }, { id: 'branok', type: 'talk', npc: 'stormcaller', name: 'Stormcaller Branok' }], rewards: { xp: { combat: 360, defence: 160 }, items: { gold: 260 } } },
+  q_saga_g3: { name: 'The Hollow Crown — King of Thorns', saga: true, giver: 'ardith', requires: 'q_saga_g2', desc: 'Banish the Hollow King, then return to Ardith.', objectives: [{ id: 'boss', type: 'kill', enemy: 'hollow_king', count: 1 }, { id: 'ardith', type: 'talk', npc: 'ardith', name: 'Seer Ardith' }], rewards: { xp: { combat: 1200, magic: 240 }, items: { gold: 480 } } },
 };
 
 export function objectiveText(obj, n) {
   if (obj.type === 'have') return `Gather ${ITEMS[obj.item].name} (${n}/${obj.count})`;
   if (obj.type === 'kill') return `Defeat ${ENEMIES[obj.enemy].name}${obj.count > 1 ? 's' : ''} (${n}/${obj.count})`;
+  if (obj.type === 'visit') return `${n >= 1 ? '✓ ' : ''}Travel to ${obj.name}`;
+  if (obj.type === 'talk') return `${n >= 1 ? '✓ ' : ''}Speak with ${obj.name}`;
   return `(${n}/${obj.count})`;
 }
 
@@ -484,29 +491,33 @@ const end = (label) => ({ label, to: null });
 // Factory for a two-quest dungeon NPC: a trash-cull quest (objective id 'k'),
 // then a boss quest (objective id 'boss'). cfg supplies all the flavour text.
 function dungeonChain(name, cfg) {
-  return {
+  const lc = cfg.lore ? [{ label: '❖ ' + (cfg.loreAsk || 'Tell me of this place'), to: 'lore' }] : [];
+  const tree = {
     root: (G) => {
       const s1 = G.quests.status(cfg.q1);
-      if (s1 === 'available') return node(name, cfg.intro1, [{ label: cfg.accept1, action: (g) => g.quests.accept(cfg.q1), to: 'a1' }, end('Not now.')]);
+      if (s1 === 'available') return node(name, cfg.intro1, [{ label: cfg.accept1, action: (g) => g.quests.accept(cfg.q1), to: 'a1' }, ...lc, end('Not now.')]);
       if (s1 === 'active') {
         const k = G.quests.progress(cfg.q1, 'k');
         if (k >= cfg.n1) return node(name, cfg.done1, [{ label: 'Claim reward.', action: (g) => g.quests.complete(cfg.q1), to: 't1' }]);
-        return node(name, `${cfg.n1 - k} ${cfg.foe1} still ${cfg.verb1}. ${cfg.where1}`, [end('On it.')]);
+        return node(name, `${cfg.n1 - k} ${cfg.foe1} still ${cfg.verb1}. ${cfg.where1}`, [...lc, end('On it.')]);
       }
       const s2 = G.quests.status(cfg.q2);
-      if (s2 === 'available') return node(name, cfg.intro2, [{ label: cfg.accept2, action: (g) => g.quests.accept(cfg.q2), to: 'a2' }, end('Not yet.')]);
+      if (s2 === 'available') return node(name, cfg.intro2, [{ label: cfg.accept2, action: (g) => g.quests.accept(cfg.q2), to: 'a2' }, ...lc, end('Not yet.')]);
       if (s2 === 'active') {
         if (G.quests.progress(cfg.q2, 'boss') >= 1) return node(name, cfg.done2, [{ label: 'Claim reward.', action: (g) => g.quests.complete(cfg.q2), to: 't2' }]);
-        return node(name, cfg.hint2, [end('On the hunt.')]);
+        return node(name, cfg.hint2, [...lc, end('On the hunt.')]);
       }
-      if (s2 === 'complete') return node(name, cfg.outro, [end('Farewell.')]);
-      return node(name, cfg.idle, [end('Aye.')]);
+      if (s2 === 'complete') return node(name, cfg.outro, [...lc, end('Farewell.')]);
+      return node(name, cfg.idle, [...lc, end('Aye.')]);
     },
     a1: node(name, cfg.a1, [end('Understood.')]),
     t1: node(name, cfg.t1, [end('Thanks.')]),
     a2: node(name, cfg.a2, [end('Understood.')]),
     t2: node(name, cfg.t2, [end('Ha!')]),
   };
+  if (cfg.lore) tree.lore = node(name, cfg.lore, cfg.lore2 ? [{ label: 'Go on…', to: 'lore2' }, end('I see.')] : [end('I see.')]);
+  if (cfg.lore2) tree.lore2 = node(name, cfg.lore2, [end('Fascinating.')]);
+  return tree;
 }
 
 // Factory for a Saga: a linear chain of multi-objective quests. Shows the active
@@ -786,6 +797,9 @@ export const DIALOGUE = {
     a2: 'The Bonelord waits at the catacomb’s core. Go well armed.',
     t2: 'A truer hero the mire has never known.',
     outro: 'Rest easy, friend — the dead do now.', idle: 'The graves are quiet, thanks to you.',
+    loreAsk: 'Why tend these graves?',
+    lore: 'I was a healer once, in a village now sunk under the mire. When the plague came I buried them all — and then they would not stay buried. Mortrax’s magic seeps up through the roots and wakes them.',
+    lore2: 'Mortrax was a scholar of death, not its enemy. He thought he could cheat the grave. Now he IS the grave, and every soul he raised is a page in a book he can no longer close.',
   }),
   warden: dungeonChain('Warden Brakka', {
     q1: 'q_warren', n1: 5, foe1: 'goblins', verb1: 'skulk',
@@ -801,6 +815,9 @@ export const DIALOGUE = {
     a2: 'Gronk is twice a man’s size. Strike hard and don’t let up.',
     t2: 'The Verdant owes you a quiet harvest. Ha!',
     outro: 'The fields are safe to walk again. My thanks.', idle: 'Keep that blade keen, friend.',
+    loreAsk: 'What is your post here?',
+    lore: '“Warden” is a grand word for what I am — last of a militia that’s mostly me and a rusty spear. The goblins didn’t used to raid. Then Gronk crowned himself, and now they come for the granaries every harvest.',
+    lore2: 'Gronk’s no ordinary goblin — twice the size, thrice the cunning. They say he found a war-totem in the warren’s deep, and it’s been whispering to him ever since.',
   }),
   lapidary: dungeonChain('Lapidary Sten', {
     q1: 'q_crystal', n1: 3, foe1: 'crystal golems', verb1: 'stand guard',
@@ -816,6 +833,9 @@ export const DIALOGUE = {
     a2: 'The Tyrant splits light into deadly shards. Close the distance fast.',
     t2: 'You’ve made my fortune — and your own. Ha!',
     outro: 'Finest gems you ever saw, all thanks to you.', idle: 'Mind the facets — sharp as any blade.',
+    loreAsk: 'What are these crystals?',
+    lore: 'A lapidary cuts gems, friend — and I’ve never seen gems like the Hollow’s. They grow. They hum. Press your ear to a fresh-cut facet and you’ll swear it sings back.',
+    lore2: 'The Prism Tyrant isn’t a creature so much as the Hollow defending itself. Every gem you take, it feels. Take enough, and it wakes. I fear I’ve taken far too many.',
   }),
   emberwright: dungeonChain('Emberwright Vol', {
     q1: 'q_magma', n1: 3, foe1: 'lava hounds', verb1: 'prowl',
@@ -831,6 +851,9 @@ export const DIALOGUE = {
     a2: 'The Colossus is slow but devastating. Strike between its blows.',
     t2: 'Forged a legend today, I did. Ha!',
     outro: 'The depths run cool. The forge is yours anytime.', idle: 'Stay clear of the vents, friend.',
+    loreAsk: 'Tell me of the Depths.',
+    lore: 'I forge with the mountain’s own fire — best blades on the isles come off my anvil, when the Depths aren’t trying to climb up my chimney.',
+    lore2: 'The Colossus is old magma given a grudge. It slept content until our mining woke it. Half of me says we earned it. The other half just wants my forge to stop melting.',
   }),
   oracle: dungeonChain('Oracle Nerida', {
     q1: 'q_temple', n1: 4, foe1: 'tide priests', verb1: 'chant',
@@ -846,6 +869,9 @@ export const DIALOGUE = {
     a2: 'Nautilus commands the very water. Strike true and do not falter.',
     t2: 'The tides themselves will remember your name. Ha!',
     outro: 'The temple sleeps in peace, and so may we all.', idle: 'The waters are calm now, hero.',
+    loreAsk: 'What was this temple?',
+    lore: 'I read the tides as others read books. The Temple was a place of worship once, to gods older than the isles — gods who asked for the sea in return for calm waters.',
+    lore2: 'The Drowned King kept the old bargain even after the worshippers drowned. Now he keeps it alone, mad with salt and centuries. He doesn’t want to drown you — he wants someone to share the watch.',
   }),
 
   pathfinder: dungeonChain('Pathfinder Anouk', {
@@ -862,6 +888,9 @@ export const DIALOGUE = {
     a2: 'Jorath strikes like lightning and coils like a vice. Keep moving.',
     t2: 'A jungle legend, you are. Ha!',
     outro: 'The green is calmer for your passing.', idle: 'Tread softly among the vines.',
+    loreAsk: 'You know this jungle?',
+    lore: 'I’ve mapped every green mile of Kytari, and the jungle’s redrawn half of them behind me. It moves, you understand. The ziggurat I marked last season sits a half-mile from where it was.',
+    lore2: 'Jorath isn’t lost in the jungle — Jorath IS the jungle’s law. The serpents answer to him. Cross him and the green itself turns against you. I’ve the scars to prove it.',
   }),
   cinderwarden: dungeonChain('Cinderwarden Hax', {
     q1: 'q_ashpit', n1: 3, foe1: 'ash hounds', verb1: 'prowl',
@@ -877,6 +906,9 @@ export const DIALOGUE = {
     a2: 'Vurak hurls fire and hits like a falling mountain. Strike between blasts.',
     t2: 'Forged a legend in the ashes today. Ha!',
     outro: 'The embers settle, thanks to you.', idle: 'Mind the heat, wanderer.',
+    loreAsk: 'Why guard the Ashpit?',
+    lore: 'Cinderwarden — I keep watch on the Ashpit so it doesn’t spread. Lonely work. There was a town out here once, before the wastes were waste. Now it’s me, the hounds, and a hole in the world that breathes fire.',
+    lore2: 'Vurak crawled UP out of the Ashpit, not down into it. Whatever lies at the bottom made him. I don’t ask what’s at the bottom — I just make sure nothing else climbs out.',
   }),
   stormcaller: dungeonChain('Stormcaller Branok', {
     q1: 'q_thunder', n1: 4, foe1: 'storm harpies', verb1: 'wheel overhead',
@@ -892,6 +924,9 @@ export const DIALOGUE = {
     a2: 'Thruun calls the lightning and strikes like an avalanche. Stay nimble.',
     t2: 'A storm-breaker walks among us. Ha!',
     outro: 'The skies are kinder now.', idle: 'Keep your footing on the crags.',
+    loreAsk: 'What does a Stormcaller do?',
+    lore: 'Stormcaller’s a title my grandmother held, and hers before. We don’t call the storms — we answer to them. The Highlands have always been loud, but lately the thunder sounds… angry.',
+    lore2: 'Thruun was of my line, generations back — the first Stormcaller. He climbed the Hold to bind the storm and never came down. Now the storm wears him. I’d call it family business, but I’d rather it were yours.',
   }),
   faewarden: dungeonChain('Oona the Fae', {
     q1: 'q_fey', n1: 3, foe1: 'thornlings', verb1: 'creep',
@@ -907,28 +942,36 @@ export const DIALOGUE = {
     a2: 'The King bends light and thorn alike. Strike true through his illusions.',
     t2: 'The Fae will remember you in moonlight. Ha!',
     outro: 'The glade sings your name softly.', idle: 'Walk gently in the moonlight.',
+    loreAsk: 'What is the Hollow King?',
+    lore: 'Fae, half-fae — who can say anymore. I’ve tended the Moonlit Glade since before your grandmother’s grandmother dreamed. It was always a kind place. The Hollow King saw to that.',
+    lore2: 'He gave up his name, his face, his heart — hollowed himself to seal what sleeps below. We loved him for it. Now the hollow is all that’s left, and it is hungry. Mercy and murder look the same from here.',
   }),
 
   saga_vael: sagaDialogue('Loremaster Vael', [
-    { id: 'q_saga_v1', intro: 'Sit, traveler. Every isle needs a hero, and heroes are forged in deeds, not boasts. Bring me Verdant driftwood and copper, and cull the boars that trouble the wood. So begins the Verdant Pact.', accept: 'I accept the Pact.', active: 'The Pact endures, friend.', done: 'Wood, copper, and the boars scattered — you have the makings of a legend.' },
-    { id: 'q_saga_v2', intro: 'Now the true test of the Pact: Emberfang, the beast of the peak, and the bandits who serve the flame. End them both and the Verdant will be safe.', accept: 'It will be done.', active: 'Emberfang still smoulders on the peak.', done: 'Emberfang fallen and the bandits broken — the Verdant Pact is fulfilled. Wear this amulet with pride.' },
-  ], 'The Verdant Pact is the first of your legends. Walk tall.'),
+    { id: 'q_saga_v1', intro: 'You think the Verdant Isle was always green? No — it was bargained for. The Founders struck a Pact with the land itself and sealed it at a shrine on the North Peak. The words are forgotten, the shrine gone cold. Wake it: bring driftwood for its fire, and ask Elder Maren — she alone still remembers the old verse.', accept: 'I will wake the shrine.', active: 'The shrine waits on the peak, and Maren remembers more than she lets on.', done: 'The shrine breathes again, and Maren has spoken the first line of the Pact. Now I fear what the second line will ask of you.' },
+    { id: 'q_saga_v2', intro: 'The Pact had a guardian — Emberfang, a flame-beast bound to defend the isle. But ashen cultists crept into the Emberdeep and shattered its binding. Go down into the cave, scatter the cult, and gather copper to forge a new seal.', accept: 'I’ll break the cult.', active: 'The cult still chants in the Emberdeep, and the seal is unforged.', done: 'The cult is broken and the seal is cast — but it is too late. Emberfang is feral now. Only one path remains, and it is grim.' },
+    { id: 'q_saga_v3', intro: 'Emberfang cannot be re-bound; it must be put down — the guardian itself, gone mad. Strike it down on the peak, then come back to me. This is the heaviest line of the Pact, and I would not ask it of anyone else.', accept: 'It will be done.', active: 'Emberfang still rages where the Pact once held.', done: 'Emberfang is dead. Now hear the truth: with the old guardian gone, the Pact passes to a new keeper — to you. The isle is yours to protect now. Wear this amulet, and never set it down.' },
+  ], 'The Verdant Pact lives in you now, keeper. Walk tall — the land is watching.'),
   saga_eira: sagaDialogue('Skald Eira', [
-    { id: 'q_saga_f1', intro: 'The cold tests all who linger. Thin the frost wolves, dig coal against the dark, and land trout from the ice — and I will sing the Trials of Frost.', accept: 'I’ll brave the cold.', active: 'The cold has not beaten you yet.', done: 'Wolves, coal, and a fine catch — you endure where others freeze.' },
-    { id: 'q_saga_f2', intro: 'One trial remains: the Frost Warden in the cavern, and the last of his pack. Break them and winter loosens its grip.', accept: 'I’ll end the Warden.', active: 'The Warden still broods in the ice.', done: 'The Warden is undone — the snows will sing of you, frostwalker.' },
-  ], 'The Trials of Frost are passed. The cold knows your name now.'),
+    { id: 'q_saga_f1', intro: 'I sing for a saga with no ending. My brother led an expedition into the snow and never came back. I have the verses as far as the Frost Cavern — but no further. Retrace their road: reach the cavern, thin the wolves that hunt it, and carry trout as they would have. Maybe the white will give up its secret.', accept: 'I’ll retrace their road.', active: 'The cavern is cold and the wolves are many. The saga waits for its next verse.', done: 'You reached the cavern and lived — further than my brother’s last verse. There is a trail, faint but there.' },
+    { id: 'q_saga_f2', intro: 'Follow the cold trail. The expedition lit signal fires on Frostpeak; relight them with coal so I can read the way they went. And speak with Frostkeeper Nessa — she was the last to see them alive.', accept: 'I’ll relight the fires.', active: 'Frostpeak is dark, and Nessa has not yet told her tale.', done: 'The fires burn again, and Nessa wept as she spoke. She saw them taken — into the cavern, by something that wore a man’s shape. I know now how the saga ends.' },
+    { id: 'q_saga_f3', intro: 'The Frost Warden in the cavern… is my brother. Frozen, hollowed by the ice into a thing that guards nothing. Free him. End the Warden, and bring me the last verse.', accept: 'I’ll give him peace.', active: 'The Warden — my brother — still stands in the ice.', done: 'It is done. He rests. Thank you, frostwalker, for finishing the saga I could not bear to. I will sing it true now — every verse, even this one.' },
+  ], 'The Trials of Frost are sung to their end. The snows are quieter, and so is my heart.'),
   saga_sefu: sagaDialogue('Chronicler Sefu', [
-    { id: 'q_saga_d1', intro: 'The dunes hide an old truth, and a buried wyrm. First, clear the scorpions and bring me iron from the red rock — proof you can survive the deep desert.', accept: 'I’ll dig in.', active: 'The desert is patient. Are you?', done: 'Scorpions cleared and iron in hand — you’re ready for what sleeps below.' },
-    { id: 'q_saga_d2', intro: 'Now: the Sandwyrm itself, and the swarm that guards its rest. Lay the wyrm low and the Buried Wyrm saga is yours.', accept: 'I’ll wake and end it.', active: 'The Sandwyrm still slumbers in the deep south.', done: 'The Sandwyrm falls! The dunes will whisper your name on the wind.' },
-  ], 'The Buried Wyrm is unearthed and ended. A true desert tale.'),
+    { id: 'q_saga_d1', intro: 'Every chronicler keeps one lie they cannot prove. Mine: that a city once stood where the dunes now roll, and the desert ate it whole. Search the Sunspire ruins for proof — clear the scorpions nesting there, and bring me iron from the red rock. That ore is older than any forge.', accept: 'I’ll search the ruins.', active: 'The ruins keep their secrets, and the scorpions keep the ruins.', done: 'This iron is worked — hammered by hands, ages gone. The city was real. And if the city was real… so is what they buried beneath it.' },
+    { id: 'q_saga_d2', intro: 'They sealed something under the city before the sand took them. Reach the deep desert where the wards still hum, bring copper to read them by, and speak with Zara — the nomads kept the old warding-songs alive.', accept: 'I’ll find the seal.', active: 'The deep desert is far, and Zara’s songs are not freely given.', done: 'Zara sang me the warding-song, and now I understand its warning. The Sandwyrm is no beast — it is the city’s last guardian, and its seal is failing.' },
+    { id: 'q_saga_d3', intro: 'The seal cannot be remade; the Sandwyrm has slept too long and woken wrong. Lay it to rest in the deep desert, and bring me what you find. The truth deserves a true ending.', accept: 'I’ll end its watch.', active: 'The Sandwyrm still coils around its ancient charge.', done: 'The Sandwyrm falls — and it guarded a tomb, not a hoard. I have the whole history now: not a monster slain, but a watchman relieved at last. This chronicle will outlive us both.' },
+  ], 'The Buried Wyrm is written true. The desert will remember what the sand tried to forget.'),
   saga_itzel: sagaDialogue('Wayfarer Itzel', [
-    { id: 'q_saga_j1', intro: 'The Kytari jungle guards its throne jealously. Cut through the serpents and panthers that haunt the ziggurat’s approach — then we speak of the Coiled Throne.', accept: 'Lead the way.', active: 'The green is thick with fang and claw still.', done: 'You cut a clean path through the green. The throne lies open.' },
-    { id: 'q_saga_j2', intro: 'Atop the ziggurat coils Jorath, and his glimmer-bats wheel in the dark. End the great serpent to claim the Coiled Throne.', accept: 'I’ll take the throne.', active: 'Jorath still coils at the summit.', done: 'Jorath slain — the Coiled Throne is yours, and the Kytari are in your debt.' },
-  ], 'The Coiled Throne is taken. The jungle bows to you.'),
+    { id: 'q_saga_j1', intro: 'My blood once ruled the Kytari, before the jungle swallowed our throne. I mean to find it. The Overgrown Ziggurat holds the old seat — but its guardians remain. Carve a path: reach the ziggurat, and cut down the serpents and panthers that keep it.', accept: 'Lead on.', active: 'The green is thick with fang and claw between us and the throne.', done: 'The path is open and the ziggurat stands as the songs described. But a throne is more than a seat — there is a crown to find first.' },
+    { id: 'q_saga_j2', intro: 'The Old Crown’s light was hidden in the Glimmer Cavern when the jungle fell. Go there, scatter the glimmer-bats roosting in it, and counsel with Pathfinder Anouk — she has walked these ruins far longer than I.', accept: 'I’ll seek the crown.', active: 'The crown’s light still sleeps in the cavern, and Anouk has more to tell.', done: 'Anouk told me the truth I half-feared: the crown was never lost. It was given — to a guardian, to keep it from the unworthy. To Jorath.' },
+    { id: 'q_saga_j3', intro: 'Jorath the Coiled wears my family’s crown — a man once, cursed into a serpent to guard it. There is only one way to learn if I am worthy. End him atop the ziggurat, and return to me.', accept: 'I’ll climb the throne.', active: 'Jorath still coils around the crown at the summit.', done: 'Jorath is slain, the curse lifted with him. The crown is mine to take… yet, seeing what guarding it cost him, perhaps some thrones are better left to the jungle. I have not decided. But the saga is yours, either way.' },
+  ], 'The Coiled Throne is reclaimed — or released. The Kytari will sing your name for both.'),
   saga_ardith: sagaDialogue('Seer Ardith', [
-    { id: 'q_saga_g1', intro: 'I have read a dark omen in the moonlight, hero. Wisps and thornlings stir, and I need moonlit herbs to scry true. Tend the glade and gather for me.', accept: 'I’ll tend the glade.', active: 'The omen darkens. Hurry, hero.', done: 'The glade quiets and the herbs glow true — now I see the heart of it.' },
-    { id: 'q_saga_g2', intro: 'The omen is the Hollow King, and the storm harpies that herald his waking. Banish him, ground them, and lift the Hollow Crown from this land.', accept: 'I’ll end the omen.', active: 'The Hollow King still holds his court.', done: 'The Hollow King is banished! The moonlight is clean again — the Hollow Crown saga is complete.' },
-  ], 'The Hollow Crown is broken. The Fae will sing of you in moonlight.'),
+    { id: 'q_saga_g1', intro: 'A shadow grows in the moonlight, hero, and I cannot yet name it. Climb the Moonspire where the veil is thin, scatter the wisps that cloud my sight, and gather moonlit herbs so I may scry true.', accept: 'I’ll climb the Moonspire.', active: 'The Moonspire is wreathed in wisps, and my sight is still clouded.', done: 'I have scried, and the omen is worse than I feared. It is not only the glade — the shadow reaches into the Highlands, where the storms answer it.' },
+    { id: 'q_saga_g2', intro: 'Follow the omen to Thunderpeak Hold. Ground the storm harpies that herald the shadow, and rally Stormcaller Branok — we will need the mountain’s strength for what comes.', accept: 'I’ll rally the Highlands.', active: 'The harpies still wheel over the Hold, and Branok is not yet won.', done: 'Branok stands with us, and the harpies are grounded. Now I can speak the shadow’s name: the Hollow King. And I must tell you the terrible truth of him.' },
+    { id: 'q_saga_g3', intro: 'Hear me before you go. The Hollow King was the glade’s own protector — he hollowed himself, gave up his very heart, to seal a deeper darkness beneath the Feywild. Banishing him may free what he chained. But left as he is, he will twist the whole glade to nightmare. He must be stopped. Banish him, and return to me.', accept: 'I’ll do what must be done.', active: 'The Hollow King still holds his court in the deep Feywild.', done: 'The Hollow King is banished, and the glade is clean — for now. But I felt something stir as he fell. I will keep watch over the seal he leaves behind. You may have saved us, or only bought us time. Either way, you were magnificent.' },
+  ], 'The Hollow Crown is broken. I keep my vigil now — but the Fae will sing of you in the moonlight, always.'),
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.
