@@ -11,25 +11,54 @@ export const ITEMS = {
   potion: { name: 'Salve Flask', icon: '🧪', type: 'consumable', heal: 45, desc: 'Restores 45 HP.' },
   gold:   { name: 'Gold',        icon: '🪙', type: 'currency',   desc: 'Island coin.' },
   relic:  { name: 'Tide Relic',  icon: '🔱', type: 'quest',      desc: 'An ancient relic humming with power.' },
+
+  copper_ore: { name: 'Copper Ore', icon: '🟠', type: 'material', desc: 'Raw copper, smelts into a bronze bar.' },
+  iron_ore:   { name: 'Iron Ore',   icon: '🔩', type: 'material', desc: 'Raw iron, smelts with coal into an iron bar.' },
+  coal:       { name: 'Coal',       icon: '🪨', type: 'material', desc: 'Fuel for smelting iron.' },
+  bronze_bar: { name: 'Bronze Bar', icon: '🟫', type: 'material', desc: 'Forge it into bronze gear at an anvil.' },
+  iron_bar:   { name: 'Iron Bar',   icon: '⬜', type: 'material', desc: 'Forge it into iron or steel gear at an anvil.' },
+
+  raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_shrimp: { name: 'Shrimp',     icon: '🍤', type: 'consumable', heal: 14, desc: 'Cooked. Restores 14 HP.' },
+  cooked_trout:  { name: 'Trout',      icon: '🍤', type: 'consumable', heal: 26, desc: 'Cooked. Restores 26 HP.' },
 };
+
+// Smelting recipes (furnace) and weapon forge tiers (anvil).
+export const SMELT = [
+  { in: { copper_ore: 1 }, out: 'bronze_bar', xp: 18 },
+  { in: { iron_ore: 1, coal: 1 }, out: 'iron_bar', xp: 26 },
+];
+export const COOK = { raw_shrimp: 'cooked_shrimp', raw_trout: 'cooked_trout' };
+export const WEAPONS = [
+  { tier: 0, name: 'Fists',        bonus: 0 },
+  { tier: 1, name: 'Bronze Sword', bonus: 4,  cost: { bronze_bar: 3 }, xp: 50 },
+  { tier: 2, name: 'Iron Sword',   bonus: 9,  cost: { iron_bar: 4 },   xp: 90 },
+  { tier: 3, name: 'Steel Sword',  bonus: 15, cost: { iron_bar: 6, coal: 4 }, xp: 160 },
+];
 
 // NPC anchor positions are relative to the village; entities.js drops them to ground.
 export const NPCS = [
   { key: 'elder',    name: 'Elder Maren',  color: 0xffd45f, pos: { x: 6,  z: -14.5 }, dialogue: 'elder' },
   { key: 'ranger',   name: 'Ranger Coyle', color: 0x7cffb0, pos: { x: 11, z: -8.5 },  dialogue: 'ranger' },
   { key: 'merchant', name: 'Trader Pell',  color: 0x9bf2ff, pos: { x: 1,  z: -8.5 },  dialogue: 'merchant' },
+  { key: 'miner',    name: 'Old Bryn',     color: 0xc8a06a, pos: { x: 104, z: 22 },   dialogue: 'miner' },
+  { key: 'smith',    name: 'Smith Dorrin', color: 0xff9a5a, pos: { x: 116, z: 20 },   dialogue: 'smith' },
+  { key: 'fisher',   name: 'Wren',         color: 0x6fd0ff, pos: { x: 138, z: 10 },   dialogue: 'fisher' },
 ];
 
 export const ENEMIES = {
-  boar: { name: 'Wild Boar', hp: 24, dmg: 6, speed: 3.4, xp: 55, color: 0x9a5a38, aggro: 10, loot: { meat: 1, pelt: 1 } },
+  boar:   { name: 'Wild Boar',    hp: 24,  dmg: 6,  speed: 3.4, xp: 55,  color: 0x9a5a38, aggro: 10, shape: 'beast',    loot: { meat: 1, pelt: 1 } },
+  wolf:   { name: 'Grey Wolf',    hp: 36,  dmg: 9,  speed: 4.6, xp: 85,  color: 0x9aa0a8, aggro: 13, shape: 'beast',    loot: { pelt: 1, meat: 1 } },
+  bandit: { name: 'Ashen Bandit', hp: 52,  dmg: 13, speed: 3.9, xp: 130, color: 0x8a6f9a, aggro: 12, shape: 'humanoid', loot: { gold: 18, coal: 1 } },
+  ember_boss: { name: 'Emberfang', hp: 170, dmg: 22, speed: 3.7, xp: 520, color: 0xff5a2a, aggro: 18, shape: 'beast', scale: 1.9, boss: true, loot: { gold: 140, relic: 1, iron_ore: 5 } },
 };
 
-// A few boar spawn anchors out in the wood / plains.
 export const ENEMY_SPAWNS = [
-  { enemy: 'boar', x: -22, z: 4 },
-  { enemy: 'boar', x: -28, z: 14 },
-  { enemy: 'boar', x: 24, z: 10 },
-  { enemy: 'boar', x: -10, z: 26 },
+  { enemy: 'boar', x: -22, z: 4 }, { enemy: 'boar', x: -28, z: 14 }, { enemy: 'boar', x: 24, z: 10 }, { enemy: 'boar', x: -10, z: 26 },
+  { enemy: 'wolf', x: 70, z: 18 }, { enemy: 'wolf', x: 88, z: -8 }, { enemy: 'wolf', x: 60, z: -6 },
+  { enemy: 'bandit', x: 120, z: 26 }, { enemy: 'bandit', x: 136, z: 8 }, { enemy: 'bandit', x: 104, z: 32 },
+  { enemy: 'ember_boss', x: 122, z: -4 },
 ];
 
 export const QUESTS = {
@@ -51,11 +80,35 @@ export const QUESTS = {
     objectives: [{ id: 'boar', type: 'kill', enemy: 'boar', count: 2 }],
     rewards: { xp: { combat: 160 }, items: { pelt: 2, gold: 40 } },
   },
+  q_mine: {
+    name: 'Coal for the Forge', giver: 'miner', startsAvailable: true,
+    desc: 'Old Bryn needs coal to keep Emberhold’s forge lit.',
+    objectives: [{ id: 'coal', type: 'have', item: 'coal', count: 5 }],
+    rewards: { xp: { mining: 150 }, items: { gold: 45 } },
+  },
+  q_fish: {
+    name: 'Catch of the Day', giver: 'fisher', startsAvailable: true,
+    desc: 'Wren wants three fresh trout from the Ashen Shore.',
+    objectives: [{ id: 'trout', type: 'have', item: 'raw_trout', count: 3 }],
+    rewards: { xp: { fishing: 130 }, items: { gold: 40 } },
+  },
+  q_smith: {
+    name: 'Forged in Fire', giver: 'smith', startsAvailable: true,
+    desc: 'Smelt three bronze bars to prove yourself to Smith Dorrin.',
+    objectives: [{ id: 'bar', type: 'have', item: 'bronze_bar', count: 3 }],
+    rewards: { xp: { smithing: 200 }, items: { gold: 60, iron_bar: 2 } },
+  },
+  q_boss: {
+    name: 'The Ember Beast', giver: 'smith', requires: 'q_smith',
+    desc: 'Slay Emberfang prowling the Emberpeak — bring a real weapon.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'ember_boss', count: 1 }],
+    rewards: { xp: { combat: 650 }, items: { gold: 220 } },
+  },
 };
 
 export function objectiveText(obj, n) {
   if (obj.type === 'have') return `Gather ${ITEMS[obj.item].name} (${n}/${obj.count})`;
-  if (obj.type === 'kill') return `Defeat ${ENEMIES[obj.enemy].name}s (${n}/${obj.count})`;
+  if (obj.type === 'kill') return `Defeat ${ENEMIES[obj.enemy].name}${obj.count > 1 ? 's' : ''} (${n}/${obj.count})`;
   return `(${n}/${obj.count})`;
 }
 
@@ -123,22 +176,95 @@ export const DIALOGUE = {
   merchant: {
     root: (G) => {
       const st = G.quests.status('q_berry');
+      const trade = { label: 'Trade with me', tag: 'Shop', action: (g) => { g.pendingShop = true; }, to: null };
       if (st === 'available') {
         return node('Trader Pell', 'Sunberries! The bushes dotting the isle are full of them. Bring me four and I will make it worth your coin.',
-          [
-            { label: "I'll gather them.", action: (G) => G.quests.accept('q_berry'), to: 'accepted' },
-            end('Not today.'),
-          ]);
+          [{ label: "I'll gather them.", action: (g) => g.quests.accept('q_berry'), to: 'accepted' }, trade, end('Not today.')]);
       }
       if (st === 'active') {
         if (G.inventory.count('berry') >= 4) return node('Trader Pell', 'Four ripe Sunberries — perfect!',
-          [{ label: 'Hand over 4 Sunberries.', action: (G) => G.quests.complete('q_berry'), to: 'thanks' }]);
-        return node('Trader Pell', `${4 - G.inventory.count('berry')} more Sunberries. The green bushes — tap to forage them.`, [end('Got it.')]);
+          [{ label: 'Hand over 4 Sunberries.', action: (g) => g.quests.complete('q_berry'), to: 'thanks' }, trade]);
+        return node('Trader Pell', `${4 - G.inventory.count('berry')} more Sunberries. The green bushes — tap to forage them.`, [trade, end('Got it.')]);
       }
-      if (st === 'complete') return node('Trader Pell', 'Always a pleasure doing business. Come back any time.', [end('Will do.')]);
-      return node('Trader Pell', 'Wares, wonders, and a fair deal — that is Trader Pell.', [end('Bye.')]);
+      if (st === 'complete') return node('Trader Pell', 'Always a pleasure doing business. Come back any time.', [trade, end('Will do.')]);
+      return node('Trader Pell', 'Wares, wonders, and a fair deal — that is Trader Pell.', [trade, end('Bye.')]);
     },
     accepted: node('Trader Pell', 'The berry bushes glow a little in the dusk. Tap one when you stand close to forage it.', [end('Understood.')]),
     thanks: node('Trader Pell', 'Coin well earned. Those salve flasks of mine restore a good deal of vigor, should you need one.', [end('Thanks.')]),
+  },
+
+  miner: {
+    root: (G) => {
+      const st = G.quests.status('q_mine');
+      if (st === 'available') return node('Old Bryn', 'Forge’s near cold. Bring me five coal from the Ember rocks and I’ll pay you well.',
+        [{ label: 'I’ll dig some up.', action: (g) => g.quests.accept('q_mine'), to: 'a' }, end('Maybe later.')]);
+      if (st === 'active') {
+        if (G.inventory.count('coal') >= 5) return node('Old Bryn', 'Five coal — that’ll keep her roaring!',
+          [{ label: 'Hand it over.', action: (g) => g.quests.complete('q_mine'), to: 't' }]);
+        return node('Old Bryn', `${5 - G.inventory.count('coal')} more coal. Tap the dark ember rocks to mine them.`, [end('On it.')]);
+      }
+      if (st === 'complete') return node('Old Bryn', 'Forge runs hot again. The ore’s yours to work, friend.', [end('Thanks.')]);
+      return node('Old Bryn', 'The pick swings itself once you’ve the knack.', [end('Aye.')]);
+    },
+    a: node('Old Bryn', 'Coal’s the grey-black ore. Iron too, if you fancy it. Just tap the rocks.', [end('Understood.')]),
+    t: node('Old Bryn', 'Good honest coin. Spend it at Pell’s stall back west.', [end('Will do.')]),
+  },
+
+  smith: {
+    root: (G) => {
+      const s1 = G.quests.status('q_smith');
+      if (s1 === 'available') return node('Smith Dorrin', 'So you fancy yourself a smith? Smelt me three bronze bars at the furnace and we’ll talk.',
+        [{ label: 'I’ll forge them.', action: (g) => g.quests.accept('q_smith'), to: 'a1' }, end('Later.')]);
+      if (s1 === 'active') {
+        if (G.inventory.count('bronze_bar') >= 3) return node('Smith Dorrin', 'Three bronze bars, and cleanly cast!',
+          [{ label: 'Hand them over.', action: (g) => g.quests.complete('q_smith'), to: 't1' }]);
+        return node('Smith Dorrin', `Mine copper, smelt it at the furnace yonder. ${3 - G.inventory.count('bronze_bar')} bronze bars to go.`, [end('Right.')]);
+      }
+      const s2 = G.quests.status('q_boss');
+      if (s2 === 'available') return node('Smith Dorrin', 'You can smith — now prove your steel. Emberfang stalks the Emberpeak. Slay the beast.',
+        [{ label: 'I’ll hunt it.', action: (g) => g.quests.accept('q_boss'), to: 'a2' }, end('Not yet.')]);
+      if (s2 === 'active') {
+        if (G.quests.progress('q_boss', 'boss') >= 1) return node('Smith Dorrin', 'Emberfang is dead?! You’re a legend of the isles.',
+          [{ label: 'Claim reward.', action: (g) => g.quests.complete('q_boss'), to: 't2' }]);
+        return node('Smith Dorrin', 'Emberfang still breathes at the peak. Forge a stronger blade at the anvil before you go.', [end('On it.')]);
+      }
+      if (s2 === 'complete') return node('Smith Dorrin', 'The peak is safe thanks to you. The forge is always open to a friend.', [end('Farewell.')]);
+      return node('Smith Dorrin', 'Steel waits for no one.', [end('Aye.')]);
+    },
+    a1: node('Smith Dorrin', 'Furnace is right there. Copper ore smelts straight into bronze.', [end('Understood.')]),
+    t1: node('Smith Dorrin', 'Take these iron bars — forge a finer sword at the anvil. You’ll want it for what’s coming.', [end('Thanks.')]),
+    a2: node('Smith Dorrin', 'The anvil upgrades your blade: bronze, then iron, then steel. Go well armed.', [end('Understood.')]),
+    t2: node('Smith Dorrin', 'A true islandbane. The whole of Emberhold is in your debt.', [end('Ha!')]),
+  },
+
+  fisher: {
+    root: (G) => {
+      const st = G.quests.status('q_fish');
+      if (st === 'available') return node('Wren', 'The trout run thick off the Ashen Shore. Land me three and I’ll see you paid.',
+        [{ label: 'I’ll cast a line.', action: (g) => g.quests.accept('q_fish'), to: 'a' }, end('Not now.')]);
+      if (st === 'active') {
+        if (G.inventory.count('raw_trout') >= 3) return node('Wren', 'Three fat trout — lovely!',
+          [{ label: 'Hand them over.', action: (g) => g.quests.complete('q_fish'), to: 't' }]);
+        return node('Wren', `${3 - G.inventory.count('raw_trout')} more trout. Stand by a shimmering spot on the water and tap to fish.`, [end('Casting.')]);
+      }
+      if (st === 'complete') return node('Wren', 'Best angler on the isles, you are. Fish here anytime.', [end('Cheers.')]);
+      return node('Wren', 'Tight lines, friend.', [end('Aye.')]);
+    },
+    a: node('Wren', 'The shimmering rings on the water are the spots. Cook your catch at a fire to make it edible.', [end('Understood.')]),
+    t: node('Wren', 'Coin for your trouble. Cook the rest — trout restores a good deal of vigour.', [end('Thanks.')]),
+  },
+};
+
+// Trader Pell's shop: fixed stock to buy, and sell prices for materials.
+export const SHOP = {
+  stock: [
+    { key: 'potion', price: 25 },
+    { key: 'cooked_trout', price: 9 },
+    { key: 'bronze_bar', price: 16 },
+    { key: 'iron_bar', price: 34 },
+  ],
+  sell: {
+    wood: 3, berry: 2, herb: 6, pelt: 8, meat: 5, copper_ore: 6, iron_ore: 11, coal: 5,
+    raw_shrimp: 3, raw_trout: 6, cooked_shrimp: 5, cooked_trout: 9, bronze_bar: 14, iron_bar: 28, relic: 600,
   },
 };

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ITEMS, SHOP } from './content.js';
 
 const TABS = ['Inventory', 'Skills', 'Quests', 'Map'];
 
@@ -59,6 +60,35 @@ export function createUI(G) {
     for (const [id, el] of markerPool) if (!seen.has(id)) el.style.display = 'none';
   }
 
+  // ---- floating text: hitsplats, xp drops, level-up banner ----
+  const app = document.getElementById('app');
+  const fxLayer = document.createElement('div'); fxLayer.id = 'fx'; app.appendChild(fxLayer);
+  const xpLayer = document.createElement('div'); xpLayer.id = 'xpdrops'; app.appendChild(xpLayer);
+  const banner = document.createElement('div'); banner.id = 'levelBanner'; banner.className = 'hidden'; app.appendChild(banner);
+  let bannerT = null;
+  const projv = new THREE.Vector3();
+  function project(x, y, z) {
+    projv.set(x, y, z).project(G.engine.camera);
+    if (projv.z > 1) return null;
+    return { x: (projv.x * 0.5 + 0.5) * 600, y: (-projv.y * 0.5 + 0.5) * 600 };
+  }
+  function hitsplat(x, y, z, amount, kind) {
+    const s = project(x, y, z); if (!s) return;
+    const d = document.createElement('div');
+    d.className = 'hitsplat ' + (kind || 'enemy');
+    d.textContent = amount; d.style.left = s.x + 'px'; d.style.top = s.y + 'px';
+    fxLayer.appendChild(d); setTimeout(() => d.remove(), 860);
+  }
+  function xpDrop(text) {
+    const d = document.createElement('div'); d.className = 'xpdrop'; d.textContent = text;
+    xpLayer.appendChild(d); setTimeout(() => d.remove(), 1500);
+    while (xpLayer.children.length > 6) xpLayer.firstChild.remove();
+  }
+  function levelBanner(text) {
+    banner.textContent = text; banner.classList.remove('hidden', 'show'); void banner.offsetWidth; banner.classList.add('show');
+    clearTimeout(bannerT); bannerT = setTimeout(() => banner.classList.add('hidden'), 2800);
+  }
+
   // ---- menu ----
   let tab = 0, row = 0;
   function renderMenu() {
@@ -94,7 +124,8 @@ export function createUI(G) {
       const lv = G.skills.level(d.key), pr = Math.round(G.skills.progress(d.key) * 100), tn = G.skills.toNext(d.key);
       return `<div class="row"><span class="row-icon">${d.icon}</span><div class="row-main"><div class="row-title">${d.name} <span style="color:var(--gold)">Lv ${lv}</span></div><div class="skillbar"><span style="width:${pr}%"></span></div><div class="row-sub">${tn} xp to next level</div></div></div>`;
     }).join('');
-    els.menuBody.innerHTML = `<div class="section-head">Skills &nbsp;·&nbsp; Total Lv ${G.skills.total()}</div>` + html;
+    const wn = G.weaponName ? G.weaponName() : '';
+    els.menuBody.innerHTML = `<div class="section-head">Total Lv ${G.skills.total()} &nbsp;·&nbsp; ⚔️ Combat ${G.skills.level('combat')} &nbsp;·&nbsp; 🗡️ ${wn}</div>` + html;
   }
   function npcName(key) { const n = G.entities.npcs.find((x) => x.def.key === key); return n ? n.def.name : key; }
   function renderQuests() {
@@ -114,20 +145,49 @@ export function createUI(G) {
     drawMap(document.getElementById('mapCanvas').getContext('2d'));
   }
   function drawMap(ctx) {
-    const R = 58, S = 300, c = S / 2, sc = (S * 0.46) / R;
-    const to = (x, z) => [c + x * sc, c + z * sc];
+    const S = 300, cx = 54, cz = 3, sc = (S * 0.46) / 110;
+    const to = (x, z) => [S / 2 + (x - cx) * sc, S / 2 + (z - cz) * sc];
     ctx.clearRect(0, 0, S, S);
-    ctx.fillStyle = '#0a2b30'; ctx.beginPath(); ctx.arc(c, c, R * sc + 8, 0, 7); ctx.fill();
-    ctx.fillStyle = '#2f7d4a'; ctx.beginPath(); ctx.arc(c, c, R * sc, 0, 7); ctx.fill();
-    let [px, pz] = to(0, -34); ctx.fillStyle = '#9aa6b2'; ctx.beginPath(); ctx.arc(px, pz, 15, 0, 7); ctx.fill();
-    let [vx, vz] = to(G.world.village.x, G.world.village.z); ctx.fillStyle = '#ffd45f'; ctx.fillRect(vx - 5, vz - 5, 10, 10);
-    ctx.fillStyle = '#5fe3ff'; G.entities.npcs.forEach((n) => { const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); });
-    ctx.fillStyle = '#ff6b6b'; G.entities.enemies.forEach((e) => { if (!e.alive) return; const [x, y] = to(e.pos.x, e.pos.z); ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#08222a'; ctx.fillRect(0, 0, S, S);
+    const b = G.world.bridge; const [bx1, bz1] = to(b.ax, b.az), [bx2, bz2] = to(b.bx, b.bz);
+    ctx.strokeStyle = '#cdb98a'; ctx.lineWidth = Math.max(3, b.halfW * 2 * sc); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(bx1, bz1); ctx.lineTo(bx2, bz2); ctx.stroke();
+    G.world.isles.forEach((isle, i) => { const [x, y] = to(isle.x, isle.z); ctx.fillStyle = i === 0 ? '#2f7d4a' : '#9c5a34'; ctx.beginPath(); ctx.arc(x, y, isle.r * sc, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#aab2bd'; G.world.peaks.forEach((pk) => { const [x, y] = to(pk.x, pk.z); ctx.beginPath(); ctx.arc(x, y, Math.max(5, pk.r * sc * 0.5), 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#ffd45f'; G.world.villages.forEach((v) => { const [x, y] = to(v.x, v.z); ctx.fillRect(x - 4, y - 4, 8, 8); });
+    ctx.fillStyle = '#5fe3ff'; G.entities.npcs.forEach((n) => { const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 7); ctx.fill(); });
+    G.entities.enemies.forEach((e) => { if (!e.alive) return; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 5 : 2.2, 0, 7); ctx.fill(); });
     const [hx, hy] = to(G.player.position.x, G.player.position.z);
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(Math.PI - G.player.state.heading);
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(5, 6); ctx.lineTo(-5, 6); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
+
+  // ---- shop ----
+  const shopEl = document.createElement('div'); shopEl.id = 'shop'; shopEl.className = 'overlay hidden';
+  shopEl.innerHTML = '<div class="panel"><div class="tabs"><div class="tab sel" style="flex:2">Trader Pell</div><div class="tab" id="shopGold">🪙 0</div></div><div class="menu-body" id="shopBody"></div><div class="hint">↑ ↓ select &nbsp;·&nbsp; tap buy / sell &nbsp;·&nbsp; double-tap leave</div></div>';
+  app.appendChild(shopEl);
+  const shopGoldEl = shopEl.querySelector('#shopGold');
+  const shopBodyEl = shopEl.querySelector('#shopBody');
+  let shopRow = 0, shopRows = [];
+  function renderShop() {
+    shopGoldEl.textContent = '🪙 ' + G.inventory.count('gold');
+    shopRows = SHOP.stock.map((s) => ({ type: 'buy', key: s.key, price: s.price }));
+    G.inventory.list().filter((it) => SHOP.sell[it.key]).forEach((it) => shopRows.push({ type: 'sell', key: it.key, price: SHOP.sell[it.key], count: it.count }));
+    if (shopRow >= shopRows.length) shopRow = Math.max(0, shopRows.length - 1);
+    let html = '<div class="section-head">Buy</div>';
+    shopRows.forEach((r, i) => {
+      if (r.type === 'sell' && (i === 0 || shopRows[i - 1].type === 'buy')) html += '<div class="section-head">Sell (one)</div>';
+      const d = ITEMS[r.key];
+      const right = r.type === 'buy' ? `🪙 ${r.price}` : `🪙 ${r.price} · ×${r.count}`;
+      html += `<div class="row ${i === shopRow ? 'sel' : ''}"><span class="row-icon">${d.icon}</span><div class="row-main"><div class="row-title">${d.name}</div><div class="row-sub">${r.type === 'buy' ? 'tap to buy' : 'tap to sell'}</div></div><div class="row-trail">${right}</div></div>`;
+    });
+    shopBodyEl.innerHTML = html;
+  }
+  function openShop() { shopRow = 0; shopEl.classList.remove('hidden'); renderShop(); }
+  function closeShop() { shopEl.classList.add('hidden'); }
+  function shopMove(dir) { if (!shopRows.length) return; shopRow = (shopRow + dir + shopRows.length) % shopRows.length; renderShop(); const s = shopBodyEl.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
+  function shopSelect() { const r = shopRows[shopRow]; if (!r) return; if (r.type === 'buy') G.buyItem(r.key); else G.sellItem(r.key); renderShop(); }
 
   // ---- dialogue ----
   function showDialogue() { els.dialogue.classList.remove('hidden'); }
@@ -146,7 +206,9 @@ export function createUI(G) {
   const api = {
     menuOpen: false,
     setCompass, setHealth, setLocation, showPrompt, hidePrompt, toast, updateMarkers,
+    hitsplat, xpDrop, levelBanner,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
+    openShop, closeShop, shopMove, shopSelect,
     showDialogue, hideDialogue, renderDialogue,
   };
   return api;

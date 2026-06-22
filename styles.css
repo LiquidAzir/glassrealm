@@ -438,3 +438,56 @@ html, body {
   text-shadow: 0 0 18px rgba(95,227,255,0.6);
 }
 .boot-sub { margin-top: 10px; font-size: 14px; color: var(--text-mut); letter-spacing: 1px; }
+
+/* ---------- Floating combat/skill feedback ---------- */
+#fx { position: absolute; inset: 0; pointer-events: none; z-index: 9; overflow: hidden; }
+.hitsplat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 19px; font-weight: 900;
+  text-shadow: 0 1px 3px #000, 0 0 6px #000;
+  animation: hitFloat 0.86s ease-out forwards;
+}
+.hitsplat.enemy { color: #ffffff; }
+.hitsplat.player { color: #ff6b6b; }
+@keyframes hitFloat {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  20% { opacity: 1; transform: translate(-50%, -95%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -220%) scale(1); }
+}
+
+#xpdrops {
+  position: absolute; top: 78px; right: 10px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  pointer-events: none; z-index: 11;
+}
+.xpdrop {
+  font-size: 13px; font-weight: 800; color: var(--xp);
+  text-shadow: 0 1px 3px #000;
+  animation: xpFloat 1.5s ease-out forwards;
+}
+@keyframes xpFloat {
+  0% { opacity: 0; transform: translateY(8px); }
+  15% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-16px); }
+}
+
+#levelBanner {
+  position: absolute; left: 50%; top: 38%;
+  transform: translate(-50%, -50%);
+  z-index: 25; pointer-events: none;
+  padding: 12px 24px; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--gold);
+  color: var(--gold); font-size: 20px; font-weight: 900; letter-spacing: 0.5px;
+  text-shadow: 0 0 12px rgba(255, 212, 95, 0.5);
+  box-shadow: 0 0 28px rgba(255, 212, 95, 0.3);
+  opacity: 0;
+}
+#levelBanner.show { animation: lvlPop 2.8s ease forwards; }
+@keyframes lvlPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+  22% { transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -62%) scale(1); }
+}

@@ -10,7 +10,7 @@ import { createInventory } from './inventory.js';
 import { createQuests } from './quests.js';
 import { createDialogue } from './dialogue.js';
 import { loadSave, createSave } from './save.js';
-import { ITEMS, QUESTS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, WEAPONS, SHOP } from './content.js';
 import { dist2D } from './util.js';
 
 const boot = document.getElementById('boot');
@@ -45,6 +45,7 @@ try {
       player.group.position.z = saved.player.z;
       player.state.heading = saved.player.heading;
       player.state.hp = Math.max(1, saved.player.hp || player.state.maxHp);
+      player.state.weaponTier = saved.player.weaponTier || 0;
     }
   }
 
@@ -54,8 +55,8 @@ try {
   // ---------- gameplay verbs ----------
   G.gainXp = (key, amt) => {
     const r = G.skills.addXp(key, amt);
-    G.ui.toast(`+${amt} ${skillName(key)} xp`, 'xp', 1500);
-    if (r.leveled) G.ui.toast(`${skillName(key)} reached level ${r.level}!`, 'good', 3200);
+    G.ui.xpDrop(`+${amt} ${skillName(key)}`);
+    if (r.leveled) G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`);
   };
 
   const readyToasted = new Set();
@@ -82,12 +83,70 @@ try {
     G.gainXp('foraging', 10);
     checkQuestReady(); G.save.save();
   };
-  G.talkTo = (n) => { setMode('dialogue'); G.ui.hidePrompt(); G.dialogue.open(n.def.dialogue, () => setMode('world')); };
+  G.talkTo = (n) => {
+    setMode('dialogue'); G.ui.hidePrompt();
+    G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else setMode('world'); });
+  };
 
+  const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal' };
+  G.mineOre = (o) => {
+    world.depleteOre(o);
+    const item = ORE_ITEM[o.type];
+    G.inventory.add(item, 1);
+    G.ui.toast('Mined ' + ITEMS[item].name, 'gold', 1400);
+    G.gainXp('mining', 18);
+    checkQuestReady(); G.save.save();
+  };
+  G.fishSpot = () => {
+    const item = Math.random() < 0.55 ? 'raw_shrimp' : 'raw_trout';
+    G.inventory.add(item, 1);
+    G.ui.toast('Caught ' + ITEMS[item].name, 'gold', 1400);
+    G.gainXp('fishing', 16);
+    checkQuestReady(); G.save.save();
+  };
+  G.useStation = (s) => {
+    if (s.kind === 'cook') {
+      let n = 0;
+      for (const raw in COOK) {
+        const c = G.inventory.count(raw);
+        if (c > 0) { G.inventory.remove(raw, c); G.inventory.add(COOK[raw], c); n += c; G.gainXp('cooking', 12 * c); }
+      }
+      G.ui.toast(n ? `Cooked ${n} item${n > 1 ? 's' : ''}` : 'Nothing raw to cook', n ? 'good' : '', 1800);
+    } else if (s.kind === 'furnace') {
+      let bars = 0, progress = true;
+      while (progress) {
+        progress = false;
+        for (const r of SMELT) {
+          if (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k]))) {
+            for (const k in r.in) G.inventory.remove(k, r.in[k]);
+            G.inventory.add(r.out, 1); G.gainXp('smithing', r.xp); bars++; progress = true;
+          }
+        }
+      }
+      G.ui.toast(bars ? `Smelted ${bars} bar${bars > 1 ? 's' : ''}` : 'Need ore to smelt (mine, then smelt)', bars ? 'good' : '', 2000);
+    } else if (s.kind === 'anvil') {
+      const next = WEAPONS[player.state.weaponTier + 1];
+      if (!next) { G.ui.toast('Your blade is already the finest', '', 1800); return; }
+      if (Object.keys(next.cost).every((k) => G.inventory.has(k, next.cost[k]))) {
+        for (const k in next.cost) G.inventory.remove(k, next.cost[k]);
+        player.state.weaponTier = next.tier;
+        G.gainXp('smithing', next.xp);
+        G.ui.toast(`Forged a ${next.name}!`, 'good', 3200);
+      } else {
+        const need = Object.keys(next.cost).map((k) => `${next.cost[k]} ${ITEMS[k].name}`).join(', ');
+        G.ui.toast(`${next.name} needs ${need}`, '', 2600);
+      }
+    }
+    G.save.save();
+  };
+
+  G.weaponName = () => (WEAPONS[player.state.weaponTier] || WEAPONS[0]).name;
   G.attackEnemy = (e) => {
     if (player.state.attackCd > 0 || !e.alive) return;
     player.state.attackCd = 0.5;
-    const dmg = 6 + G.skills.level('combat') * 1.5;
+    const wb = (WEAPONS[player.state.weaponTier] || WEAPONS[0]).bonus;
+    const dmg = Math.round(5 + G.skills.level('combat') * 1.2 + wb);
+    G.ui.hitsplat(e.pos.x, e.pos.y + 1.5 * (e.baseScale || 1), e.pos.z, dmg, 'enemy');
     G.entities.damageEnemy(e, dmg);
   };
   function quickAttack() {
@@ -114,11 +173,25 @@ try {
     G.save.save();
   };
 
+  G.buyItem = (key) => {
+    const s = SHOP.stock.find((x) => x.key === key); if (!s) return;
+    if (G.inventory.count('gold') >= s.price) { G.inventory.remove('gold', s.price); G.inventory.add(key, 1); G.ui.toast(`Bought ${ITEMS[key].name}`, 'gold', 1300); G.save.save(); }
+    else G.ui.toast('Not enough gold', 'bad', 1400);
+  };
+  G.sellItem = (key) => {
+    const p = SHOP.sell[key]; if (!p || !G.inventory.has(key, 1)) return;
+    G.inventory.remove(key, 1); G.inventory.add('gold', p);
+    G.ui.toast(`Sold ${ITEMS[key].name}  +${p}g`, 'gold', 1300); G.save.save();
+  };
+  G.openShop = () => { setMode('shop'); G.ui.openShop(); };
+  G.closeShop = () => { G.ui.closeShop(); setMode('world'); };
+
   let hurtFlash = 0;
   G.damagePlayer = (amount) => {
     if (player.state.hp <= 0) return;
     player.state.hp -= amount;
     hurtFlash = 0.25;
+    G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, amount, 'player');
     G.ui.setHealth(player.state.hp, player.state.maxHp);
     if (player.state.hp <= 0) {
       player.state.hp = player.state.maxHp;
@@ -169,6 +242,11 @@ try {
       else if (a === 'right' || a === 'down') G.dialogue.move(1);
       else if (a === 'tap') G.dialogue.select();
       else if (a === 'doubletap') G.dialogue.close();
+    } else if (mode === 'shop') {
+      if (a === 'up') G.ui.shopMove(-1);
+      else if (a === 'down') G.ui.shopMove(1);
+      else if (a === 'tap') G.ui.shopSelect();
+      else if (a === 'doubletap') G.closeShop();
     }
   });
 
@@ -177,6 +255,9 @@ try {
     if (!t) return;
     if (t.kind === 'tree') G.chopTree(t.ref);
     else if (t.kind === 'bush') G.forageBush(t.ref);
+    else if (t.kind === 'ore') G.mineOre(t.ref);
+    else if (t.kind === 'fish') G.fishSpot(t.ref);
+    else if (t.kind === 'station') G.useStation(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
     else if (t.kind === 'enemy') G.attackEnemy(t.ref);
   }
@@ -227,6 +308,7 @@ try {
     if (mode === 'world') {
       player.update(dt, input);
       G.entities.update(dt, player);
+      world.tick(dt);
       G.currentTarget = G.interact.best();
       updatePrompt();
       updateLocation();

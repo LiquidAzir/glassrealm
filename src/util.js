@@ -32,3 +32,12 @@ export function mulberry32(seed) {
 }
 
 export const dist2D = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
+
+// Distance from point (px,pz) to segment (ax,az)-(bx,bz). Used for the isthmus.
+export function distToSeg(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az;
+  const len2 = dx * dx + dz * dz || 1;
+  let t = ((px - ax) * dx + (pz - az) * dz) / len2;
+  t = clamp(t, 0, 1);
+  return Math.hypot(px - (ax + t * dx), pz - (az + t * dz));
+}

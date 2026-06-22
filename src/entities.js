@@ -9,11 +9,13 @@ function makeNpc(def, world) {
   const body = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.6, 7), robe); body.position.y = 0.8; g.add(body);
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0), skin); head.position.y = 1.85; g.add(head);
   g.position.set(def.pos.x, world.height(def.pos.x, def.pos.z), def.pos.z);
-  g.rotation.y = Math.atan2(world.village.x - def.pos.x, world.village.z - def.pos.z);
+  let nv = world.villages[0], best = Infinity;
+  for (const v of world.villages) { const d = (v.x - def.pos.x) ** 2 + (v.z - def.pos.z) ** 2; if (d < best) { best = d; nv = v; } }
+  g.rotation.y = Math.atan2(nv.x - def.pos.x, nv.z - def.pos.z);
   return g;
 }
 
-function makeBoar(def) {
+function makeBeast(def) {
   const g = new THREE.Group();
   const mat = new THREE.MeshLambertMaterial({ color: def.color, flatShading: true });
   const dark = new THREE.MeshLambertMaterial({ color: 0x3a2a20, flatShading: true });
@@ -22,8 +24,27 @@ function makeBoar(def) {
   part(new THREE.BoxGeometry(0.7, 0.7, 0.75), mat, 0.9, 0.6, 0);  // head
   part(new THREE.BoxGeometry(0.35, 0.3, 0.55), dark, 1.3, 0.45, 0); // snout
   [[-0.5, 0.35], [0.5, 0.35], [-0.5, -0.35], [0.5, -0.35]].forEach(([x, z]) => part(new THREE.BoxGeometry(0.2, 0.7, 0.2), dark, x, 0.35, z));
+  g.scale.setScalar(def.scale || 1);
   return g;
 }
+
+function makeHumanoid(def) {
+  const g = new THREE.Group();
+  const robe = new THREE.MeshLambertMaterial({ color: def.color, flatShading: true });
+  const dark = new THREE.MeshLambertMaterial({ color: 0x2a2330, flatShading: true });
+  const skin = new THREE.MeshLambertMaterial({ color: 0xd9a273, flatShading: true });
+  const steel = new THREE.MeshLambertMaterial({ color: 0xb9c2cc, flatShading: true });
+  const part = (geo, m, x, y, z) => { const mesh = new THREE.Mesh(geo, m); mesh.position.set(x, y, z); g.add(mesh); };
+  part(new THREE.BoxGeometry(0.24, 0.7, 0.24), dark, -0.17, 0.35, 0);
+  part(new THREE.BoxGeometry(0.24, 0.7, 0.24), dark, 0.17, 0.35, 0);
+  part(new THREE.BoxGeometry(0.74, 0.82, 0.42), robe, 0, 1.15, 0);
+  part(new THREE.IcosahedronGeometry(0.3, 0), skin, 0, 1.8, 0);
+  part(new THREE.BoxGeometry(0.12, 0.95, 0.12), steel, 0.52, 1.2, 0.18); // blade
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+const makeEnemyMesh = (def) => (def.shape === 'humanoid' ? makeHumanoid(def) : makeBeast(def));
 
 export function createEntities(scene, world, G) {
   const npcs = NPCS.map((def) => {
@@ -33,22 +54,22 @@ export function createEntities(scene, world, G) {
   });
 
   const enemies = [];
-  function spawnBoar(x, z) {
-    const def = ENEMIES.boar;
-    const group = makeBoar(def);
+  function spawnEnemy(key, x, z) {
+    const def = ENEMIES[key];
+    const group = makeEnemyMesh(def);
     group.position.set(x, world.height(x, z), z);
     scene.add(group);
     const e = {
-      def, group, kind: 'enemy', enemyKey: 'boar',
+      def, group, kind: 'enemy', enemyKey: key,
       hp: def.hp, maxHp: def.hp, alive: true, state: 'wander',
       home: { x, z }, heading: Math.random() * TAU, wanderT: 0, moving: false,
-      attackCd: 0, hurtFlash: 0, respawn: 0,
+      attackCd: 0, hurtFlash: 0, respawn: 0, baseScale: def.scale || 1, leash: def.boss ? 26 : 16,
       get pos() { return group.position; },
     };
     enemies.push(e);
     return e;
   }
-  ENEMY_SPAWNS.forEach((s) => spawnBoar(s.x, s.z));
+  ENEMY_SPAWNS.forEach((s) => spawnEnemy(s.enemy, s.x, s.z));
 
   function update(dt, player) {
     for (const e of enemies) {
@@ -56,7 +77,7 @@ export function createEntities(scene, world, G) {
         e.respawn -= dt;
         if (e.respawn <= 0) {
           e.hp = e.maxHp; e.alive = true; e.state = 'wander'; e.group.visible = true;
-          e.hurtFlash = 0; e.group.scale.setScalar(1);
+          e.hurtFlash = 0; e.group.scale.setScalar(e.baseScale);
           e.group.position.set(e.home.x, world.height(e.home.x, e.home.z), e.home.z);
         }
         continue;
@@ -83,13 +104,13 @@ export function createEntities(scene, world, G) {
           const sp = e.def.speed * 0.4;
           const nx = e.pos.x + Math.sin(e.heading) * sp * dt;
           const nz = e.pos.z + Math.cos(e.heading) * sp * dt;
-          if (world.isWalkable(nx, nz) && dist2D(nx, nz, e.home.x, e.home.z) < 16) { e.group.position.x = nx; e.group.position.z = nz; }
+          if (world.isWalkable(nx, nz) && dist2D(nx, nz, e.home.x, e.home.z) < e.leash) { e.group.position.x = nx; e.group.position.z = nz; }
           else e.wanderT = 0;
         }
       }
       e.group.position.y = world.height(e.pos.x, e.pos.z);
       e.group.rotation.y = e.heading;
-      e.group.scale.setScalar(e.hurtFlash > 0 ? 1.14 : 1);
+      e.group.scale.setScalar((e.hurtFlash > 0 ? 1.14 : 1) * e.baseScale);
     }
   }
 
@@ -104,5 +125,5 @@ export function createEntities(scene, world, G) {
     return false;
   }
 
-  return { npcs, enemies, update, damageEnemy, spawnBoar };
+  return { npcs, enemies, update, damageEnemy, spawnEnemy };
 }

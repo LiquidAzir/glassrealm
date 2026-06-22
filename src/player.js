@@ -38,6 +38,7 @@ export function createPlayer(scene, world) {
     coastFwd: 0, coastTurn: 0, coastTurnDir: 0,
     moving: false, bob: 0,
     attackCd: 0,
+    weaponTier: 0,
   };
 
   function forwardVec() { return { x: Math.sin(state.heading), z: Math.cos(state.heading) }; }

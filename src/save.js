@@ -12,6 +12,7 @@ export function createSave(G) {
       player: {
         x: G.player.position.x, z: G.player.position.z,
         heading: G.player.state.heading, hp: G.player.state.hp,
+        weaponTier: G.player.state.weaponTier,
       },
       skills: G.skills.serialize(),
       inventory: G.inventory.serialize(),
