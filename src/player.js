@@ -10,6 +10,21 @@ const CAM_DIST = 9.5, CAM_HEIGHT = 5.2, CAM_LOOK = 3.0, HEAD_Y = 1.5;
 const ATTACK_DUR = 0.34;
 const GATHER_DUR = 0.6;
 
+// Per-item held models: [shape, tint]. Shape drives the mesh, tint the colour, so
+// every weapon shows a distinct, type-appropriate model in the hand.
+const WEAPON_MODEL = {
+  bronze_sword: ['sword', 0xb87333], iron_sword: ['sword', 0xc2ccd6], steel_sword: ['greatsword', 0xeaf2ff],
+  sun_blade: ['greatsword', 0xffd45f], wraithblade: ['greatsword', 0xcfc8b0], ashbringer: ['greatsword', 0xff5a2a],
+  cinderforge_axe: ['axe', 0xff7a3a], coilfang_spear: ['spear', 0x4fd06a], tidecaller_trident: ['trident', 0x2bd6cf],
+  oak_bow: ['bow', 0x8a5a2e], yew_bow: ['bow', 0x6e4a2b], stormstring_bow: ['longbow', 0x9bdcff], tempest_bow: ['longbow', 0xbfe6ff],
+  apprentice_staff: ['staff', 0x9b6bff], ember_staff: ['staff', 0xff7a33], frost_staff: ['staff', 0x9bd0ff], prism_staff: ['staff', 0xc6a8ff], faewild_staff: ['staff', 0xff7af0],
+};
+// Per-armor body looks: chest colour + optional shoulders / helm / hood.
+const ARMOR_MODEL = {
+  leather_armor: { color: 0x8a5a2e }, iron_armor: { color: 0x9aa0a8, shoulders: true }, steel_armor: { color: 0xeaf2ff, shoulders: true, helm: true },
+  guardian_armor: { color: 0xd8c070, shoulders: true, helm: true }, ranger_armor: { color: 0x4f8f5a, hood: true }, sorcerer_robes: { color: 0x8a6abf, hood: true },
+};
+
 export function createPlayer(scene, world) {
   const group = new THREE.Group();
   const body = new THREE.Group();      // bobs while walking; keeps ground calc clean
@@ -32,8 +47,8 @@ export function createPlayer(scene, world) {
   head.position.set(0, 1.86, 0); body.add(head);
   body.add(mkBox(0.4, 0.12, 0.06, visorMat, 0, 1.9, 0.3));   // facing visor (+z)
 
-  // armor overlay (shown when armor equipped)
-  const armorMesh = mkBox(0.84, 0.9, 0.56, steel, 0, 1.15, 0); armorMesh.visible = false; body.add(armorMesh);
+  // armor overlay group — rebuilt to match the equipped armor (chest/shoulders/helm/hood)
+  const armorGroup = new THREE.Group(); body.add(armorGroup);
 
   // right arm: pivots at the shoulder so it can swing; holds the weapon
   const rightArm = new THREE.Group(); rightArm.position.set(0.5, 1.5, 0); body.add(rightArm);
@@ -44,19 +59,34 @@ export function createPlayer(scene, world) {
   const toolHolder = new THREE.Group(); hand.add(toolHolder); toolHolder.visible = false;   // axe/pick/rod shown while gathering
 
   function clearHolder() { while (weaponHolder.children.length) weaponHolder.remove(weaponHolder.children[0]); }
-  function setWeaponMesh(style) {
+  function buildWeaponModel(model, tint) {
+    const m = new THREE.MeshLambertMaterial({ color: tint, flatShading: true });
+    const glow = new THREE.MeshBasicMaterial({ color: tint });
+    if (model === 'sword') { weaponHolder.add(mkBox(0.08, 1.0, 0.16, m, 0, -0.55, 0)); weaponHolder.add(mkBox(0.34, 0.1, 0.2, dark, 0, -0.04, 0)); }
+    else if (model === 'greatsword') { weaponHolder.add(mkBox(0.13, 1.5, 0.22, m, 0, -0.8, 0)); weaponHolder.add(mkBox(0.5, 0.12, 0.24, dark, 0, -0.04, 0)); }
+    else if (model === 'axe') { weaponHolder.add(mkBox(0.07, 1.25, 0.07, woodMat, 0, -0.62, 0)); weaponHolder.add(mkBox(0.5, 0.5, 0.14, m, 0.24, -1.05, 0)); }
+    else if (model === 'spear') { weaponHolder.add(mkBox(0.06, 1.8, 0.06, woodMat, 0, -0.85, 0)); const t = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.45, 6), m); t.position.set(0, -1.78, 0); t.rotation.x = Math.PI; weaponHolder.add(t); }
+    else if (model === 'trident') { weaponHolder.add(mkBox(0.06, 1.7, 0.06, woodMat, 0, -0.8, 0)); weaponHolder.add(mkBox(0.5, 0.08, 0.08, m, 0, -1.5, 0)); for (const dx of [-0.2, 0, 0.2]) { const p = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 5), m); p.position.set(dx, -1.7, 0); p.rotation.x = Math.PI; weaponHolder.add(p); } }
+    else if (model === 'bow' || model === 'longbow') { const r = model === 'longbow' ? 0.62 : 0.46; const bow = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 6, 10, Math.PI * 1.2), m); bow.rotation.z = Math.PI / 2; bow.position.set(0, -0.1, 0.1); weaponHolder.add(bow); }
+    else if (model === 'staff') { weaponHolder.add(mkBox(0.07, 1.3, 0.07, woodMat, 0, -0.55, 0)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), glow); orb.position.set(0, -1.2, 0); weaponHolder.add(orb); }
+    else if (model === 'wand') { weaponHolder.add(mkBox(0.06, 0.85, 0.06, woodMat, 0, -0.45, 0)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 0), glow); orb.position.set(0, -0.9, 0); weaponHolder.add(orb); }
+  }
+  function setWeaponMesh(key) {
     clearHolder();
-    if (style === 'melee') {
-      weaponHolder.add(mkBox(0.09, 1.05, 0.14, steel, 0, -0.55, 0));   // blade hangs down from hand
-      weaponHolder.add(mkBox(0.32, 0.1, 0.18, dark, 0, -0.02, 0));     // guard
-    } else if (style === 'ranged') {
-      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.05, 6, 10, Math.PI * 1.2), woodMat);
-      bow.rotation.z = Math.PI / 2; bow.position.set(0, -0.1, 0.1); weaponHolder.add(bow);
-    } else if (style === 'magic') {
-      weaponHolder.add(mkBox(0.07, 1.2, 0.07, woodMat, 0, -0.5, 0));   // rod
-      const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), orbMat); orb.position.set(0, -1.05, 0); weaponHolder.add(orb);
-    }
-    // unarmed: nothing — just the fist
+    if (!key) return;   // unarmed → just fists
+    const it = weaponOf(key);
+    const md = WEAPON_MODEL[key] || [it.style === 'ranged' ? 'bow' : it.style === 'magic' ? 'staff' : 'sword', 0xcdd6e0];
+    buildWeaponModel(md[0], md[1]);
+  }
+  function buildArmor(key) {
+    while (armorGroup.children.length) armorGroup.remove(armorGroup.children[0]);
+    if (!key) return;
+    const a = ARMOR_MODEL[key] || { color: 0xb9c2cc };
+    const m = new THREE.MeshLambertMaterial({ color: a.color, flatShading: true });
+    armorGroup.add(mkBox(0.86, 0.92, 0.58, m, 0, 1.15, 0));                         // chest plate over the tunic
+    if (a.shoulders) { armorGroup.add(mkBox(0.34, 0.26, 0.52, m, -0.52, 1.5, 0)); armorGroup.add(mkBox(0.34, 0.26, 0.52, m, 0.52, 1.5, 0)); }
+    if (a.helm) armorGroup.add(mkBox(0.44, 0.34, 0.44, m, 0, 2.0, 0));
+    if (a.hood) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.55, 6), m); h.position.set(0, 2.05, 0); armorGroup.add(h); }
   }
   function setToolMesh(kind) {
     while (toolHolder.children.length) toolHolder.remove(toolHolder.children[0]);
@@ -89,8 +119,8 @@ export function createPlayer(scene, world) {
 
   function weapon() { return weaponOf(state.equipment.weapon); }
   function refreshEquipment() {
-    setWeaponMesh(weapon().style);
-    armorMesh.visible = !!state.equipment.armor;
+    setWeaponMesh(state.equipment.weapon);
+    buildArmor(state.equipment.armor);
   }
   refreshEquipment();
 
