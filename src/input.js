@@ -1,0 +1,78 @@
+// Input — maps the glasses' EMG/captouch (delivered as arrow keys + Enter) into
+// semantic actions. We expose BOTH a held-key set (for continuous world movement)
+// and discrete action events, plus double-tap detection used as a universal "back".
+//
+// Robust to however the band delivers a swipe: held key, key-repeat, or a single
+// momentary press all work — the player controller adds a short "coast" on each
+// discrete press so a single swipe still produces meaningful movement.
+
+const TAP_GAP = 240; // ms window for a double-tap
+
+export function createInput(target = window) {
+  const keys = new Set();
+  const handlers = [];
+  let lastTapAt = -1;
+  let pendingTap = null;
+
+  const emit = (action) => { for (const h of handlers) h(action); };
+
+  function resolveTap() {
+    const now = performance.now();
+    if (lastTapAt >= 0 && now - lastTapAt < TAP_GAP) {
+      if (pendingTap) { clearTimeout(pendingTap); pendingTap = null; }
+      lastTapAt = -1;
+      emit('doubletap');
+    } else {
+      lastTapAt = now;
+      pendingTap = setTimeout(() => { pendingTap = null; lastTapAt = -1; emit('tap'); }, TAP_GAP);
+    }
+  }
+
+  function onKeyDown(e) {
+    const k = e.key;
+    switch (k) {
+      case 'ArrowUp': case 'w': case 'W':
+        keys.add('up'); e.preventDefault(); emit('up'); break;
+      case 'ArrowDown': case 's': case 'S':
+        keys.add('down'); e.preventDefault(); emit('down'); break;
+      case 'ArrowLeft': case 'a': case 'A':
+        keys.add('left'); e.preventDefault(); emit('left'); break;
+      case 'ArrowRight': case 'd': case 'D':
+        keys.add('right'); e.preventDefault(); emit('right'); break;
+      case 'Enter': case ' ':
+        e.preventDefault();
+        if (e.repeat) break;
+        resolveTap();
+        break;
+    }
+  }
+
+  function onKeyUp(e) {
+    switch (e.key) {
+      case 'ArrowUp': case 'w': case 'W': keys.delete('up'); break;
+      case 'ArrowDown': case 's': case 'S': keys.delete('down'); break;
+      case 'ArrowLeft': case 'a': case 'A': keys.delete('left'); break;
+      case 'ArrowRight': case 'd': case 'D': keys.delete('right'); break;
+    }
+  }
+
+  // If focus is lost (e.g. app backgrounded) drop held keys so the player doesn't
+  // walk forever.
+  function clearHeld() { keys.clear(); }
+
+  target.addEventListener('keydown', onKeyDown);
+  target.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', clearHeld);
+
+  return {
+    keys,
+    on(cb) { handlers.push(cb); return () => { const i = handlers.indexOf(cb); if (i >= 0) handlers.splice(i, 1); }; },
+    emit, // drive a semantic action directly (used by tests / alt input sources)
+    clearHeld,
+    destroy() {
+      target.removeEventListener('keydown', onKeyDown);
+      target.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', clearHeld);
+    },
+  };
+}

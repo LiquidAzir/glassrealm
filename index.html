@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GlassRealm</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+    { "imports": { "three": "./lib/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game"></canvas>
+
+    <!-- 3D-projected nameplates / quest + interaction markers -->
+    <div id="markers" aria-hidden="true"></div>
+
+    <!-- Center reticle for aiming interactions -->
+    <div id="reticle" class="hidden"></div>
+
+    <!-- Heads-up display -->
+    <div id="hud">
+      <div id="vitals">
+        <div class="bar">
+          <span class="bar-fill health" id="healthFill"></span>
+          <span class="bar-label" id="healthLabel">100 / 100</span>
+        </div>
+        <div class="vitals-loc" id="locLabel">Verdant Isle</div>
+      </div>
+
+      <div id="compass" aria-hidden="true">
+        <div class="compass-track" id="compassTrack"></div>
+        <div class="compass-center"></div>
+      </div>
+
+      <div id="prompt" class="hidden">
+        <span class="prompt-key">TAP</span>
+        <span class="prompt-text" id="promptText"></span>
+      </div>
+
+      <div id="toasts"></div>
+    </div>
+
+    <!-- Menu overlay (Inventory / Skills / Quests / Map) -->
+    <div id="menu" class="overlay hidden" aria-hidden="true">
+      <div class="panel">
+        <div class="tabs" id="menuTabs"></div>
+        <div class="menu-body" id="menuBody"></div>
+        <div class="hint">↑↓ navigate &nbsp;·&nbsp; ◂ ▸ tabs &nbsp;·&nbsp; tap select &nbsp;·&nbsp; double-tap close</div>
+      </div>
+    </div>
+
+    <!-- Dialogue overlay -->
+    <div id="dialogue" class="overlay hidden" aria-hidden="true">
+      <div class="dialogue-box">
+        <div class="dlg-speaker" id="dlgSpeaker"></div>
+        <div class="dlg-text" id="dlgText"></div>
+        <div class="dlg-choices" id="dlgChoices"></div>
+        <div class="hint" id="dlgHint">tap continue &nbsp;·&nbsp; double-tap end</div>
+      </div>
+    </div>
+
+    <!-- Boot / loading -->
+    <div id="boot">
+      <div class="boot-glow"></div>
+      <div class="boot-title">GLASSREALM</div>
+      <div class="boot-sub" id="bootSub">Summoning the isle…</div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

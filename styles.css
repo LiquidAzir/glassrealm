@@ -1,0 +1,440 @@
+/* GlassRealm — Meta Ray-Ban Display (600x600 additive waveguide)
+   Black (#000) = transparent on-device. UI surfaces use dark grays so they
+   read as opaque. Bright, high-contrast, holographic palette. */
+
+:root {
+  --bg: #000000;              /* transparent on device */
+  --surface: #0a0d12;         /* panels / cards */
+  --surface-2: #141a22;       /* raised rows */
+  --surface-line: #243240;
+  --text: #ffffff;
+  --text-2: #cdd6e0;
+  --text-mut: #8b97a6;
+  --accent: #5fe3ff;          /* holographic cyan */
+  --accent-dim: #2b6f80;
+  --gold: #ffd45f;
+  --green: #7CFFB0;
+  --red: #ff6b6b;
+  --xp: #b48cff;
+  --safe: 8px;
+
+  --ease-focus-on: cubic-bezier(0.6, 0, 0.4, 1);
+  --ease-focus-off: cubic-bezier(0.24, 0.24, 0.6, 1);
+  --ease-press: cubic-bezier(0.68, 0, 0.29, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 600px;
+  height: 600px;
+  overflow: hidden;
+  background: var(--bg);              /* transparent on the additive display */
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#app {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  overflow: hidden;
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 600px;
+  height: 600px;
+  display: block;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- Markers (3D-projected labels) ---------- */
+#markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.marker {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: 0 0 6px #000, 0 1px 2px #000;
+  transition: opacity 200ms linear;
+}
+.marker .pip {
+  font-size: 14px;
+  line-height: 1;
+}
+.marker.npc { color: var(--accent); }
+.marker.enemy { color: var(--red); }
+.marker.item { color: var(--gold); }
+.marker.quest { color: var(--gold); }
+.marker .label { font-size: 11px; color: var(--text); }
+.marker.far { opacity: 0.45; font-size: 10px; }
+
+/* ---------- Reticle ---------- */
+#reticle {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 26px; height: 26px;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent), inset 0 0 6px rgba(95,227,255,0.5);
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* ---------- HUD ---------- */
+#hud {
+  position: absolute;
+  inset: 0;
+  padding: var(--safe);
+  pointer-events: none;
+  z-index: 10;
+}
+
+#vitals {
+  position: absolute;
+  left: var(--safe);
+  top: var(--safe);
+  width: 210px;
+}
+.bar {
+  position: relative;
+  height: 18px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  overflow: hidden;
+  box-shadow: 0 0 8px rgba(0,0,0,0.6);
+}
+.bar-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 100%;
+  border-radius: 10px 0 0 10px;
+  transition: width 250ms var(--ease-focus-on);
+}
+.bar-fill.health { background: linear-gradient(90deg, #ff6b6b, #ff9d6b); }
+.bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px #000;
+}
+.vitals-loc {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 6px rgba(95,227,255,0.4), 0 1px 2px #000;
+  letter-spacing: 0.4px;
+}
+
+/* Compass */
+#compass {
+  position: absolute;
+  top: var(--safe);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  overflow: hidden;
+}
+.compass-track {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+  will-change: transform;
+}
+.compass-track .tick { width: 40px; text-align: center; flex: 0 0 40px; }
+.compass-track .tick.card { color: var(--accent); }
+.compass-center {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+}
+
+/* Interaction prompt */
+#prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--accent-dim);
+  border-radius: 22px;
+  box-shadow: 0 0 14px rgba(95,227,255,0.25);
+  max-width: 536px;
+}
+.prompt-key {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #001016;
+  background: var(--accent);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.prompt-text { font-size: 15px; font-weight: 600; color: var(--text); }
+
+/* Toasts */
+#toasts {
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 536px;
+}
+.toast {
+  max-width: 536px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  animation: toastIn 300ms var(--ease-focus-on);
+}
+.toast.xp { color: var(--xp); border-color: #4a3a70; }
+.toast.good { color: var(--green); border-color: #2f6b48; }
+.toast.gold { color: var(--gold); border-color: #6b5a2a; }
+.toast.bad { color: var(--red); border-color: #6b2f2f; }
+.toast.out { animation: toastOut 300ms var(--ease-focus-off) forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-8px); } }
+
+/* ---------- Overlays (menu + dialogue) ---------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(1px);
+}
+
+/* Menu */
+#menu { align-items: stretch; justify-content: center; }
+#menu .panel {
+  margin: var(--safe);
+  width: 584px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 0 28px rgba(0,0,0,0.7);
+}
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--surface-line);
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text-mut);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  transition: transform 200ms var(--ease-focus-on), color 200ms, background 200ms;
+}
+.tab.active { color: var(--text); }
+.tab.sel {
+  color: #001016;
+  background: var(--accent);
+  box-shadow: 0 0 14px rgba(95,227,255,0.4);
+}
+.menu-body {
+  position: relative;
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.menu-body::-webkit-scrollbar { display: none; }
+/* scrim cue that more content exists */
+#menu .panel::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 46px;
+  height: 48px;
+  background: linear-gradient(to top, var(--surface), transparent);
+  pointer-events: none;
+}
+
+.hint {
+  padding: 10px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-mut);
+  border-top: 1px solid var(--surface-line);
+}
+
+/* Generic focusable rows in menus */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  transition: transform 200ms var(--ease-focus-on), border-color 200ms, box-shadow 200ms;
+}
+.row .row-icon { font-size: 22px; width: 30px; text-align: center; }
+.row .row-main { flex: 1; min-width: 0; }
+.row .row-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.row .row-sub { font-size: 12px; color: var(--text-mut); margin-top: 2px; }
+.row .row-trail { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.row.sel {
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(95,227,255,0.3);
+  transform: scale(1.02);
+}
+.row.sel .row-title { color: var(--accent); }
+.empty-note { padding: 24px 12px; text-align: center; color: var(--text-mut); font-size: 13px; }
+.section-head {
+  font-size: 11px; font-weight: 800; letter-spacing: 1px;
+  color: var(--text-mut); text-transform: uppercase;
+  margin: 4px 4px 8px;
+}
+
+/* Skill bar inside rows */
+.skillbar {
+  position: relative; height: 8px; border-radius: 5px;
+  background: #0e1822; overflow: hidden; margin-top: 6px;
+}
+.skillbar > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--xp); border-radius: 5px; }
+
+/* Quest objective list */
+.obj { font-size: 12px; color: var(--text-2); margin-top: 3px; display: flex; gap: 6px; }
+.obj .box { color: var(--text-mut); }
+.obj.done { color: var(--green); }
+.obj.done .box { color: var(--green); }
+
+/* Map canvas in Map tab */
+#mapCanvas { display: block; margin: 0 auto; border-radius: 12px; border: 1px solid var(--surface-line); background: #05080c; }
+
+/* ---------- Dialogue ---------- */
+#dialogue { align-items: flex-end; justify-content: center; background: rgba(0,0,0,0.35); }
+.dialogue-box {
+  margin: var(--safe);
+  width: 584px;
+  background: var(--surface);
+  border: 1px solid var(--accent-dim);
+  border-radius: 22px;
+  box-shadow: 0 0 28px rgba(0,0,0,0.7);
+  overflow: hidden;
+}
+.dlg-speaker {
+  padding: 12px 18px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.4px;
+  text-shadow: 0 0 8px rgba(95,227,255,0.3);
+}
+.dlg-text {
+  padding: 8px 18px 14px;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--text);
+  min-height: 64px;
+}
+.dlg-choices { padding: 0 12px 8px; display: flex; flex-direction: column; gap: 8px; }
+.choice {
+  padding: 11px 14px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: transform 200ms var(--ease-focus-on), border-color 200ms, box-shadow 200ms;
+}
+.choice.sel {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 14px rgba(95,227,255,0.3);
+  transform: scale(1.015);
+}
+.choice .tag { font-size: 11px; font-weight: 800; color: var(--gold); margin-right: 6px; }
+
+/* ---------- Boot ---------- */
+#boot {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  transition: opacity 600ms ease;
+}
+#boot.out { opacity: 0; pointer-events: none; }
+.boot-glow {
+  position: absolute;
+  width: 320px; height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(95,227,255,0.18), transparent 70%);
+  filter: blur(4px);
+}
+.boot-title {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: var(--text);
+  text-shadow: 0 0 18px rgba(95,227,255,0.6);
+}
+.boot-sub { margin-top: 10px; font-size: 14px; color: var(--text-mut); letter-spacing: 1px; }
