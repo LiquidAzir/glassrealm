@@ -11,6 +11,7 @@ const UIKEY = 'glassrealm.touchUI.v1';
 export function createControls({ app, canvas, input }) {
   // ---- responsive: scale the 600x600 logical app to fit any viewport, centred ----
   function fit() {
+    if (!window.innerWidth || !window.innerHeight) return;   // ignore transient 0-size resizes (would blank the view)
     const s = Math.min(window.innerWidth / 600, window.innerHeight / 600);
     app.style.transform = `scale(${s})`;
   }

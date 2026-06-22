@@ -62,13 +62,13 @@ body { display: flex; align-items: center; justify-content: center; }
   -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none;
 }
 #touchPad .tcbtn.on { background: rgba(95, 227, 255, 0.32); color: #fff; transform: scale(0.94); }
-#dpad { position: absolute; left: 18px; bottom: 18px; width: 168px; height: 168px; }
+#dpad { position: absolute; left: 18px; bottom: 44px; width: 168px; height: 168px; }
 #dpad .tcbtn { width: 54px; height: 54px; }
 #dpad .d-up { left: 57px; top: 0; }
 #dpad .d-down { left: 57px; bottom: 0; }
 #dpad .d-left { left: 0; top: 57px; }
 #dpad .d-right { right: 0; top: 57px; }
-#actpad { position: absolute; right: 18px; bottom: 22px; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+#actpad { position: absolute; right: 18px; bottom: 56px; width: 84px; height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 12px; }
 #actpad .act-tap { width: 84px; height: 84px; border-radius: 50%; font-size: 18px; color: var(--gold); border-color: rgba(255, 212, 95, 0.5); background: rgba(40, 30, 12, 0.42); }
 #actpad .act-menu { width: 54px; height: 54px; align-self: center; }
 #tcToggle {
