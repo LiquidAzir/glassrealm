@@ -51,6 +51,8 @@ export const ITEMS = {
   fire_rune:    { name: 'Fire Runes',   icon: '🔥', type: 'rune', bonus: 6, desc: 'Spell ammo. +6 magic damage per cast.' },
   rune_ring:    { name: 'Runed Ring',   icon: '💍', type: 'ring',   bonus: { magic: 6, def: 4 }, desc: 'Enchanted. +6 magic, +4 defence.' },
   rune_amulet:  { name: 'Runed Amulet', icon: '📿', type: 'amulet', bonus: { magic: 10 },        desc: 'Enchanted. +10 magic.' },
+  // Construction — Woodcutting feeds your home: saw logs into planks, build home furniture/services.
+  plank:        { name: 'Plank', icon: '🪵', type: 'material', desc: 'Sawn from logs at a sawmill. Build home furniture.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -255,6 +257,14 @@ export const RUNECRAFT = [
 export const ENCHANT = [
   { out: 'rune_ring',   cost: { sapphire: 1, water_rune: 8, earth_rune: 8 }, xp: 80,  level: 1 },
   { out: 'rune_amulet', cost: { ruby: 1, fire_rune: 12, air_rune: 8 },       xp: 150, level: 12 },
+];
+
+// Construction (Carpenter's Workbench at your house): planks -> home furniture that adds a
+// service at home (key matches world.houseFurniture; station is the kind it activates).
+export const CONSTRUCT = [
+  { key: 'shrine', name: 'Home Shrine',    cost: { plank: 8 },  xp: 140, level: 1 },
+  { key: 'hearth', name: 'Cooking Hearth', cost: { plank: 10 }, xp: 190, level: 6 },
+  { key: 'chest',  name: 'Storage Chest',  cost: { plank: 14 }, xp: 250, level: 12 },
 ];
 
 // NPC anchor positions are relative to the village; entities.js drops them to ground.

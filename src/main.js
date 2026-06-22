@@ -14,7 +14,7 @@ import { createDialogue } from './dialogue.js';
 import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -66,6 +66,7 @@ try {
     (saved.world && saved.world.harvestedBushes || []).forEach((i) => world.harvestBush(i));
     (saved.world && saved.world.lootedChests || []).forEach((label) => { const st = world.stations.find((s) => s.kind === 'chest' && s.label === label); if (st) st.looted = true; });
     (saved.world && saved.world.foundDiscoveries || []).forEach((key) => { const d = world.discoveries.find((x) => x.key === key); if (d) { d.found = true; if (d.mesh) d.mesh.visible = false; } });
+    (saved.world && saved.world.builtFurniture || []).forEach((key) => { const f = world.houseFurniture[key]; if (f && !f.built) { f.built = true; f.mesh.visible = true; world.stations.push(f.station); } });
     if (saved.player) {
       const sRatio = WORLD_SCALE / (saved.worldScale || 1);   // migrate old positions onto the (re)scaled map
       player.group.position.x = saved.player.x * sRatio;
@@ -237,6 +238,10 @@ try {
       G.openFletch(); return;
     } else if (s.kind === 'rune') {
       G.openRune(); return;
+    } else if (s.kind === 'sawmill') {
+      G.openSawmill(); return;
+    } else if (s.kind === 'workbench') {
+      G.openConstruct(); return;
     } else if (s.kind === 'bed') {
       player.state.hp = player.state.maxHp; player.state.prayer = player.state.maxPrayer;
       G.ui.setHealth(player.state.hp, player.state.maxHp); G.ui.setPrayer(player.state.prayer, player.state.maxPrayer);
@@ -512,6 +517,46 @@ try {
       G.ui.toast(`Enchanted ${ITEMS[out].name}!`, 'gold', 2600); G.audio.sfx('level'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
     });
   };
+
+  // ---------- Construction: saw logs into planks (sawmill) + build home furniture (workbench) ----------
+  G.sawPlanks = () => {
+    if (G.channel) return; const n = G.inventory.count('wood'); if (!n) return;
+    const dur = Math.max(1.4, Math.min(5, n * 0.4));
+    startChannel(dur, 'chop', 'Sawing planks…', () => {
+      const have = G.inventory.count('wood'); if (!have) return;
+      G.inventory.remove('wood', have); G.inventory.add('plank', have); G.gainXp('construction', 6 * have);
+      if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xc8a86a, { n: 10, spread: 2, up: 2.6, life: 0.8 });
+      G.ui.toast(`Sawed ${have} × Plank`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
+    });
+  };
+  const sawCfg = {
+    title: 'Sawmill', hint: '↑ ↓ select · tap to saw · ↑↓↑↓ leave', empty: 'Chop some logs first.',
+    rows: () => { const n = G.inventory.count('wood'); return n > 0 ? [{ icon: '🪵', title: 'Saw logs into Planks', sub: `${n}× Logs → ${n}× Plank`, right: `×${n}`, data: {} }] : []; },
+    onSelect: () => { G.closePicker(); G.sawPlanks(); },
+  };
+  G.openSawmill = () => { setMode('picker'); G.ui.openPicker(sawCfg); };
+  G.buildFurniture = (key) => {
+    const r = CONSTRUCT.find((x) => x.key === key); if (!r) return;
+    const f = world.houseFurniture[key]; if (!f) return;
+    if (f.built) { G.ui.toast('Already built.', '', 1500); return; }
+    if (G.skills.level('construction') < (r.level || 1)) { G.ui.toast(`Needs Construction level ${r.level}`, 'bad', 2000); return; }
+    if (!Object.keys(r.cost).every((k) => G.inventory.has(k, r.cost[k]))) { G.ui.toast('Not enough planks.', 'bad', 1800); return; }
+    for (const k in r.cost) G.inventory.remove(k, r.cost[k]);
+    f.built = true; f.mesh.visible = true; world.stations.push(f.station);
+    G.gainXp('construction', r.xp);
+    if (G.fx) G.fx.burst(f.station.x, f.station.y + 1, f.station.z, 0xd8c08a, { n: 16, spread: 2.2, up: 3, life: 1 });
+    G.ui.toast(`Built ${r.name} at your house!`, 'gold', 2800); G.audio.sfx('level'); if (G.ach) G.ach.evaluate(); G.save.save();
+  };
+  const constructCfg = {
+    title: 'Carpenter’s Workbench', hint: '↑ ↓ select · tap to build · ↑↓↑↓ leave', empty: 'Saw planks at a sawmill, then build here.',
+    rows: () => CONSTRUCT.map((r) => {
+      const f = world.houseFurniture[r.key], built = f && f.built, locked = G.skills.level('construction') < (r.level || 1);
+      const can = Object.keys(r.cost).every((k) => G.inventory.has(k, r.cost[k]));
+      return { section: 'Home furniture (built at your house)', icon: '🪚', title: r.name + (built ? ' ✓' : ''), sub: built ? 'already built' : (Object.keys(r.cost).map((k) => `${r.cost[k]}× ${ITEMS[k].name}`).join(' + ') + (locked ? ` · needs Construction ${r.level}` : '')), right: built ? '—' : (locked ? '🔒' : (can ? 'build' : '—')), data: { key: r.key } };
+    }),
+    onSelect: (r) => { G.closePicker(); G.buildFurniture(r.data.key); },
+  };
+  G.openConstruct = () => { setMode('picker'); G.ui.openPicker(constructCfg); };
 
   // ---------- hidden discoveries: one-time reward + headline banner when you stumble on one ----------
   G.findDiscovery = (d) => {

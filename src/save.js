@@ -47,6 +47,7 @@ export function createSave(G) {
         harvestedBushes: G.world.bushes.filter((b) => !b.alive).map((b) => b.idx),
         lootedChests: G.world.stations.filter((s) => s.kind === 'chest' && s.looted).map((s) => s.label),
         foundDiscoveries: (G.world.discoveries || []).filter((d) => d.found).map((d) => d.key),
+        builtFurniture: G.world.houseFurniture ? Object.keys(G.world.houseFurniture).filter((k) => G.world.houseFurniture[k].built) : [],
       },
     };
   }

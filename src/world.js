@@ -482,6 +482,13 @@ export function createWorld(scene, seed = 1337) {
     const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: 0x8af0ff })); orb.position.set(x, y + 1.5, z); group.add(orb);
     stations.push({ kind: 'rune', label: 'Rune Altar', x, z, y });
   }
+  function sawmill(x, z) {
+    const y = height(x, z);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 1.2), lmat(0x6e5436)); base.position.set(x, y + 0.4, z); group.add(base);
+    const logpile = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.6, 7), lmat(0x8a6a45)); logpile.position.set(x - 1.1, y + 0.3, z); logpile.rotation.z = Math.PI / 2; group.add(logpile);
+    const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.06, 12), new THREE.MeshLambertMaterial({ color: 0xc8ccd2, flatShading: true })); blade.position.set(x + 0.2, y + 1.1, z); blade.rotation.x = Math.PI / 2; group.add(blade);
+    stations.push({ kind: 'sawmill', label: 'Sawmill', x, z, y });
+  }
   function cauldron(x, z) {
     const y = height(x, z);
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.5, 0.9, 8), new THREE.MeshLambertMaterial({ color: 0x40454d, flatShading: true })); pot.position.set(x, y + 0.5, z);
@@ -550,6 +557,7 @@ export function createWorld(scene, seed = 1337) {
     stall(v.x - 4, v.z - 3.5);
     fletchBench(v.x + 5, v.z - 3);
     runeAltar(v.x - 5.5, v.z + 1);
+    sawmill(v.x - 1, v.z + 6);
     lampPost(v.x + 4.6, v.z - 4.6); lampPost(v.x - 4.6, v.z + 4.6);
     plot(v.x + 12, v.z + 2); plot(v.x + 13.4, v.z + 3.2); plot(v.x + 12.6, v.z + 4.6);
     { const lx = v.x - 2.4, lz = v.z - 5.0; signpost(lx, lz, 0xffd45f); stations.push({ kind: 'ledger', label: 'Merchants’ Guild', x: lx, z: lz, y: height(lx, lz) }); }
@@ -558,6 +566,7 @@ export function createWorld(scene, seed = 1337) {
 
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
   const trophyMeshes = {};
+  const houseFurniture = {};
   (function house() {
     const vA = byKey.verdant.village, hx = vA.x - 15, hz = vA.z, y = height(hx, hz);
     const wall = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.6, 4), new THREE.MeshLambertMaterial({ color: 0xb9a07a, flatShading: true })); wall.position.set(hx, y + 1.3, hz);
@@ -573,6 +582,18 @@ export function createWorld(scene, seed = 1337) {
       ped.visible = false; tro.visible = false; group.add(ped, tro);
       trophyMeshes[bk] = [ped, tro];
     });
+    // Carpenter's Workbench (always present) opens the build menu; furniture below is hidden until built via Construction.
+    { const wx = hx + 1.6, wz = hz - 2.6, wy = height(wx, wz); const t = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 1.0), new THREE.MeshLambertMaterial({ color: 0x8a6a44, flatShading: true })); t.position.set(wx, wy + 0.9, wz); const saw = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.18), new THREE.MeshLambertMaterial({ color: 0xc8ccd2, flatShading: true })); saw.position.set(wx, wy + 1.06, wz); group.add(t, saw); stations.push({ kind: 'workbench', label: 'Carpenter’s Workbench', x: wx, z: wz, y: wy }); }
+    const furn = [
+      { key: 'shrine', kind: 'altar', label: 'Home Shrine',   dx: 3.2, dz: -1.4, col: 0xbf9bff },
+      { key: 'hearth', kind: 'cook',  label: 'Home Hearth',   dx: 3.2, dz: 1.4,  col: 0x55585f },
+      { key: 'chest',  kind: 'bank',  label: 'Storage Chest', dx: 5.2, dz: 0,    col: 0xffd45f },
+    ];
+    for (const f of furn) {
+      const fx = hx + f.dx, fz = hz + f.dz, fy = height(fx, fz);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), new THREE.MeshLambertMaterial({ color: f.col, flatShading: true })); m.position.set(fx, fy + 0.5, fz); m.visible = false; group.add(m);
+      houseFurniture[f.key] = { mesh: m, station: { kind: f.kind, label: f.label, x: fx, z: fz, y: fy }, built: false };
+    }
   })();
 
   // Emberdeep cave: ring of rock spires with a SW entrance gap + a loot chest.
@@ -697,7 +718,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);

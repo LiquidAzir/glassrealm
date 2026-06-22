@@ -18,6 +18,7 @@ const DEFS = [
   { key: 'crafting',    name: 'Crafting',    icon: '💍' },
   { key: 'fletching',   name: 'Fletching',   icon: '🪶' },
   { key: 'runecraft',   name: 'Runecrafting', icon: '🔮' },
+  { key: 'construction', name: 'Construction', icon: '🔨' },
   { key: 'agility',     name: 'Agility',     icon: '🤸' },
   { key: 'prayer',      name: 'Prayer',      icon: '✨' },
 ];
