@@ -80,6 +80,7 @@ export function createEntities(scene, world, G) {
       hp: def.hp, maxHp: def.hp, alive: true, state: 'wander',
       home: { x, z }, heading: Math.random() * TAU, wanderT: 0, moving: false,
       attackCd: 0, hurtFlash: 0, respawn: 0, baseScale: def.scale || 1, leash: def.boss ? 26 : 16,
+      provoked: false,   // peaceful until the player attacks it
       dying: 0, deathY: 0, atkAnim: 0, walkPhase: Math.random() * TAU,
       get pos() { return group.position; },
     };
@@ -103,7 +104,7 @@ export function createEntities(scene, world, G) {
         }
         e.respawn -= dt;
         if (e.respawn <= 0) {
-          e.hp = e.maxHp; e.alive = true; e.state = 'wander'; e.group.visible = true;
+          e.hp = e.maxHp; e.alive = true; e.state = 'wander'; e.provoked = false; e.group.visible = true;
           e.hurtFlash = 0; e.atkAnim = 0; e.group.rotation.x = 0; e.group.rotation.z = 0; e.group.scale.setScalar(e.baseScale);
           e.group.position.set(e.home.x, world.height(e.home.x, e.home.z), e.home.z);
         }
@@ -113,8 +114,13 @@ export function createEntities(scene, world, G) {
       if (e.atkAnim > 0) e.atkAnim -= dt;
       const d = dist2D(e.pos.x, e.pos.z, player.position.x, player.position.z);
       if (d > 70) { e.group.rotation.z = 0; continue; }   // cull far-away AI — perf with 50+ spawns
-      if (player.state.hp > 0 && d < e.def.aggro) e.state = 'chase';
-      else if (d > e.def.aggro * 1.7) e.state = 'wander';
+      // peaceful by default (RuneScape-style) — chase/attack only once provoked by being
+      // struck, and give up if dragged beyond its leash from home or the player flees far
+      if (e.provoked) {
+        const homeD = dist2D(e.pos.x, e.pos.z, e.home.x, e.home.z);
+        if (player.state.hp <= 0 || homeD > e.leash || d > e.def.aggro * 2 + 6) { e.provoked = false; e.state = 'wander'; }
+        else e.state = 'chase';
+      } else e.state = 'wander';
 
       let moving = false;
       if (e.state === 'chase') {
@@ -184,6 +190,7 @@ export function createEntities(scene, world, G) {
 
   function damageEnemy(e, amount) {
     if (!e.alive) return false;
+    e.provoked = true;   // striking a foe makes it (and only it) fight back
     e.hp -= amount; e.hurtFlash = 0.2;
     if (e.hp <= 0) {
       e.alive = false; e.dying = DEATH_DUR; e.deathY = e.group.position.y; e.atkAnim = 0; e.group.rotation.x = 0; e.respawn = 18;
