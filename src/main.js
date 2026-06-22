@@ -344,7 +344,8 @@ try {
     rows: () => FORGE.map((rec) => {
       const cost = Object.keys(rec.cost).map((k) => `${rec.cost[k]} ${ITEMS[k].name}`).join(', ');
       const can = Object.keys(rec.cost).every((k) => G.inventory.has(k, rec.cost[k]));
-      return { section: ITEMS[rec.out].type === 'armor' ? 'Armor' : 'Weapons', icon: ITEMS[rec.out].icon, title: ITEMS[rec.out].name, sub: cost, right: can ? 'forge' : '—', data: { out: rec.out } };
+      const ty = ITEMS[rec.out].type; const section = ty === 'armor' ? 'Armor' : ty === 'tool' ? 'Tools' : 'Weapons';
+      return { section, icon: ITEMS[rec.out].icon, title: ITEMS[rec.out].name, sub: cost, right: can ? 'forge' : '—', data: { out: rec.out } };
     }),
     onSelect: (r) => G.forgeItem(r.data.out),
   };
@@ -712,10 +713,12 @@ try {
     if (!t) return;
     if (t.kind !== 'enemy') clearCombat();   // tapping anything else breaks off the fight
     const lvl = (k) => G.skills.level(k);
-    if (t.kind === 'tree') startChannel(Math.max(2.8, 4 - lvl('woodcutting') * 0.03), 'chop', 'Chopping…', () => G.chopTree(t.ref));
+    // best gathering tool you own for a skill auto-speeds the channel (Toolsmithing payoff)
+    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f; };
+    if (t.kind === 'tree') startChannel(Math.max(1.8, (4 - lvl('woodcutting') * 0.03) * toolSpeed('woodcutting')), 'chop', 'Chopping…', () => G.chopTree(t.ref));
     else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
-    else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(5, 7 - lvl('mining') * 0.04), 'mine', 'Mining…', () => G.mineOre(t.ref)); }
-    else if (t.kind === 'fish') startChannel(Math.max(5, 7 - lvl('fishing') * 0.04), 'fish', 'Fishing…', () => G.fishSpot(t.ref));
+    else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(3, (7 - lvl('mining') * 0.04) * toolSpeed('mining')), 'mine', 'Mining…', () => G.mineOre(t.ref)); }
+    else if (t.kind === 'fish') startChannel(Math.max(3, (7 - lvl('fishing') * 0.04) * toolSpeed('fishing')), 'fish', 'Fishing…', () => G.fishSpot(t.ref));
     else if (t.kind === 'station') G.useStation(t.ref);
     else if (t.kind === 'plot') G.plotAction(t.ref);
     else if (t.kind === 'stall') G.thieveStall(t.ref);

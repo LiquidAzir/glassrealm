@@ -22,8 +22,19 @@ export const ITEMS = {
   mithril_sword:  { name: 'Mithril Sword',  icon: '⚔️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 19, range: 2.7, speed: 0.42, desc: 'A keen mithril blade. +19 melee.' },
   mithril_armor:  { name: 'Mithril Armor',  icon: '🛡️', type: 'armor',  defense: 18, desc: 'Light, strong mithril plate. -18 damage taken.' },
   mithril_shield: { name: 'Mithril Shield', icon: '🛡️', type: 'shield', defense: 18, desc: 'A gleaming mithril shield. Blocks 18 damage.' },
-  mariner_plate:  { name: 'Mariner Plate',  icon: '🛡️', type: 'armor', defense: 14, desc: 'Salt-stained naval plate. -14 damage taken.' },
-  grave_plate:    { name: 'Grave Plate',    icon: '🛡️', type: 'armor', defense: 16, desc: 'Cold barrow-iron plate. -16 damage taken.' },
+  // Toolsmithing — better tools (auto-used from your pack) speed up gathering. Forged at the anvil.
+  bronze_pickaxe:  { name: 'Bronze Pickaxe',  icon: '⛏️', type: 'tool', tool: 'mining',      tier: 1, speed: 0.85, desc: 'Mine ~15% faster.' },
+  iron_pickaxe:    { name: 'Iron Pickaxe',    icon: '⛏️', type: 'tool', tool: 'mining',      tier: 2, speed: 0.72, desc: 'Mine ~28% faster.' },
+  steel_pickaxe:   { name: 'Steel Pickaxe',   icon: '⛏️', type: 'tool', tool: 'mining',      tier: 3, speed: 0.62, desc: 'Mine ~38% faster.' },
+  mithril_pickaxe: { name: 'Mithril Pickaxe', icon: '⛏️', type: 'tool', tool: 'mining',      tier: 4, speed: 0.52, desc: 'Mine ~48% faster.' },
+  bronze_hatchet:  { name: 'Bronze Hatchet',  icon: '🪓', type: 'tool', tool: 'woodcutting', tier: 1, speed: 0.85, desc: 'Chop ~15% faster.' },
+  iron_hatchet:    { name: 'Iron Hatchet',    icon: '🪓', type: 'tool', tool: 'woodcutting', tier: 2, speed: 0.72, desc: 'Chop ~28% faster.' },
+  steel_hatchet:   { name: 'Steel Hatchet',   icon: '🪓', type: 'tool', tool: 'woodcutting', tier: 3, speed: 0.62, desc: 'Chop ~38% faster.' },
+  mithril_hatchet: { name: 'Mithril Hatchet', icon: '🪓', type: 'tool', tool: 'woodcutting', tier: 4, speed: 0.52, desc: 'Chop ~48% faster.' },
+  bronze_harpoon:  { name: 'Bronze Harpoon',  icon: '🔱', type: 'tool', tool: 'fishing',     tier: 1, speed: 0.85, desc: 'Fish ~15% faster.' },
+  iron_harpoon:    { name: 'Iron Harpoon',    icon: '🔱', type: 'tool', tool: 'fishing',     tier: 2, speed: 0.72, desc: 'Fish ~28% faster.' },
+  steel_harpoon:   { name: 'Steel Harpoon',   icon: '🔱', type: 'tool', tool: 'fishing',     tier: 3, speed: 0.62, desc: 'Fish ~38% faster.' },
+  mithril_harpoon: { name: 'Mithril Harpoon', icon: '🔱', type: 'tool', tool: 'fishing',     tier: 4, speed: 0.52, desc: 'Fish ~48% faster.' },
 
   raw_shrimp:    { name: 'Raw Shrimp', icon: '🦐', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
@@ -201,6 +212,10 @@ export const FORGE = [
   { out: 'mithril_sword',  cost: { mithril_bar: 3 }, xp: 240 },
   { out: 'mithril_armor',  cost: { mithril_bar: 5 }, xp: 330 },
   { out: 'mithril_shield', cost: { mithril_bar: 4 }, xp: 270 },
+  // Toolsmithing — forge gathering tools (each tier gathers faster); owning the best is auto-used.
+  { out: 'bronze_pickaxe', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_pickaxe', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_pickaxe', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_pickaxe', cost: { mithril_bar: 2 }, xp: 230 },
+  { out: 'bronze_hatchet', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_hatchet', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_hatchet', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_hatchet', cost: { mithril_bar: 2 }, xp: 230 },
+  { out: 'bronze_harpoon', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_harpoon', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_harpoon', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_harpoon', cost: { mithril_bar: 2 }, xp: 230 },
 ];
 
 // NPC anchor positions are relative to the village; entities.js drops them to ground.
