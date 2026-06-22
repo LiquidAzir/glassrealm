@@ -61,7 +61,16 @@ export function createInteriors(scene) {
     const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
     const st = (kind, label, x, z) => stations.push({ kind, label, x: IX + x, z: IZ + z, y: FY });
     const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
-    const person = (x, z, color) => { const b = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.5, 7), mat(color)); b.position.set(IX + x, FY + 0.75, IZ + z); g.add(b); const h = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), M.skin); h.position.set(IX + x, FY + 1.7, IZ + z); g.add(h); solid(x, z, 0.8); };
+    const person = (x, z, color) => {   // a proper standing person (legs, clothed torso, distinct arms + hands, head, hair)
+      const cloth = mat(color), dark = mat(0x2a2330);
+      box(0.2, 0.7, 0.2, dark, x - 0.16, 0.35, z); box(0.2, 0.7, 0.2, dark, x + 0.16, 0.35, z);                       // legs
+      box(0.64, 0.78, 0.4, cloth, x, 1.1, z);                                                                         // torso (clothes)
+      box(0.18, 0.56, 0.2, cloth, x - 0.44, 1.18, z); box(0.16, 0.16, 0.16, M.skin, x - 0.44, 0.84, z);              // left arm + hand
+      box(0.18, 0.56, 0.2, cloth, x + 0.44, 1.18, z); box(0.16, 0.16, 0.16, M.skin, x + 0.44, 0.84, z);              // right arm + hand
+      const h = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), M.skin); h.position.set(IX + x, FY + 1.75, IZ + z); g.add(h);   // head
+      box(0.42, 0.18, 0.42, mat(0x3a2a20), x, 1.95, z);                                                               // hair
+      solid(x, z, 0.8);
+    };
     const keeper = (x, z, color) => person(x, z, color);                                   // stands behind the counter; template adds the service station in front
     const patron = (x, z, color) => { person(x, z, color); st('patron', 'Chat with a patron', x, z + 1.2); };
     // shell: floor, walls (south wall split for a doorway), beams, windows, door mat

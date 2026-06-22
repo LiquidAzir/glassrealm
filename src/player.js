@@ -41,10 +41,11 @@ export function createPlayer(scene, world) {
   const visorMat = new THREE.MeshBasicMaterial({ color: 0x9bf2ff });
 
   const mkBox = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return m; };
-  body.add(mkBox(0.24, 0.7, 0.24, dark, -0.17, 0.35, 0));   // legs
-  body.add(mkBox(0.24, 0.7, 0.24, dark, 0.17, 0.35, 0));
+  // legs hang from hip pivots so they can swing in a walk cycle
+  const legL = new THREE.Group(); legL.position.set(-0.17, 0.7, 0); legL.add(mkBox(0.24, 0.7, 0.24, dark, 0, -0.35, 0)); body.add(legL);
+  const legR = new THREE.Group(); legR.position.set(0.17, 0.7, 0); legR.add(mkBox(0.24, 0.7, 0.24, dark, 0, -0.35, 0)); body.add(legR);
   body.add(mkBox(0.74, 0.82, 0.46, tunic, 0, 1.15, 0));      // torso
-  body.add(mkBox(0.2, 0.62, 0.22, tunic, -0.5, 1.2, 0));     // left arm (static)
+  const armL = new THREE.Group(); armL.position.set(-0.5, 1.5, 0); armL.add(mkBox(0.2, 0.62, 0.22, tunic, 0, -0.31, 0)); body.add(armL);   // left arm (swings)
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), skin);
   head.position.set(0, 1.86, 0); body.add(head);
   body.add(mkBox(0.4, 0.12, 0.06, visorMat, 0, 1.9, 0.3));   // facing visor (+z)
@@ -183,10 +184,17 @@ export function createPlayer(scene, world) {
 
     group.position.y = state.bounds ? state.bounds.y : world.height(group.position.x, group.position.z);
     group.rotation.y = state.heading;
-    if (walking) { state.bob += dt * 11; body.position.y = Math.abs(Math.sin(state.bob)) * 0.08; }
-    else { body.position.y *= (1 - damp(8, dt)); }
+    if (state.moving) state.bob += dt * 11;
+    body.position.y = state.moving ? Math.abs(Math.sin(state.bob)) * 0.08 : body.position.y * (1 - damp(8, dt));
 
-    // attack animation
+    // walk cycle — legs swing at the hips, arms counter-swing (the right arm yields to an attack)
+    const gait = state.moving ? Math.sin(state.bob) * 0.5 : 0;
+    const gk = Math.min(1, dt * 12);
+    legL.rotation.x += (gait - legL.rotation.x) * gk;
+    legR.rotation.x += (-gait - legR.rotation.x) * gk;
+    armL.rotation.x += (-gait - armL.rotation.x) * gk;
+
+    // attack animation (right arm)
     if (state.attackAnim > 0) {
       state.attackAnim = Math.max(0, state.attackAnim - dt);
       const t = 1 - state.attackAnim / state.animDur;
@@ -201,9 +209,9 @@ export function createPlayer(scene, world) {
         default:       rightArm.rotation.x = -2.3 * s;   // melee / unarmed swing
       }
       if (state.attackAnim === 0 && state.toolActive) showTool(false);
-    } else if (rightArm.rotation.x !== 0) {
-      rightArm.rotation.x *= (1 - damp(12, dt));
-      if (Math.abs(rightArm.rotation.x) < 0.01) rightArm.rotation.x = 0;
+    } else {
+      rightArm.rotation.x += (gait - rightArm.rotation.x) * gk;   // counter-swing with the gait
+      if (!state.moving && Math.abs(rightArm.rotation.x) < 0.01) rightArm.rotation.x = 0;
     }
 
     if (state.attackCd > 0) state.attackCd = Math.max(0, state.attackCd - dt);

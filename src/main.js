@@ -300,7 +300,7 @@ try {
   };
   function quickAttack() {
     const t = G.currentTarget;
-    if (t && t.kind === 'enemy') { G.attackEnemy(t.ref); return; }
+    if (t && t.kind === 'enemy') { G.combatTarget = t.ref; G.attackEnemy(t.ref); return; }
     const range = player.weapon().range + 0.6;
     let near = null, nd = range;
     for (const e of G.entities.enemies) {
@@ -308,7 +308,7 @@ try {
       const d = dist2D(player.position.x, player.position.z, e.pos.x, e.pos.z);
       if (d < nd) { nd = d; near = e; }
     }
-    if (near) G.attackEnemy(near);
+    if (near) { G.combatTarget = near; G.attackEnemy(near); }
   }
 
   G.useItem = (key) => {
@@ -464,7 +464,7 @@ try {
   // ---------- enter / exit buildings ----------
   const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge' };
   G.enterBuilding = (door) => {
-    cancelChannel();
+    cancelChannel(); clearCombat();
     G.returnPos = { x: door.x, z: door.z, heading: player.state.heading };
     const info = G.interiors.enter(door.building);
     G.interiorStations = info.stations;
@@ -566,7 +566,7 @@ try {
     G.gainXp('defence', Math.max(1, Math.round(taken * 0.6)));
     G.ui.setHealth(player.state.hp, player.state.maxHp);
     if (player.state.hp <= 0) {
-      cancelChannel();
+      cancelChannel(); clearCombat();
       player.state.hp = player.state.maxHp;
       const sx = world.village.x, sz = world.village.z + 12;
       player.group.position.set(sx, world.height(sx, sz), sz);
@@ -598,7 +598,7 @@ try {
   let mode = 'world';
   let backSeq = [];                                    // ↑↓↑↓ open/close gesture buffer
   function setMode(m) { mode = m; backSeq = []; if (m !== 'world') G.ui.hidePrompt(); }   // reset gesture history across overlays
-  function openMenu() { cancelChannel(); setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
+  function openMenu() { cancelChannel(); clearCombat(); setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
   function closeMenu() { G.ui.closeMenu(); setMode(G.inInterior ? 'interior' : 'world'); }
 
   // Universal open/close — a deliberate fast ↑↓↑↓ swipe "shake" (double-tap doesn't
@@ -657,6 +657,7 @@ try {
     if (G.channel) { cancelChannel(); return; }   // tapping again stops gathering
     const t = G.currentTarget;
     if (!t) return;
+    if (t.kind !== 'enemy') clearCombat();   // tapping anything else breaks off the fight
     const lvl = (k) => G.skills.level(k);
     if (t.kind === 'tree') startChannel(Math.max(2.8, 4 - lvl('woodcutting') * 0.03), 'chop', 'Chopping…', () => G.chopTree(t.ref));
     else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
@@ -667,7 +668,7 @@ try {
     else if (t.kind === 'stall') G.thieveStall(t.ref);
     else if (t.kind === 'shortcut') G.useShortcut(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
-    else if (t.kind === 'enemy') G.attackEnemy(t.ref);
+    else if (t.kind === 'enemy') { G.combatTarget = t.ref; G.attackEnemy(t.ref); }   // lock on + auto-attack
   }
 
   // ---------- channelled gathering (timed action: progress bar + looping tool animation) ----------
@@ -687,6 +688,17 @@ try {
     if (channelAnimT >= 0.55) { channelAnimT = 0; player.playGather(c.anim); G.audio.sfx(c.anim === 'fish' ? 'cast' : 'hit'); }   // keep the tool swinging
     G.ui.setChannel(Math.min(1, c.t / c.dur), c.label);
     if (c.t >= c.dur) { const done = c.onDone; G.channel = null; G.ui.hideChannel(); done(); }
+  }
+
+  // ---------- auto-attack: lock a foe and keep hitting it at the weapon's cadence ----------
+  function clearCombat() { G.combatTarget = null; }
+  function updateCombat() {
+    const e = G.combatTarget;
+    if (!e) return;
+    if (!e.alive) { G.combatTarget = null; return; }                 // foe down → stop
+    const d = dist2D(player.position.x, player.position.z, e.pos.x, e.pos.z);
+    if (d > player.weapon().range + 8) { G.combatTarget = null; return; }   // walked off → disengage
+    G.attackEnemy(e);   // only actually strikes when off cooldown + in range
   }
 
   // ---------- HUD helpers ----------
@@ -809,6 +821,7 @@ try {
       G.projectiles.update(dt);
       G.fx.update(dt);
       updateChannel(dt);
+      updateCombat();
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -825,6 +838,7 @@ try {
       player.update(dt, input);
       G.fx.update(dt);
       updateChannel(dt);
+      updateCombat();
       G.currentTarget = G.interact.best();
       updatePrompt();
     }
@@ -878,7 +892,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

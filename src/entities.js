@@ -5,12 +5,32 @@ import { TAU, dist2D } from './util.js';
 const DEATH_DUR = 0.55;   // topple/shrink/sink before the corpse vanishes
 const ATK_ANIM = 0.3;     // forward-lean bite when an enemy strikes
 
-function makeNpc(def, world) {
+const SKIN = [0xf2c79a, 0xe0a878, 0xc98a5a, 0x8d5a3a];
+const HAIR = [0x2a2330, 0x5c4326, 0x8a8a92, 0x6e4a2b, 0xb5602a];
+const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+const mkBox = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); return me; };
+
+// A proper bipedal person: hip-pivoted legs + shoulder-pivoted arms (with skin hands),
+// a clothed torso, a head, and hair — limb pivots exposed via userData.anim for walking.
+function buildPerson({ cloth, skin, hair, weaponMat, seed = 0 }) {
   const g = new THREE.Group();
-  const robe = new THREE.MeshLambertMaterial({ color: def.color, flatShading: true });
-  const skin = new THREE.MeshLambertMaterial({ color: 0xf2c79a, flatShading: true });
-  const body = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.6, 7), robe); body.position.y = 0.8; g.add(body);
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0), skin); head.position.y = 1.85; g.add(head);
+  const clothM = lmat(cloth), skinM = lmat(skin), darkM = lmat(0x2a2330);
+  const mkLeg = (x) => { const p = new THREE.Group(); p.position.set(x, 0.72, 0); p.add(mkBox(0.2, 0.72, 0.2, darkM, 0, -0.36, 0)); g.add(p); return p; };
+  const legL = mkLeg(-0.16), legR = mkLeg(0.16);
+  g.add(mkBox(0.66, 0.8, 0.4, clothM, 0, 1.15, 0));          // torso (clothes)
+  g.add(mkBox(0.72, 0.2, 0.44, darkM, 0, 0.82, 0));          // belt / hips
+  const mkArm = (x) => { const p = new THREE.Group(); p.position.set(x, 1.48, 0); p.add(mkBox(0.17, 0.56, 0.2, clothM, 0, -0.26, 0)); p.add(mkBox(0.16, 0.16, 0.16, skinM, 0, -0.56, 0)); g.add(p); return p; };
+  const armL = mkArm(-0.45), armR = mkArm(0.45);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), skinM); head.position.set(0, 1.82, 0); g.add(head);
+  if (hair != null) g.add(mkBox(0.42, 0.18, 0.42, lmat(hair), 0, 2.0, 0));   // hair cap
+  if (weaponMat) armR.add(mkBox(0.1, 0.85, 0.1, weaponMat, 0, -0.78, 0));     // weapon held in the right hand
+  g.userData.anim = { legL, legR, armL, armR, biped: true };
+  return g;
+}
+
+function makeNpc(def, world) {
+  const seed = Math.abs((def.key || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0));
+  const g = buildPerson({ cloth: def.color, skin: SKIN[seed % SKIN.length], hair: HAIR[seed % HAIR.length], seed });
   g.position.set(def.pos.x, world.height(def.pos.x, def.pos.z), def.pos.z);
   let nv = world.villages[0], best = Infinity;
   for (const v of world.villages) { const d = (v.x - def.pos.x) ** 2 + (v.z - def.pos.z) ** 2; if (d < best) { best = d; nv = v; } }
@@ -20,29 +40,21 @@ function makeNpc(def, world) {
 
 function makeBeast(def) {
   const g = new THREE.Group();
-  const mat = new THREE.MeshLambertMaterial({ color: def.color, flatShading: true });
-  const dark = new THREE.MeshLambertMaterial({ color: 0x3a2a20, flatShading: true });
-  const part = (geo, m, x, y, z) => { const mesh = new THREE.Mesh(geo, m); mesh.position.set(x, y, z); g.add(mesh); };
-  part(new THREE.BoxGeometry(1.5, 0.9, 0.9), mat, 0, 0.75, 0);    // body
-  part(new THREE.BoxGeometry(0.7, 0.7, 0.75), mat, 0.9, 0.6, 0);  // head
-  part(new THREE.BoxGeometry(0.35, 0.3, 0.55), dark, 1.3, 0.45, 0); // snout
-  [[-0.5, 0.35], [0.5, 0.35], [-0.5, -0.35], [0.5, -0.35]].forEach(([x, z]) => part(new THREE.BoxGeometry(0.2, 0.7, 0.2), dark, x, 0.35, z));
+  const mat = lmat(def.color), dark = lmat(0x3a2a20);
+  g.add(mkBox(1.5, 0.9, 0.9, mat, 0, 0.95, 0));    // body
+  g.add(mkBox(0.7, 0.7, 0.75, mat, 0.9, 0.8, 0));  // head
+  g.add(mkBox(0.35, 0.3, 0.55, dark, 1.3, 0.65, 0)); // snout
+  // four legs on hip pivots (front-left, front-right, back-left, back-right) for a trot
+  const legs = [[-0.5, 0.35], [0.5, 0.35], [-0.5, -0.35], [0.5, -0.35]].map(([x, z]) => {
+    const p = new THREE.Group(); p.position.set(x, 0.7, z); p.add(mkBox(0.2, 0.72, 0.2, dark, 0, -0.36, 0)); g.add(p); return p;
+  });
+  g.userData.anim = { legs, biped: false };
   g.scale.setScalar(def.scale || 1);
   return g;
 }
 
 function makeHumanoid(def) {
-  const g = new THREE.Group();
-  const robe = new THREE.MeshLambertMaterial({ color: def.color, flatShading: true });
-  const dark = new THREE.MeshLambertMaterial({ color: 0x2a2330, flatShading: true });
-  const skin = new THREE.MeshLambertMaterial({ color: 0xd9a273, flatShading: true });
-  const steel = new THREE.MeshLambertMaterial({ color: 0xb9c2cc, flatShading: true });
-  const part = (geo, m, x, y, z) => { const mesh = new THREE.Mesh(geo, m); mesh.position.set(x, y, z); g.add(mesh); };
-  part(new THREE.BoxGeometry(0.24, 0.7, 0.24), dark, -0.17, 0.35, 0);
-  part(new THREE.BoxGeometry(0.24, 0.7, 0.24), dark, 0.17, 0.35, 0);
-  part(new THREE.BoxGeometry(0.74, 0.82, 0.42), robe, 0, 1.15, 0);
-  part(new THREE.IcosahedronGeometry(0.3, 0), skin, 0, 1.8, 0);
-  part(new THREE.BoxGeometry(0.12, 0.95, 0.12), steel, 0.52, 1.2, 0.18); // blade
+  const g = buildPerson({ cloth: def.color, skin: 0xd9a273, hair: 0x2a2330, weaponMat: lmat(0xb9c2cc) });
   g.scale.setScalar(def.scale || 1);
   return g;
 }
@@ -138,9 +150,23 @@ export function createEntities(scene, world, G) {
       }
       e.group.position.y = world.height(e.pos.x, e.pos.z);
       e.group.rotation.y = e.heading;
-      // walk waddle + attack lean
-      if (moving) { e.walkPhase += dt * 9; e.group.rotation.z = Math.sin(e.walkPhase) * 0.12; }
-      else e.group.rotation.z *= (1 - Math.min(1, dt * 8));
+      // walk cycle (limbs swing at hips/shoulders) + a subtle body waddle + attack lean
+      if (moving) e.walkPhase += dt * 9;
+      e.group.rotation.z = moving ? Math.sin(e.walkPhase) * 0.05 : e.group.rotation.z * (1 - Math.min(1, dt * 8));
+      const anim = e.group.userData.anim;
+      if (anim) {
+        const gait = moving ? Math.sin(e.walkPhase) * 0.55 : 0;
+        const k = Math.min(1, dt * 10);
+        if (anim.biped) {
+          anim.legL.rotation.x += (gait - anim.legL.rotation.x) * k;
+          anim.legR.rotation.x += (-gait - anim.legR.rotation.x) * k;
+          anim.armL.rotation.x += (-gait - anim.armL.rotation.x) * k;
+          if (e.atkAnim <= 0) anim.armR.rotation.x += (gait - anim.armR.rotation.x) * k;
+        } else {
+          anim.legs[0].rotation.x = gait; anim.legs[3].rotation.x = gait;     // diagonal trot
+          anim.legs[1].rotation.x = -gait; anim.legs[2].rotation.x = -gait;
+        }
+      }
       e.group.rotation.x = e.atkAnim > 0 ? -0.5 * Math.sin((1 - e.atkAnim / ATK_ANIM) * Math.PI) : e.group.rotation.x * (1 - Math.min(1, dt * 10));
       e.group.scale.setScalar((e.hurtFlash > 0 ? 1.14 : 1) * e.baseScale);
     }
@@ -150,7 +176,9 @@ export function createEntities(scene, world, G) {
       const target = d < 7 ? Math.atan2(player.position.x - n.pos.x, player.position.z - n.pos.z) : n.baseRot;
       let dy = target - n.group.rotation.y; while (dy > Math.PI) dy -= TAU; while (dy < -Math.PI) dy += TAU;
       n.group.rotation.y += dy * Math.min(1, dt * 6);
-      n.group.rotation.z = Math.sin(T * 1.4 + n.phase) * 0.035;
+      n.group.rotation.z = Math.sin(T * 1.4 + n.phase) * 0.03;
+      const a = n.group.userData.anim;   // gentle idle arm sway so they feel alive
+      if (a) { const s = Math.sin(T * 1.3 + n.phase) * 0.09; a.armL.rotation.x = s; a.armR.rotation.x = -s; }
     }
   }
 
