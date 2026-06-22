@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { ITEMS, SHOP, PRAYERS, ACHIEVEMENTS } from './content.js';
+import { ITEMS, SHOP, PRAYERS, ACHIEVEMENTS, ENEMIES } from './content.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Bestiary', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -99,12 +99,14 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Diary: renderDiary, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Diary: renderDiary, Bestiary: renderBestiary, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
     if (TABS[tab] === 'Gear') return gearRows().length;
     if (TABS[tab] === 'Prayer') return PRAYERS.length;
+    if (TABS[tab] === 'Skills') return G.skills.DEFS.length;
+    if (TABS[tab] === 'Diary') return 1;
     return 0;
   }
   function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); }
@@ -123,6 +125,10 @@ export function createUI(G) {
       const r = gearRows()[row]; if (r) { G.equipChoice(r); renderMenu(); }
     } else if (TABS[tab] === 'Prayer') {
       const pr = PRAYERS[row]; if (pr) { G.togglePrayer(pr.key); renderMenu(); }
+    } else if (TABS[tab] === 'Skills') {
+      const d = G.skills.DEFS[row]; if (d && G.skills.canPrestige(d.key)) { G.prestigeSkill(d.key); renderMenu(); }
+    } else if (TABS[tab] === 'Diary') {
+      if (row === 0 && G.audio) { G.audio.toggleMuted(); G.save.save(); renderMenu(); }
     }
   }
   function gearRows() {
@@ -158,8 +164,20 @@ export function createUI(G) {
   }
   function renderDiary() {
     const done = G.ach.unlocked;
-    let html = `<div class="section-head">Achievements · ${done.size}/${ACHIEVEMENTS.length}</div>`;
+    const sound = G.audio && !G.audio.muted;
+    let html = `<div class="row ${row === 0 ? 'sel' : ''}"><span class="row-icon">${sound ? '🔊' : '🔇'}</span><div class="row-main"><div class="row-title">Sound: ${sound ? 'ON' : 'OFF'}</div><div class="row-sub">tap to toggle</div></div></div>`;
+    html += `<div class="section-head">Achievements · ${done.size}/${ACHIEVEMENTS.length}</div>`;
     html += ACHIEVEMENTS.map((a) => { const u = done.has(a.id); return `<div class="row" style="${u ? '' : 'opacity:.55'}"><span class="row-icon">${u ? '🏆' : '🔒'}</span><div class="row-main"><div class="row-title">${a.name}</div><div class="row-sub">${a.desc}</div></div></div>`; }).join('');
+    els.menuBody.innerHTML = html;
+  }
+  function renderBestiary() {
+    const kt = G.stats.killsByType || {};
+    let html = '<div class="section-head">Bestiary</div>';
+    html += Object.keys(ENEMIES).map((k) => {
+      const e = ENEMIES[k], n = kt[k] || 0, seen = n > 0;
+      const sub = seen ? `HP ${e.hp} · dmg ${e.dmg} · ${e.xp} xp${e.boss ? ' · BOSS' : ''}` : '??? — defeat one to learn its ways';
+      return `<div class="row" style="${seen ? '' : 'opacity:.5'}"><span class="row-icon">${e.boss ? '👑' : '☠️'}</span><div class="row-main"><div class="row-title">${seen ? e.name : '???'}${seen ? ` <span style="color:var(--text-mut)">×${n}</span>` : ''}</div><div class="row-sub">${sub}</div></div></div>`;
+    }).join('');
     els.menuBody.innerHTML = html;
   }
 
@@ -172,13 +190,15 @@ export function createUI(G) {
     els.menuBody.innerHTML = html;
   }
   function renderSkills() {
-    const html = G.skills.DEFS.map((d) => {
+    const html = G.skills.DEFS.map((d, i) => {
       const lv = G.skills.level(d.key), pr = Math.round(G.skills.progress(d.key) * 100), tn = G.skills.toNext(d.key);
-      return `<div class="row"><span class="row-icon">${d.icon}</span><div class="row-main"><div class="row-title">${d.name} <span style="color:var(--gold)">Lv ${lv}</span></div><div class="skillbar"><span style="width:${pr}%"></span></div><div class="row-sub">${tn} xp to next level</div></div></div>`;
+      const pst = G.skills.prestigeOf(d.key), can = G.skills.canPrestige(d.key);
+      const stars = pst ? ` <span style="color:var(--gold)">${'⭐'.repeat(Math.min(pst, 5))}</span>` : '';
+      const sub = can ? '<span style="color:var(--gold)">tap to prestige ⭐</span>' : `${tn} xp to next`;
+      return `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${d.icon}</span><div class="row-main"><div class="row-title">${d.name} <span style="color:var(--gold)">Lv ${lv}</span>${stars}</div><div class="skillbar"><span style="width:${pr}%"></span></div><div class="row-sub">${sub}</div></div></div>`;
     }).join('');
-    const wn = G.weaponName ? G.weaponName() : '';
     const L = (k) => G.skills.level(k);
-    els.menuBody.innerHTML = `<div class="section-head">Total ${G.skills.total()} &nbsp;·&nbsp; ⚔️${L('combat')} 🏹${L('ranged')} 🪄${L('magic')} 🛡️${L('defence')} &nbsp;·&nbsp; 🗡️ ${wn}</div>` + html;
+    els.menuBody.innerHTML = `<div class="section-head">Total ${G.skills.total()} &nbsp;·&nbsp; ⚔️${L('combat')} 🏹${L('ranged')} 🪄${L('magic')} 🛡️${L('defence')} ☠️${L('slayer')} &nbsp;·&nbsp; 🗡️ ${G.weaponName ? G.weaponName() : ''}</div>` + html;
   }
   function renderPrayer() {
     const lvl = G.skills.level('prayer');

@@ -57,6 +57,10 @@ export const ITEMS = {
 
   sun_blade:   { name: 'Sun Blade',   icon: '⚔️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 22, range: 2.9, speed: 0.42, desc: "The Sandwyrm's blade. +22 melee." },
   frost_staff: { name: 'Frost Staff', icon: '🪄', type: 'weapon', style: 'magic', skill: 'magic',  bonus: 24, range: 15,  speed: 0.7,  desc: "The Frost Warden's staff. +24 magic." },
+
+  emberheart_amulet: { name: 'Emberheart Amulet', icon: '📿', type: 'amulet', bonus: { magic: 10, melee: 6 }, desc: 'Rare drop. +10 magic, +6 melee.' },
+  wyrmscale_ring:    { name: 'Wyrmscale Ring',    icon: '💍', type: 'ring',   bonus: { melee: 8, def: 6 },   desc: 'Rare drop. +8 melee, +6 defence.' },
+  frostguard_amulet: { name: 'Frostguard Amulet', icon: '📿', type: 'amulet', bonus: { def: 12, maxhp: 30 }, desc: 'Rare drop. +12 defence, +30 max HP.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -114,6 +118,10 @@ export const NPCS = [
   { key: 'miner',    name: 'Old Bryn',     color: 0xc8a06a, pos: { x: 104, z: 22 },   dialogue: 'miner' },
   { key: 'smith',    name: 'Smith Dorrin', color: 0xff9a5a, pos: { x: 116, z: 20 },   dialogue: 'smith' },
   { key: 'fisher',   name: 'Wren',         color: 0x6fd0ff, pos: { x: 138, z: 10 },   dialogue: 'fisher' },
+  { key: 'slayer',   name: 'Slayer Master Krael', color: 0xff6b6b, pos: { x: 12, z: -4 }, dialogue: 'slayermaster' },
+  { key: 'druid',    name: 'Thornwarden Eld',     color: 0x4fae84, pos: { x: -92, z: 18 }, dialogue: 'druid' },
+  { key: 'nomad',    name: 'Zara the Nomad',      color: 0xe3c277, pos: { x: 32, z: 100 }, dialogue: 'nomad' },
+  { key: 'frostkeeper', name: 'Frostkeeper Nessa', color: 0xbfe0ff, pos: { x: 94, z: -80 }, dialogue: 'frostkeeper' },
 ];
 
 export const ENEMIES = {
@@ -122,9 +130,9 @@ export const ENEMIES = {
   bandit: { name: 'Ashen Bandit', hp: 52,  dmg: 13, speed: 3.9, xp: 130, color: 0x8a6f9a, aggro: 12, shape: 'humanoid', loot: { gold: 18, coal: 1, bones: 1 } },
   frost_wolf: { name: 'Frost Wolf',  hp: 60, dmg: 15, speed: 4.8, xp: 165, color: 0xcfe0f2, aggro: 14, shape: 'beast', loot: { pelt: 1, bones: 1, coal: 1 } },
   scorpion:   { name: 'Sand Scorpion', hp: 46, dmg: 12, speed: 3.6, xp: 120, color: 0xd8a85a, aggro: 11, shape: 'beast', loot: { bones: 1, iron_ore: 1 } },
-  ember_boss: { name: 'Emberfang', hp: 170, dmg: 22, speed: 3.7, xp: 520, color: 0xff5a2a, aggro: 18, shape: 'beast', scale: 1.9, boss: true, loot: { gold: 140, relic: 1, iron_ore: 5, bones: 3 } },
-  sandwyrm:     { name: 'Sandwyrm',     hp: 220, dmg: 24, speed: 3.4, xp: 640, color: 0xd8a85a, aggro: 18, shape: 'beast',    scale: 2.1, boss: true, loot: { gold: 180, sun_blade: 1, ruby: 1, bones: 4 } },
-  frost_warden: { name: 'Frost Warden', hp: 240, dmg: 26, speed: 3.6, xp: 700, color: 0xbfe0ff, aggro: 18, shape: 'humanoid', scale: 1.8, boss: true, loot: { gold: 200, frost_staff: 1, sapphire: 2, bones: 4 } },
+  ember_boss: { name: 'Emberfang', hp: 170, dmg: 22, speed: 3.7, xp: 520, color: 0xff5a2a, aggro: 18, shape: 'beast', scale: 1.9, boss: true, loot: { gold: 140, relic: 1, iron_ore: 5, bones: 3 }, rare: { item: 'emberheart_amulet', chance: 0.3 } },
+  sandwyrm:     { name: 'Sandwyrm',     hp: 220, dmg: 24, speed: 3.4, xp: 640, color: 0xd8a85a, aggro: 18, shape: 'beast',    scale: 2.1, boss: true, loot: { gold: 180, sun_blade: 1, ruby: 1, bones: 4 }, rare: { item: 'wyrmscale_ring', chance: 0.3 } },
+  frost_warden: { name: 'Frost Warden', hp: 240, dmg: 26, speed: 3.6, xp: 700, color: 0xbfe0ff, aggro: 18, shape: 'humanoid', scale: 1.8, boss: true, loot: { gold: 200, frost_staff: 1, sapphire: 2, bones: 4 }, rare: { item: 'frostguard_amulet', chance: 0.3 } },
 };
 
 export const ENEMY_SPAWNS = [
@@ -197,6 +205,36 @@ export const QUESTS = {
     desc: 'Carry the Tide Relic from Emberfang back to Elder Maren on the Verdant Isle.',
     objectives: [{ id: 'relic', type: 'have', item: 'relic', count: 1 }],
     rewards: { xp: { combat: 400 }, items: { gold: 300 } },
+  },
+  q_forest: {
+    name: 'Thin the Pack', giver: 'druid', startsAvailable: true,
+    desc: 'Cull the grey wolves of the Whispering Wood for Thornwarden Eld.',
+    objectives: [{ id: 'wolf', type: 'kill', enemy: 'wolf', count: 3 }],
+    rewards: { xp: { woodcutting: 160, combat: 80 }, items: { gold: 60 } },
+  },
+  q_desert: {
+    name: 'Scorpion Scourge', giver: 'nomad', startsAvailable: true,
+    desc: 'Clear the sand scorpions around the Sunspire Oasis.',
+    objectives: [{ id: 'scorpion', type: 'kill', enemy: 'scorpion', count: 3 }],
+    rewards: { xp: { combat: 200 }, items: { gold: 70 } },
+  },
+  q_snow: {
+    name: 'Cold Comfort', giver: 'frostkeeper', startsAvailable: true,
+    desc: 'Drive the frost wolves from the snowfields for Frostkeeper Nessa.',
+    objectives: [{ id: 'frost_wolf', type: 'kill', enemy: 'frost_wolf', count: 3 }],
+    rewards: { xp: { combat: 240, defence: 120 }, items: { gold: 80 } },
+  },
+  q_sandwyrm: {
+    name: 'The Sandwyrm', giver: 'nomad', requires: 'q_desert',
+    desc: 'Slay the Sandwyrm in the deep desert.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'sandwyrm', count: 1 }],
+    rewards: { xp: { combat: 700, slayer: 200 }, items: { gold: 250 } },
+  },
+  q_frostwarden: {
+    name: 'The Frost Warden', giver: 'frostkeeper', requires: 'q_snow',
+    desc: 'Defeat the Frost Warden in the Frost Cavern.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'frost_warden', count: 1 }],
+    rewards: { xp: { combat: 760, slayer: 220 }, items: { gold: 280 } },
   },
 };
 
@@ -367,6 +405,88 @@ export const DIALOGUE = {
     },
     a: node('Wren', 'The shimmering rings on the water are the spots. Cook your catch at a fire to make it edible.', [end('Understood.')]),
     t: node('Wren', 'Coin for your trouble. Cook the rest — trout restores a good deal of vigour.', [end('Thanks.')]),
+  },
+
+  slayermaster: {
+    root: (G) => {
+      const s = G.slayer;
+      if (!s || !s.active) return node('Slayer Master Krael', 'Looking for a contract? I’ll mark a beast for you to cull — good Slayer training.',
+        [{ label: 'Assign me a task.', action: (g) => g.slayerAssign(), to: 'assigned' }, end('Not now.')]);
+      if (s.progress >= s.count) return node('Slayer Master Krael', `${s.count} ${ENEMIES[s.enemy].name}s slain — contract complete.`,
+        [{ label: 'Claim reward.', action: (g) => g.slayerClaim(), to: 'claimed' }]);
+      return node('Slayer Master Krael', `Your contract: slay ${s.count} ${ENEMIES[s.enemy].name}s (${s.progress}/${s.count}).`, [end('On it.')]);
+    },
+    assigned: (G) => node('Slayer Master Krael', `Hunt down ${G.slayer.count} ${ENEMIES[G.slayer.enemy].name}s out in the wilds. Off you go.`, [end('Understood.')]),
+    claimed: node('Slayer Master Krael', 'Fine work. A new contract waits whenever you’re ready.', [end('Thanks.')]),
+  },
+
+  druid: {
+    root: (G) => {
+      const st = G.quests.status('q_forest');
+      if (st === 'available') return node('Thornwarden Eld', 'The wolves of the deep wood grow too bold. Cull three and the grove will breathe easier.',
+        [{ label: 'I will hunt them.', action: (g) => g.quests.accept('q_forest'), to: 'a' }, end('Another time.')]);
+      if (st === 'active') {
+        const k = G.quests.progress('q_forest', 'wolf');
+        if (k >= 3) return node('Thornwarden Eld', 'The pack is thinned. The wood thanks you.', [{ label: 'Claim reward.', action: (g) => g.quests.complete('q_forest'), to: 't' }]);
+        return node('Thornwarden Eld', `${3 - k} wolves still prowl the forest.`, [end('On the hunt.')]);
+      }
+      if (st === 'complete') return node('Thornwarden Eld', 'Walk softly among the trees, friend.', [end('Farewell.')]);
+      return node('Thornwarden Eld', 'The forest remembers those who tend it.', [end('Aye.')]);
+    },
+    a: node('Thornwarden Eld', 'Grey wolves roam the western wood. Three should settle them.', [end('Understood.')]),
+    t: node('Thornwarden Eld', 'Take this coin, and the grove’s blessing.', [end('Thanks.')]),
+  },
+
+  nomad: {
+    root: (G) => {
+      const s1 = G.quests.status('q_desert');
+      if (s1 === 'available') return node('Zara the Nomad', 'Scorpions plague the dunes around the oasis. Crush three for me?',
+        [{ label: 'Consider it done.', action: (g) => g.quests.accept('q_desert'), to: 'a1' }, end('Not now.')]);
+      if (s1 === 'active') {
+        const k = G.quests.progress('q_desert', 'scorpion');
+        if (k >= 3) return node('Zara the Nomad', 'The dunes are safer already. My thanks.', [{ label: 'Claim reward.', action: (g) => g.quests.complete('q_desert'), to: 't1' }]);
+        return node('Zara the Nomad', `${3 - k} scorpions left skittering.`, [end('On it.')]);
+      }
+      const s2 = G.quests.status('q_sandwyrm');
+      if (s2 === 'available') return node('Zara the Nomad', 'A greater terror sleeps in the deep desert — the Sandwyrm. End it and you’ll be a legend here.',
+        [{ label: 'I’ll slay it.', action: (g) => g.quests.accept('q_sandwyrm'), to: 'a2' }, end('Not yet.')]);
+      if (s2 === 'active') {
+        if (G.quests.progress('q_sandwyrm', 'boss') >= 1) return node('Zara the Nomad', 'The Sandwyrm is dead?! The oasis will sing your name.', [{ label: 'Claim reward.', action: (g) => g.quests.complete('q_sandwyrm'), to: 't2' }]);
+        return node('Zara the Nomad', 'The Sandwyrm lurks deep to the south. Bring strong gear.', [end('On the hunt.')]);
+      }
+      if (s2 === 'complete') return node('Zara the Nomad', 'Hero of the dunes. Rest at the oasis whenever you pass.', [end('Farewell.')]);
+      return node('Zara the Nomad', 'Cool water and fair trade at the oasis.', [end('Bye.')]);
+    },
+    a1: node('Zara the Nomad', 'The scorpions favour the open dunes. Three of them.', [end('Understood.')]),
+    t1: node('Zara the Nomad', 'Coin, as promised. And mind the Sandwyrm to the south…', [end('Thanks.')]),
+    a2: node('Zara the Nomad', 'The Sandwyrm burrows in the deep south of the desert. Go armed.', [end('Understood.')]),
+    t2: node('Zara the Nomad', 'A true desert legend. The oasis is yours.', [end('Ha!')]),
+  },
+
+  frostkeeper: {
+    root: (G) => {
+      const s1 = G.quests.status('q_snow');
+      if (s1 === 'available') return node('Frostkeeper Nessa', 'Frost wolves circle my camp each night. Drive off three and I’ll rest easier.',
+        [{ label: 'I’ll handle it.', action: (g) => g.quests.accept('q_snow'), to: 'a1' }, end('Not now.')]);
+      if (s1 === 'active') {
+        const k = G.quests.progress('q_snow', 'frost_wolf');
+        if (k >= 3) return node('Frostkeeper Nessa', 'The nights are quieter now. Bless you.', [{ label: 'Claim reward.', action: (g) => g.quests.complete('q_snow'), to: 't1' }]);
+        return node('Frostkeeper Nessa', `${3 - k} frost wolves still howl.`, [end('On it.')]);
+      }
+      const s2 = G.quests.status('q_frostwarden');
+      if (s2 === 'available') return node('Frostkeeper Nessa', 'In the Frost Cavern broods the Frost Warden. None who enter return. Will you?',
+        [{ label: 'I’ll face it.', action: (g) => g.quests.accept('q_frostwarden'), to: 'a2' }, end('Not yet.')]);
+      if (s2 === 'active') {
+        if (G.quests.progress('q_frostwarden', 'boss') >= 1) return node('Frostkeeper Nessa', 'The Warden has fallen? You’ve thawed our long winter.', [{ label: 'Claim reward.', action: (g) => g.quests.complete('q_frostwarden'), to: 't2' }]);
+        return node('Frostkeeper Nessa', 'The cavern lies east, past the ice spires. Wrap up warm.', [end('On the hunt.')]);
+      }
+      if (s2 === 'complete') return node('Frostkeeper Nessa', 'Warden-slayer. The snows will remember you.', [end('Farewell.')]);
+      return node('Frostkeeper Nessa', 'Keep moving — the cold bites the still.', [end('Aye.')]);
+    },
+    a1: node('Frostkeeper Nessa', 'The frost wolves hunt the open snowfields. Three should scatter the pack.', [end('Understood.')]),
+    t1: node('Frostkeeper Nessa', 'Coin, and my thanks. The Warden in the cavern is the true menace, though…', [end('Thanks.')]),
+    a2: node('Frostkeeper Nessa', 'The Frost Cavern is ringed with ice spires, east of here. Bring your best.', [end('Understood.')]),
+    t2: node('Frostkeeper Nessa', 'A hero of the snows. Shelter with us anytime.', [end('Ha!')]),
   },
 };
 

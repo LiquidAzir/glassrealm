@@ -5,6 +5,7 @@ const DEFS = [
   { key: 'ranged',      name: 'Ranged',      icon: '🏹' },
   { key: 'magic',       name: 'Magic',       icon: '🪄' },
   { key: 'defence',     name: 'Defence',     icon: '🛡️' },
+  { key: 'slayer',      name: 'Slayer',      icon: '☠️' },
   { key: 'woodcutting', name: 'Woodcutting', icon: '🪓' },
   { key: 'mining',      name: 'Mining',      icon: '⛏️' },
   { key: 'fishing',     name: 'Fishing',     icon: '🎣' },
@@ -19,12 +20,16 @@ const DEFS = [
   { key: 'prayer',      name: 'Prayer',      icon: '✨' },
 ];
 
-// Gentle curve: L1=0, L2≈8, L3≈29, L5≈90, L10≈430 xp.
+const DEFAULTS = {};
+DEFS.forEach((d) => (DEFAULTS[d.key] = 0));
+
 const xpForLevel = (l) => Math.round(8 * Math.pow(l - 1, 1.85));
 function levelForXp(xp) { let l = 1; while (l < 99 && xpForLevel(l + 1) <= xp) l++; return l; }
+const PRESTIGE_AT = 20;
 
-export function createSkills(saved) {
-  const xp = { combat: 0, ranged: 0, magic: 0, defence: 0, woodcutting: 0, mining: 0, fishing: 0, foraging: 0, cooking: 0, smithing: 0, farming: 0, herblore: 0, thieving: 0, crafting: 0, agility: 0, prayer: 0, ...(saved || {}) };
+export function createSkills(saved, savedPrestige) {
+  const xp = { ...DEFAULTS, ...(saved || {}) };
+  const prestige = { ...(savedPrestige || {}) };
   return {
     DEFS,
     xp,
@@ -34,17 +39,23 @@ export function createSkills(saved) {
       const cur = xpForLevel(l), next = xpForLevel(l + 1);
       return next > cur ? clamp(((xp[key] || 0) - cur) / (next - cur), 0, 1) : 1;
     },
-    toNext(key) {
-      const l = levelForXp(xp[key] || 0);
-      return Math.max(0, xpForLevel(l + 1) - (xp[key] || 0));
+    toNext(key) { const l = levelForXp(xp[key] || 0); return Math.max(0, xpForLevel(l + 1) - (xp[key] || 0)); },
+    prestigeOf(key) { return prestige[key] || 0; },
+    canPrestige(key) { return levelForXp(xp[key] || 0) >= PRESTIGE_AT; },
+    doPrestige(key) {
+      if (levelForXp(xp[key] || 0) < PRESTIGE_AT) return false;
+      xp[key] = 0; prestige[key] = (prestige[key] || 0) + 1; return true;
     },
     addXp(key, amount) {
+      amount = Math.round(amount * (1 + 0.08 * (prestige[key] || 0)));
       const before = levelForXp(xp[key] || 0);
       xp[key] = (xp[key] || 0) + amount;
       const after = levelForXp(xp[key]);
       return { leveled: after > before, level: after, amount };
     },
     total() { return DEFS.reduce((s, d) => s + levelForXp(xp[d.key] || 0), 0); },
+    prestigeTotal() { return DEFS.reduce((s, d) => s + (prestige[d.key] || 0), 0); },
     serialize() { return { ...xp }; },
+    serializePrestige() { return { ...prestige }; },
   };
 }

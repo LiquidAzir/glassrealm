@@ -272,6 +272,25 @@ export function createWorld(scene, seed = 1337) {
     if (v.smithy) smithy(v.x + 4, v.z - 1);
   }
 
+  // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
+  const trophyMeshes = {};
+  (function house() {
+    const vA = byKey.verdant.village, hx = vA.x, hz = vA.z - 9, y = height(hx, hz);
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.6, 4), new THREE.MeshLambertMaterial({ color: 0xb9a07a, flatShading: true })); wall.position.set(hx, y + 1.3, hz);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 1.9, 4), new THREE.MeshLambertMaterial({ color: 0x7a8aa0, flatShading: true })); roof.position.set(hx, y + 3.5, hz); roof.rotation.y = Math.PI / 4;
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 1.8), new THREE.MeshLambertMaterial({ color: 0x9b6bff, flatShading: true })); bed.position.set(hx - 1.4, y + 0.4, hz);
+    group.add(wall, roof, bed);
+    stations.push({ kind: 'bed', label: 'Bed (rest)', x: hx - 1.4, z: hz, y });
+    const tcol = { ember_boss: 0xff5a2a, sandwyrm: 0xd8a85a, frost_warden: 0xbfe0ff };
+    ['ember_boss', 'sandwyrm', 'frost_warden'].forEach((bk, i) => {
+      const tx = hx - 3 + i * 3, tz = hz + 4.5, ty = height(tx, tz);
+      const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.8, 6), new THREE.MeshLambertMaterial({ color: 0x8a8a92, flatShading: true })); ped.position.set(tx, ty + 0.4, tz);
+      const tro = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), new THREE.MeshBasicMaterial({ color: tcol[bk] })); tro.position.set(tx, ty + 1.25, tz);
+      ped.visible = false; tro.visible = false; group.add(ped, tro);
+      trophyMeshes[bk] = [ped, tro];
+    });
+  })();
+
   // Emberdeep cave: ring of rock spires with a SW entrance gap + a loot chest.
   (function cave() {
     const cols = 16;
@@ -351,6 +370,7 @@ export function createWorld(scene, seed = 1337) {
     depleteOre(o) { if (!o.alive) return; o.alive = false; o.respawn = 14; setOreScale(o, 0.32); },
     plantPlot(pl) { pl.state = 'growing'; pl.grow = GROW; plotVisual(pl); },
     harvestPlot(pl) { pl.state = 'empty'; plotVisual(pl); },
+    showTrophy(key) { const m = trophyMeshes[key]; if (m) m.forEach((x) => (x.visible = true)); },
     tick(dt) {
       for (const o of oreNodes) if (!o.alive) { o.respawn -= dt; if (o.respawn <= 0) { o.alive = true; setOreScale(o, 1); } }
       for (const pl of plots) if (pl.state === 'growing') { pl.grow -= dt; if (pl.grow <= 0) { pl.state = 'grown'; plotVisual(pl); } }
