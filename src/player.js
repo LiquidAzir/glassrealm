@@ -27,6 +27,7 @@ const WEAPON_MODEL = {
   iron_warhammer: ['warhammer', 0xc2ccd6], iron_halberd: ['halberd', 0xc2ccd6], steel_rapier: ['rapier', 0xeaf2ff], hunters_crossbow: ['crossbow', 0x9aa0a8], acolyte_grimoire: ['grimoire', 0x6a8aff],
   gravewarden_scythe: ['scythe', 0x9bb0c0], warlord_flail: ['flail', 0xc04040], shadow_claws: ['claw', 0x6a4a9a], dragoon_halberd: ['halberd', 0xff7a3a], seraph_blade: ['greatsword', 0xfff0c0],
   moonscythe: ['scythe', 0xc6a8ff], windpierce_crossbow: ['crossbow', 0x9bdcff], archon_scepter: ['scepter', 0xffe066],
+  valkyr_glaive: ['halberd', 0xfff0c0], stormweaver_scepter: ['scepter', 0x6fd0ff],
 };
 // Per-armor body looks: chest colour + optional shoulders / helm / hood.
 const ARMOR_MODEL = {
@@ -39,8 +40,9 @@ const ARMOR_MODEL = {
   studded_leather: { color: 0x8a5a2e, trim: 0x6e4a2b }, bronze_platebody: { color: 0xb87333, shoulders: true }, scout_leather: { color: 0x4f8f5a, hood: true }, chain_hauberk: { color: 0x9aa0a8, shoulders: true, trim: 0x6a6f78 },
   dread_plate: { color: 0x2a2230, shoulders: true, helm: true, spikes: true, trim: 0x9a2a2a }, warlord_plate: { color: 0x6a2a22, shoulders: true, helm: true, spikes: true },
   royal_cuirass: { color: 0xdfe6ef, shoulders: true, helm: true, cape: true, plume: true, trim: 0xffd45f }, archmage_robes: { color: 0x3a2a6a, hood: true, robe: true, trim: 0x9b6bff },
+  valkyr_plate: { color: 0xeef2ff, shoulders: true, helm: true, plume: true, cape: true, trim: 0xffd45f }, stormweaver_robes: { color: 0x2a4a8a, hood: true, robe: true, trim: 0x6fd0ff },
 };
-const SHIELD_COL = { wooden_shield: 0x8a5a2e, iron_shield: 0x9aa0a8, steel_shield: 0xeaf2ff, barnacle_shield: 0x3a8a8a, mithril_shield: 0x8fb8d8, bronze_kiteshield: 0xb87333, tower_shield: 0x9aa0a8, aegis_bulwark: 0xffd45f };
+const SHIELD_COL = { wooden_shield: 0x8a5a2e, iron_shield: 0x9aa0a8, steel_shield: 0xeaf2ff, barnacle_shield: 0x3a8a8a, mithril_shield: 0x8fb8d8, bronze_kiteshield: 0xb87333, tower_shield: 0x9aa0a8, aegis_bulwark: 0xffd45f, valkyr_shield: 0xfff0c0 };
 
 export function createPlayer(scene, world) {
   const group = new THREE.Group();

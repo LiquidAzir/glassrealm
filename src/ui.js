@@ -195,9 +195,10 @@ export function createUI(G) {
   function renderGear() {
     const eq = G.player.state.equipment;
     const gb = G.gearBonus ? G.gearBonus() : { def: 0, melee: 0, ranged: 0, magic: 0, maxhp: 0 };
-    const set = G.fullSet && G.fullSet();
+    const ws = G.wornSet && G.wornSet();
+    const setTxt = ws ? (ws.count >= ws.size ? `<span style="color:var(--gold)">✦ ${ws.name} set! (${ws.count}/${ws.size})</span>` : `<span style="color:var(--text-mut)">${ws.name} set ${ws.count}/${ws.size}</span>`) : '';
     const rows = gearRows();
-    let html = `<div class="section-head">⚔️${gb.melee} 🏹${gb.ranged} 🪄${gb.magic} 🛡️${gb.def} ❤️+${gb.maxhp}${set ? ` &nbsp;·&nbsp; <span style="color:var(--gold)">${set} set!</span>` : ''}</div>`;
+    let html = `<div class="section-head">⚔️${gb.melee} 🏹${gb.ranged} 🪄${gb.magic} 🛡️${gb.def} ❤️+${gb.maxhp}${setTxt ? ` &nbsp;·&nbsp; ${setTxt}` : ''}</div>`;
     rows.forEach((r, i) => {
       const d = r.key ? ITEMS[r.key] : null;
       const equipped = (r.kind === 'weapon' && eq.weapon === r.key) || (r.kind === 'armor' && eq.armor === r.key) || (r.kind === 'amulet' && eq.amulet === r.key) || (r.kind === 'ring' && eq.ring === r.key) || (r.kind === 'shield' && eq.shield === r.key) || (r.kind === 'unequipW' && !eq.weapon) || (r.kind === 'unequipA' && !eq.armor) || (r.kind === 'unequipAm' && !eq.amulet) || (r.kind === 'unequipR' && !eq.ring) || (r.kind === 'unequipS' && !eq.shield);

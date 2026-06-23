@@ -248,6 +248,15 @@ export const ITEMS = {
   royal_cuirass:    { name: 'Royal Cuirass',    icon: '🛡️', type: 'armor', defense: 22, bonus: { maxhp: 30 }, desc: 'A caped, plumed royal cuirass. −22 damage, +30 max HP.' },
   archmage_robes:   { name: 'Archmage Robes',   icon: '🧥', type: 'armor', defense: 15, bonus: { magic: 14 }, desc: 'Star-stitched robes of an archmage. −15 damage, +14 magic.' },
   aegis_bulwark:    { name: 'Aegis Bulwark',    icon: '🛡️', type: 'shield', defense: 20, desc: 'A radiant golden bulwark. Blocks 20.' },
+  // ===== Craftable gear SETS (weapon + armour + shield/amulet; partial + full bonuses) =====
+  // Valkyr — radiant melee/tank set (weapon + armour + shield)
+  valkyr_glaive: { name: 'Valkyr Glaive',  icon: '🔱', type: 'weapon', style: 'melee', skill: 'combat', set: 'valkyr', bonus: 24, range: 3.5, speed: 0.6, desc: 'Valkyr set. A winged glaive. +24 melee.' },
+  valkyr_plate:  { name: 'Valkyr Warplate', icon: '🛡️', type: 'armor', set: 'valkyr', defense: 19, desc: 'Valkyr set. Radiant winged plate. −19 damage.' },
+  valkyr_shield: { name: 'Valkyr Aegis',   icon: '🛡️', type: 'shield', set: 'valkyr', defense: 16, desc: 'Valkyr set. A gilded wing-shield. Blocks 16.' },
+  // Stormweaver — arcane magic set (weapon + armour + amulet)
+  stormweaver_scepter: { name: 'Stormweaver Scepter', icon: '🔱', type: 'weapon', style: 'magic', skill: 'magic', set: 'stormweaver', bonus: 24, range: 15, speed: 0.64, desc: 'Stormweaver set. A crackling arcane scepter. +24 magic.' },
+  stormweaver_robes:   { name: 'Stormweaver Robes', icon: '🧥', type: 'armor', set: 'stormweaver', defense: 13, bonus: { magic: 6 }, desc: 'Stormweaver set. Storm-stitched robes. −13 damage, +6 magic.' },
+  stormweaver_sigil:   { name: 'Stormweaver Sigil', icon: '📿', type: 'amulet', set: 'stormweaver', bonus: { magic: 6 }, desc: 'Stormweaver set. +6 magic.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -304,11 +313,23 @@ export const CRAFT = [
   { out: 'geode_charm',     cost: { shard_dust: 3, sapphire: 2 }, xp: 205 },
   { out: 'windborne_cloak', cost: { skyfeather: 3, gale_core: 2 }, xp: 230 },
   { out: 'ashen_signet',    cost: { obsidian_shard: 4, ruby: 2 }, xp: 240 },
+  // Craftable gear sets (forge all 3 pieces for the set bonus)
+  { out: 'valkyr_plate',  cost: { mithril_bar: 4, sapphire: 3, crystal_shard: 2 }, xp: 280 },
+  { out: 'valkyr_glaive', cost: { mithril_bar: 3, storm_shard: 2 }, xp: 260 },
+  { out: 'valkyr_shield', cost: { mithril_bar: 3, emerald: 2 }, xp: 250 },
+  { out: 'stormweaver_robes',   cost: { crystal_shard: 4, fae_dust: 2, sapphire: 2 }, xp: 280 },
+  { out: 'stormweaver_scepter', cost: { crystal_shard: 3, storm_shard: 2, ruby: 1 }, xp: 270 },
+  { out: 'stormweaver_sigil',   cost: { sapphire: 2, fae_dust: 2 }, xp: 240 },
 ];
+// Gear sets. `per` = bonus per equipped piece (partial sets reward incremental collecting);
+// `full` = extra bonus when all `size` pieces are worn. Pieces may span ANY slots (weapon/
+// armour/shield/amulet/ring) — an item joins a set via its `set` field.
 export const SETS = {
-  guardian: { name: 'Guardian', def: 10, melee: 8, maxhp: 20 },
-  ranger:   { name: 'Ranger', ranged: 12, def: 4, maxhp: 10 },
-  sorcerer: { name: 'Sorcerer', magic: 14, maxhp: 10 },
+  guardian: { name: 'Guardian', size: 3, per: { def: 2, melee: 2 }, full: { def: 4, melee: 2, maxhp: 20 } },
+  ranger:   { name: 'Ranger',   size: 3, per: { ranged: 3 },        full: { ranged: 3, def: 4, maxhp: 10 } },
+  sorcerer: { name: 'Sorcerer', size: 3, per: { magic: 4 },         full: { magic: 2, maxhp: 10 } },
+  valkyr:     { name: 'Valkyr',     size: 3, per: { melee: 2, def: 1 }, full: { melee: 3, def: 4, maxhp: 30 } },
+  stormweaver:{ name: 'Stormweaver', size: 3, per: { magic: 2 },       full: { magic: 6, maxhp: 25 } },
 };
 
 // Default unarmed weapon, and a resolver for an equipped weapon key.

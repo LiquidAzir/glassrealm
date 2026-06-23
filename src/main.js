@@ -103,16 +103,26 @@ try {
   const maxPrayer = () => 20 + G.skills.level('prayer') * 2;
 
   // ---- gear stats, set bonuses, run stats, achievements ----
-  function fullSet() {
-    const eq = player.state.equipment;
-    const a = eq.armor && ITEMS[eq.armor].set, m = eq.amulet && ITEMS[eq.amulet].set, r = eq.ring && ITEMS[eq.ring].set;
-    return (a && a === m && a === r) ? a : null;
+  // Tally set pieces across ALL equipped slots; the worn set with the most pieces wins.
+  function wornSet() {
+    const eq = player.state.equipment, counts = {};
+    for (const slot of ['weapon', 'armor', 'shield', 'amulet', 'ring']) { const it = eq[slot] && ITEMS[eq[slot]]; if (it && it.set) counts[it.set] = (counts[it.set] || 0) + 1; }
+    let best = null, n = 0;
+    for (const s in counts) if (counts[s] > n) { best = s; n = counts[s]; }
+    return best ? { set: best, name: (SETS[best] && SETS[best].name) || best, count: n, size: (SETS[best] && SETS[best].size) || n } : null;
   }
+  G.wornSet = wornSet;
+  function fullSet() { const w = wornSet(); return w && w.count >= w.size ? w.set : null; }   // full set = achievement / banner
   G.fullSet = fullSet;
   function gearBonus() {
     const eq = player.state.equipment, b = { def: 0, melee: 0, ranged: 0, magic: 0, maxhp: 0 };
     for (const slot of ['armor', 'amulet', 'ring', 'shield']) { const it = eq[slot] ? ITEMS[eq[slot]] : null; if (!it) continue; if (it.defense) b.def += it.defense; if (it.bonus) for (const k in it.bonus) b[k] += it.bonus[k]; }
-    const s = fullSet(); if (s && SETS[s]) for (const k in SETS[s]) if (k !== 'name') b[k] += SETS[s][k];
+    const w = wornSet(), S = w && SETS[w.set];   // set bonuses: per-piece + a full-set bonus (supports legacy flat sets too)
+    if (S) {
+      if (S.per) for (const k in S.per) b[k] += S.per[k] * w.count;
+      if (S.full && w.count >= w.size) for (const k in S.full) b[k] += S.full[k];
+      if (!S.per && !S.full && w.count >= w.size) for (const k in S) if (k !== 'name' && k !== 'size') b[k] += S[k];
+    }
     return b;
   }
   G.gearBonus = gearBonus;
