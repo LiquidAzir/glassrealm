@@ -121,6 +121,7 @@ try {
   G.diaries = new Set((saved && saved.diaries) || []);   // claimed region-diary tiers ("region:tierIdx")
   G.deathMode = (saved && saved.deathMode) || 'standard'; // 'standard' = gravestone, 'safe' = no loss
   G.grave = null;                                          // active gravestone {x,z,items,t,mesh}
+  G.waystonesAttuned = new Set((saved && saved.world && saved.world.waystonesAttuned) || []);   // fast-travel nodes you've walked up to
   G.slayer = (saved && saved.slayer) ? { ...saved.slayer } : { active: false, enemy: null, count: 0, progress: 0 };
   G.trackedQuest = (saved && saved.tracked) || null;   // quest pinned in the Quests menu
   const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
@@ -280,7 +281,8 @@ try {
     checkQuestReady(); G.save.save();
   };
   G.useStation = (s) => {
-    if (s.kind === 'cook') { G.openCook(); return;
+    if (s.kind === 'waystone') { G.openTravel(); return;
+    } else if (s.kind === 'cook') { G.openCook(); return;
     } else if (s.kind === 'furnace') {
       G.openSmelt(); return;
     } else if (s.kind === 'anvil') {
@@ -951,6 +953,21 @@ try {
     player.group.position.set(d.x, world.height(d.x, d.z), d.z); player.snapCamera();
     G.audio.sfx('ui'); G.ui.toast('You sail across.', 'good', 1600); G.gainXp('agility', 8); G.save.save();
   };
+  G.travelTo = (x, z, label) => {   // waystone fast-travel
+    cancelChannel(); clearCombat();
+    player.group.position.set(x, world.height(x, z), z); player.snapCamera();
+    G.audio.sfx('ui'); if (label) G.ui.toast(label, 'good', 1800); G.save.save();
+  };
+  const travelCfg = {
+    title: 'Waystone Network', hint: '↑ ↓ select · tap to travel · ↑↓↑↓ leave',
+    empty: 'Attune waystones by walking up to them — visit each once.',
+    rows: () => world.waystones.filter((w) => G.waystonesAttuned.has(w.key)).map((w) => {
+      const d = dist2D(player.position.x, player.position.z, w.x, w.z), here = d < 8;
+      return { icon: '◈', title: w.name, sub: here ? 'you are here' : `${Math.round(d)}m away`, right: here ? '•' : 'travel', data: { w, here } };
+    }),
+    onSelect: (r) => { if (r.data.here) { G.ui.toast('You are already here.', '', 1400); return; } G.ui.closePicker(); setMode(G.inInterior ? 'interior' : 'world'); G.travelTo(r.data.w.x, r.data.w.z, 'You blink to ' + r.data.w.name + '.'); },
+  };
+  G.openTravel = () => { setMode('picker'); G.ui.openPicker(travelCfg); };
 
   let hurtFlash = 0;
   // ---------- Death stakes: a gravestone holds your dropped goods; run back to reclaim them ----------
@@ -1214,6 +1231,10 @@ try {
     let rk = null, rb = Infinity;
     for (const rg of world.regions) { const d = Math.hypot(player.position.x - rg.x, player.position.z - rg.z); if (d < rg.r && d < rb) { rb = d; rk = rg.key; } }
     if (rk && !G.stats.regions.has(rk)) { G.stats.regions.add(rk); if (G.ach) G.ach.evaluate(); }
+    for (const wstn of world.waystones) {   // attune a waystone by walking up to it (then fast-travel to it)
+      if (G.waystonesAttuned.has(wstn.key)) continue;
+      if (dist2D(player.position.x, player.position.z, wstn.x, wstn.z) < 6) { G.waystonesAttuned.add(wstn.key); G.ui.levelBanner('◈ Waystone attuned: ' + wstn.name); G.audio.sfx('ach'); G.save.save(); }
+    }
     if (G.quests.notifyVisit(player.position.x, player.position.z)) { checkQuestReady(); G.save.save(); }
   }
 
@@ -1397,7 +1418,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

@@ -57,6 +57,7 @@ export function createSave(G) {
         lootedChests: G.world.stations.filter((s) => s.kind === 'chest' && s.looted).map((s) => s.label),
         foundDiscoveries: (G.world.discoveries || []).filter((d) => d.found).map((d) => d.key),
         builtFurniture: G.world.houseFurniture ? Object.keys(G.world.houseFurniture).filter((k) => G.world.houseFurniture[k].built) : [],
+        waystonesAttuned: G.waystonesAttuned ? [...G.waystonesAttuned] : [],
       },
     };
   }

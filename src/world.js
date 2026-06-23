@@ -343,6 +343,9 @@ export function createWorld(scene, seed = 1337) {
   const fireMeshes = [], orbMeshes = [];   // ambient meshes animated in tick()
   const solids = [];                       // circular collision obstacles (buildings, wells)
   const stations = [];
+  const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });   // hoisted: used by builders below
+  const waystones = [];   // fast-travel network nodes
+  const snapLand = (x, z) => { if (isWalkable(x, z)) return { x, z }; for (let r = 3; r <= 44; r += 3) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz)) return { x: nx, z: nz }; } return { x, z }; };
   function hut(x, z, a, wallHex, roofHex) {
     const y = height(x, z);
     const wall = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 3), new THREE.MeshLambertMaterial({ color: wallHex, flatShading: true }));
@@ -471,7 +474,6 @@ export function createWorld(scene, seed = 1337) {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 2.0, 6), lmat(0x6e4a2b)); post.position.set(x, y + 1.0, z); group.add(post);
     const board = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.85, 0.14), lmat(color)); board.position.set(x, y + 1.95, z); group.add(board);
   }
-  const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   function fire(x, z) {   // a proper cast-iron stove with a flickering fire window + pot
     const y = height(x, z);
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.3, 1.4), lmat(0x55585f)); body.position.set(x, y + 0.65, z); group.add(body);
@@ -567,6 +569,15 @@ export function createWorld(scene, seed = 1337) {
   // Each village is a ring of enterable typed buildings around a plaza (well, stove,
   // altar, market stall, lamps) with a farm garden off to the side. Bank/forge/craft/
   // cauldron services now live INSIDE their buildings (entered via the door).
+  function waystone(key, name, x, z) {
+    const s = snapLand(x, z); x = s.x; z = s.z; const y = height(x, z);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 0.5, 6), lmat(0x5a6273)); base.position.set(x, y + 0.25, z); group.add(base);
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 2.6, 6), lmat(0x7a85a0)); pillar.position.set(x, y + 1.6, z); group.add(pillar);
+    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), new THREE.MeshBasicMaterial({ color: 0x8fd0ff })); shard.position.set(x, y + 3.4, z); group.add(shard); orbMeshes.push({ m: shard, baseY: y + 3.4, seed: x });
+    solids.push({ x, z, r: 1.3 });
+    waystones.push({ key, name, x, z, y });
+    stations.push({ kind: 'waystone', label: 'Waystone Network', x, z, y });
+  }
   for (const v of villages) {
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
     for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * 13, v.z + Math.sin(a) * 13, v.x, v.z, types[i], v.hut, v.biome); }
@@ -585,7 +596,10 @@ export function createWorld(scene, seed = 1337) {
     svc.forEach((fn, i) => { const a = (i / svc.length) * TAU + 0.3; fn(v.x + Math.cos(a) * 6.5, v.z + Math.sin(a) * 6.5); });
     for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU + 0.78; lampPost(v.x + Math.cos(a) * 8, v.z + Math.sin(a) * 8); }
     plot(v.x + 15, v.z + 1.4); plot(v.x + 15.6, v.z + 2.9); plot(v.x + 14.7, v.z + 4.3);
+    waystone('ws_' + v.name.replace(/\W+/g, '').toLowerCase(), v.name, v.x - 9, v.z - 9);
   }
+  waystone('ws_emberdeep', 'Emberdeep Waystone', CAVE.x + 6, CAVE.z + 6);   // a couple of frontier stones away from towns
+  waystone('ws_crossroads', 'Crossroads Waystone', 61 * WS, 4 * WS);
 
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
   const trophyMeshes = {};
@@ -699,7 +713,6 @@ export function createWorld(scene, seed = 1337) {
     group.add(ring, post);
     shortcuts.push({ x, z, toX, toZ, level, name, cooldown: 0 });
   }
-  const snapLand = (x, z) => { if (isWalkable(x, z)) return { x, z }; for (let r = 3; r <= 44; r += 3) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz)) return { x: nx, z: nz }; } return { x, z }; };
   for (const s of SHORTCUT_LINKS) { const a = snapLand(s.a.x, s.a.z), b = snapLand(s.b.x, s.b.z); pad(a.x, a.z, b.x, b.z, s.level, s.name); pad(b.x, b.z, a.x, a.z, s.level, s.name); }
 
   // crossing visuals vary by type: a grand stone-arch span, a rustic plank causeway, a
@@ -780,7 +793,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture, ferries, snapLand,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);
