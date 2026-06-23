@@ -945,6 +945,12 @@ try {
     player.group.position.set(s.toX, world.height(s.toX, s.toZ), s.toZ);
     G.gainXp('agility', 16); G.ui.toast(s.name, 'good', 1200);
   };
+  G.useFerry = (f) => {   // sail across a sea-lane to the paired dock (a ferry link is travel, not free fast-travel)
+    const d = world.snapLand(f.toX, f.toZ);
+    cancelChannel(); clearCombat();
+    player.group.position.set(d.x, world.height(d.x, d.z), d.z); player.snapCamera();
+    G.audio.sfx('ui'); G.ui.toast('You sail across.', 'good', 1600); G.gainXp('agility', 8); G.save.save();
+  };
 
   let hurtFlash = 0;
   // ---------- Death stakes: a gravestone holds your dropped goods; run back to reclaim them ----------
@@ -1143,6 +1149,7 @@ try {
     else if (t.kind === 'plot') G.plotAction(t.ref);
     else if (t.kind === 'stall') G.thieveStall(t.ref);
     else if (t.kind === 'shortcut') G.useShortcut(t.ref);
+    else if (t.kind === 'ferry') G.useFerry(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
     else if (t.kind === 'discovery') G.findDiscovery(t.ref);
     else if (t.kind === 'dig') G.digClue();

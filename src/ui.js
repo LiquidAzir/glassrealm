@@ -320,7 +320,7 @@ export function createUI(G) {
       `<div class="map-legend"><b style="color:#caa878">H</b>ome &nbsp;<b style="color:#ffd45f">S</b>tore &nbsp;<b style="color:#6fa0ff">B</b>ank &nbsp;<b style="color:#9bf2ff">W</b>orkshop &nbsp;<b style="color:#e0a050">T</b>avern &nbsp;<b style="color:#ff7a33">F</b>orge &nbsp;·&nbsp; <span style="color:#b07adf">●</span> dungeon &nbsp; <span style="color:#ff6b6b">●</span> foe</div>`;
     drawMap(document.getElementById('mapCanvas').getContext('2d'));
   }
-  const BIOME_MAP_COL = { grass: '#2f7d4a', forest: '#1f5a36', desert: '#d6bd72', snow: '#dbe6f2', volcanic: '#9c5a34', swamp: '#3a5a3e', jungle: '#2faa4a', badlands: '#b5622e', highland: '#7a8290', fae: '#8a3a9a', coast: '#3aa6b0', autumn: '#cf7a2e' };
+  const BIOME_MAP_COL = { grass: '#2f7d4a', forest: '#1f5a36', desert: '#d6bd72', snow: '#dbe6f2', volcanic: '#9c5a34', swamp: '#3a5a3e', jungle: '#2faa4a', badlands: '#b5622e', highland: '#7a8290', fae: '#8a3a9a', coast: '#3aa6b0', autumn: '#cf7a2e', crystal: '#7c9bff', spore: '#a05fb0', lagoon: '#3ad0c0', sky: '#aec6e6', cinder: '#b5482a' };
   // building-type letters/colours so each building reads distinctly on the map + minimap
   const BUILD_ICON = { home: 'H', store: 'S', bank: 'B', workshop: 'W', tavern: 'T', forge: 'F' };
   const BUILD_COL = { home: '#caa878', store: '#ffd45f', bank: '#6fa0ff', workshop: '#9bf2ff', tavern: '#e0a050', forge: '#ff7a33' };
@@ -332,7 +332,8 @@ export function createUI(G) {
     const to = (x, z) => [S / 2 + (x - ox) * sc, S / 2 + (z - oz) * sc];
     ctx.clearRect(0, 0, S, S); ctx.fillStyle = '#08222a'; ctx.fillRect(0, 0, S, S);
     ctx.strokeStyle = '#cdb98a'; ctx.lineCap = 'round';
-    for (const b of G.world.bridges) { const [x1, y1] = to(b.ax, b.az), [x2, y2] = to(b.bx, b.bz); ctx.lineWidth = Math.max(2, b.halfW * 2 * sc); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    for (const b of G.world.bridges) { const [x1, y1] = to(b.ax, b.az), [x2, y2] = to(b.bx, b.bz); const ferry = b.type === 'ferry'; ctx.strokeStyle = ferry ? '#5fd6e6' : '#cdb98a'; ctx.setLineDash(ferry ? [6, 5] : []); ctx.lineWidth = Math.max(2, b.halfW * 2 * sc); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    ctx.setLineDash([]);
     for (const r of R) { const [x, y] = to(r.x, r.z); ctx.fillStyle = BIOME_MAP_COL[r.biome] || '#2f7d4a'; ctx.beginPath(); ctx.arc(x, y, r.r * sc, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#aab2bd'; G.world.peaks.forEach((pk) => { const [x, y] = to(pk.x, pk.z); ctx.beginPath(); ctx.arc(x, y, Math.max(3, pk.r * sc * 0.5), 0, 7); ctx.fill(); });
     const cv = G.world.cave; const [cvx, cvy] = to(cv.x, cv.z); ctx.fillStyle = '#5a5550'; ctx.beginPath(); ctx.arc(cvx, cvy, Math.max(3, cv.r * sc), 0, 7); ctx.fill();
@@ -357,8 +358,9 @@ export function createUI(G) {
     ctx.save(); ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 1, 0, 7); ctx.clip();
     ctx.fillStyle = '#08222a'; ctx.fillRect(0, 0, S, S);
     for (const r of G.world.regions) { const [x, y] = to(r.x, r.z); ctx.fillStyle = BIOME_MAP_COL[r.biome] || '#2f7d4a'; ctx.beginPath(); ctx.arc(x, y, r.r * sc, 0, 7); ctx.fill(); }
-    ctx.strokeStyle = '#cdb98a'; ctx.lineCap = 'round';
-    for (const b of G.world.bridges) { const [x1, y1] = to(b.ax, b.az), [x2, y2] = to(b.bx, b.bz); ctx.lineWidth = Math.max(2, b.halfW * 2 * sc); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    ctx.lineCap = 'round';
+    for (const b of G.world.bridges) { const [x1, y1] = to(b.ax, b.az), [x2, y2] = to(b.bx, b.bz); const ferry = b.type === 'ferry'; ctx.strokeStyle = ferry ? '#5fd6e6' : '#cdb98a'; ctx.setLineDash(ferry ? [5, 4] : []); ctx.lineWidth = Math.max(2, b.halfW * 2 * sc); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    ctx.setLineDash([]);
     if (G.world.dungeons) { ctx.fillStyle = '#7a4a8a'; for (const d of G.world.dungeons) { const [x, y] = to(d.x, d.z); ctx.beginPath(); ctx.arc(x, y, Math.max(2, d.r * sc), 0, 7); ctx.fill(); } }
     { const cv = G.world.cave; const [x, y] = to(cv.x, cv.z); ctx.fillStyle = '#5a5550'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, cv.r * sc), 0, 7); ctx.fill(); }
     if (G.world.cave2) { const c2 = G.world.cave2; const [x, y] = to(c2.x, c2.z); ctx.fillStyle = '#5a6a80'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, c2.r * sc), 0, 7); ctx.fill(); }

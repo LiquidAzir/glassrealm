@@ -25,6 +25,11 @@ const BIOMES = {
   fae:      { sea: 0x241a5a, sand: 0x8a7ab0, low: 0x6a4a9a, low2: 0x7a3a9a, high: 0x9a6abf, peak: 0xe0c8ff, fol: [0xb04acf, 0x6a8aff], trunk: 0x9a8ab0 },
   coast:    { sea: 0x1aa6b8, sand: 0xf0e2b2, low: 0x6ec98a, low2: 0x54b6a2, high: 0x9aa6b2, peak: 0xeaf2ff, fol: [0x4fae84, 0x6ec98a], trunk: 0x6e4a2b },
   autumn:   { sea: 0x123842, sand: 0xd8c89a, low: 0xd07a2e, low2: 0xb5602a, high: 0x8a7a5a, peak: 0xf0d0a0, fol: [0xe0852e, 0xf0b040], trunk: 0x5c4326 },
+  crystal:  { sea: 0x1a3a5a, sand: 0xb8c0d8, low: 0x6a7fb0, low2: 0x5a6fa0, high: 0x8a9fcf, peak: 0xdfe8ff, fol: [0x7c9bff, 0xa0c0ff], trunk: 0x5a6a8a },
+  spore:    { sea: 0x2a1a3a, sand: 0x8a7a9a, low: 0x7a4a8a, low2: 0x6a3a7a, high: 0x9a6aaf, peak: 0xe0c8ff, fol: [0xc060c0, 0xe080d0], trunk: 0x6a4a6a },
+  lagoon:   { sea: 0x1aa6b8, sand: 0xf0e2b2, low: 0x4fd0c0, low2: 0x3ab0a8, high: 0x8ac0b0, peak: 0xeaf8f4, fol: [0x4fae84, 0x6ec98a], trunk: 0x8a6a4a },
+  sky:      { sea: 0x2a4a66, sand: 0xcdd6e6, low: 0x9fb6d6, low2: 0x8aa6c8, high: 0xbcd0e6, peak: 0xffffff, fol: [0xaec6e6, 0xd0e0f4], trunk: 0x6a7280 },
+  cinder:   { sea: 0x2a1a1a, sand: 0x6a4a3a, low: 0xb5482a, low2: 0x9a3a22, high: 0x6a3a2a, peak: 0xff7a3d, fol: [0x8a4a2a, 0xb5622e], trunk: 0x4a2a1a },
 };
 
 const REGIONS = [
@@ -42,6 +47,12 @@ const REGIONS = [
   // --- Expansion III: a southern harbour town + a northern autumn town ---
   { key: 'saltcrest', x: 80, z: 185, r: 46, biome: 'coast',  village: { name: 'Saltcrest Harbor', x: 80, z: 185, hut: [0x8aa6b6, 0x355a68], smithy: true }, tree: 'pine', nTree: 20, nBush: 8,  nRock: 12, nFish: 8, ore: [['iron', 4], ['copper', 3]] },
   { key: 'amberfell', x: 50, z: -160, r: 42, biome: 'autumn', village: { name: 'Amberfell',       x: 50, z: -160, hut: [0xb5752e, 0x6a3a22] }, peak: { x: 58, z: -172, r: 14, h: 8 }, tree: 'pine', nTree: 48, nBush: 16, nRock: 8,  nFish: 4, ore: [['copper', 4], ['coal', 3]] },
+  // --- Big-Map Upgrade: 5 frontier regions (NW crystal/spore cluster, NW lagoon, NE sky shelf, SW cinder isle) ---
+  { key: 'shardspire',  x: -140, z: 96,   r: 38, biome: 'crystal', village: { name: 'Prismhold',   x: -140, z: 96,   hut: [0x6a7fb0, 0x2a3a6a] }, peak: { x: -148, z: 86,  r: 16, h: 13 }, tree: 'pine',     nTree: 14, nBush: 6,  nRock: 22, nFish: 3, ore: [['copper', 3], ['coal', 3]] },
+  { key: 'sporevale',   x: -164, z: 54,   r: 32, biome: 'spore',                                                                                  peak: { x: -172, z: 46,  r: 12, h: 7 },  tree: 'mushroom', nTree: 40, nBush: 18, nRock: 6,  nFish: 3, ore: [['copper', 3]] },
+  { key: 'lagoon',      x: -100, z: -118, r: 36, biome: 'lagoon',  village: { name: 'Coralside',   x: -100, z: -118, hut: [0x4fbfb8, 0xe6d29a] },                                          tree: 'palm',     nTree: 18, nBush: 10, nRock: 8,  nFish: 9, ore: [['copper', 3], ['iron', 2]] },
+  { key: 'skyreach',    x: 144,  z: -130, r: 38, biome: 'sky',     village: { name: 'Aerie Watch', x: 144,  z: -130, hut: [0x9fb6d6, 0xf0f6ff] }, peak: { x: 152,  z: -140, r: 18, h: 16 }, tree: 'pine',     nTree: 22, nBush: 6,  nRock: 16, nFish: 2, ore: [['coal', 4], ['iron', 3]] },
+  { key: 'cinderbreak', x: -56,  z: 176,  r: 32, biome: 'cinder',                                                                                 peak: { x: -56,  z: 170, r: 14, h: 12 }, tree: 'cactus',   nTree: 10, nBush: 0,  nRock: 20, nFish: 3, ore: [['iron', 5], ['coal', 5]] },
 ];
 // Region links with a transition TYPE: 'causeway' = rustic plank land bridge (the classic),
 // 'isthmus' = a wide natural land neck where the islands nearly merge (clean, no built deck),
@@ -54,6 +65,11 @@ const BRIDGE_LINKS = [
   ['desert', 'saltcrest', 'span'], ['badlands', 'saltcrest', 'causeway'], ['jungle', 'badlands', 'isthmus'],
   ['glade', 'amberfell', 'causeway'], ['snow', 'amberfell', 'span'],
   ['verdant', 'tideisle', 'isthmus'], ['ember', 'tideisle', 'causeway'],
+  // Big-Map Upgrade cross-links. 'ferry' = a sea route (no land laid; tap the dock to sail across).
+  ['shardspire', 'sporevale', 'isthmus'], ['shardspire', 'highland', 'span'], ['shardspire', 'mistmoor', 'causeway'],
+  ['sporevale', 'forest', 'span'], ['glade', 'lagoon', 'isthmus'], ['lagoon', 'highland', 'span'],
+  ['lagoon', 'amberfell', 'ferry'], ['snow', 'skyreach', 'isthmus'], ['skyreach', 'amberfell', 'span'],
+  ['skyreach', 'ember', 'ferry'], ['cinderbreak', 'mistmoor', 'ferry'], ['cinderbreak', 'saltcrest', 'ferry'],
 ];
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
@@ -145,7 +161,7 @@ export function createWorld(scene, seed = 1337) {
 
   // bridges: edge-to-edge segments between linked regions, varied by transition type.
   // isthmus is wide + bites deep into both islands (natural merge); span/causeway are narrower.
-  const BRIDGE_CFG = { causeway: { w: 6, inset: 5, fall: 5, flat: 1.8 }, isthmus: { w: 11, inset: 9, fall: 9, flat: 0 }, span: { w: 5, inset: 4, fall: 5, flat: 2.0 } };
+  const BRIDGE_CFG = { causeway: { w: 6, inset: 5, fall: 5, flat: 1.8 }, isthmus: { w: 11, inset: 9, fall: 9, flat: 0 }, span: { w: 5, inset: 4, fall: 5, flat: 2.0 }, ferry: { w: 4, inset: 2, fall: 0, flat: 0 } };
   const BRIDGES = BRIDGE_LINKS.map(([a, b, type = 'causeway']) => {
     const A = byKey[a], B = byKey[b], cfg = BRIDGE_CFG[type] || BRIDGE_CFG.causeway;
     const dx = B.x - A.x, dz = B.z - A.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
@@ -156,7 +172,7 @@ export function createWorld(scene, seed = 1337) {
   function landMask(x, z) {
     let m = 0;
     for (const r of REGIONS) m = Math.max(m, smoothstep((r.r - Math.hypot(x - r.x, z - r.z)) / (16 * WS)));   // coastline width scales with the world so beaches stay proportional (rim features stay on land)
-    for (const b of BRIDGES) m = Math.max(m, smoothstep((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / b.fall));
+    for (const b of BRIDGES) { if (b.type === 'ferry') continue; m = Math.max(m, smoothstep((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / b.fall)); }   // ferries are sea routes — no land
     return m;
   }
   function height(x, z) {
@@ -167,6 +183,7 @@ export function createWorld(scene, seed = 1337) {
     h += (land - 1) * 1.6;
     // flatten bridges into level causeways so noise dips never break the path
     for (const b of BRIDGES) {
+      if (b.type === 'ferry') continue;   // no walkway flattening for sea routes
       const d = distToSeg(x, z, b.ax, b.az, b.bx, b.bz);
       if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.4 * fl); }   // natural neck: raise troughs only, keep rolling land
       else { const fl = smoothstep(clamp((b.halfW - d) / 4, 0, 1)); h = h * (1 - fl) + b.flat * fl; }   // causeway/span: flat walkway
@@ -236,6 +253,7 @@ export function createWorld(scene, seed = 1337) {
     const bi = BIOMES[reg.biome];
     if (reg.tree === 'pine') scatterIn(reg, reg.nTree, 1.4, 6.5, 3.0, (x, z, y) => trees.push({ x, z, y, s: 0.8 + rng() * 0.7, alive: true, low: bi.fol[0], hi: bi.fol[1], trunk: bi.trunk }));
     else if (reg.tree === 'cactus') scatterIn(reg, reg.nTree, 1.0, 6.0, 3.2, (x, z, y) => cacti.push({ x, z, y, s: 0.8 + rng() * 0.5 }));
+    else if (reg.tree === 'mushroom' || reg.tree === 'palm') scatterIn(reg, reg.nTree, 1.2, 6.0, 3.0, (x, z, y) => trees.push({ x, z, y, s: 0.8 + rng() * 0.6, alive: true, low: bi.fol[0], hi: bi.fol[1], trunk: bi.trunk }));   // reuse the tree builder, tinted by biome
     scatterIn(reg, reg.nBush, 1.2, 5.0, 2.6, (x, z, y) => bushes.push({ x, z, y, alive: true }));
     scatterIn(reg, reg.nRock, 0.4, 10.5, 2.4, (x, z, y) => rocks.push({ x, z, y, s: 0.5 + rng() * 1.0 }));
     // ore is no longer scattered across regions — it lives in dedicated MINES (below)
@@ -684,9 +702,27 @@ export function createWorld(scene, seed = 1337) {
   const snapLand = (x, z) => { if (isWalkable(x, z)) return { x, z }; for (let r = 3; r <= 44; r += 3) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz)) return { x: nx, z: nz }; } return { x, z }; };
   for (const s of SHORTCUT_LINKS) { const a = snapLand(s.a.x, s.a.z), b = snapLand(s.b.x, s.b.z); pad(a.x, a.z, b.x, b.z, s.level, s.name); pad(b.x, b.z, a.x, a.z, s.level, s.name); }
 
-  // crossing visuals vary by type: a grand stone-arch span, a rustic plank causeway, or
-  // nothing for a natural isthmus (it's just blended land you walk straight across).
+  // crossing visuals vary by type: a grand stone-arch span, a rustic plank causeway, a
+  // natural isthmus (blended land), or a FERRY (a dock at each shore + a boat shuttling the sea-lane).
+  const ferries = [], ferryBoats = [];
+  function dock(x, z) {
+    const y = height(x, z);
+    const plat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 6), lmat(0x6a4a2a)); plat.position.set(x, Math.max(y, 1.0) + 0.2, z); group.add(plat);
+    for (const o of [-2.2, 2.2]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.6, 6), lmat(0x5a3a22)); post.position.set(x, y + 0.7, z + o); group.add(post); }
+    const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: 0x7fe0ff })); lamp.position.set(x, y + 1.7, z); group.add(lamp);
+  }
   for (const b of BRIDGES) {
+    if (b.type === 'ferry') {
+      const A = snapLand(b.ax, b.az), B = snapLand(b.bx, b.bz);   // docks must sit on solid (walkable) shore, not beach
+      dock(A.x, A.z); dock(B.x, B.z);
+      const boat = new THREE.Group();
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 4.2), lmat(0x7a4a2a)); hull.position.y = 0.35; boat.add(hull);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 6), lmat(0x5a3a22)); mast.position.y = 1.6; boat.add(mast);
+      const sail = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.8), new THREE.MeshLambertMaterial({ color: 0xe8e0c8, side: THREE.DoubleSide })); sail.position.y = 1.7; boat.add(sail);
+      group.add(boat); ferryBoats.push({ m: boat, ax: b.ax, az: b.az, bx: b.bx, bz: b.bz });   // boat sails the open-water rim line
+      ferries.push({ x: A.x, z: A.z, toX: B.x, toZ: B.z }, { x: B.x, z: B.z, toX: A.x, toZ: A.z });
+      continue;
+    }
     if (b.type === 'isthmus') continue;                                             // natural land neck — no built deck
     const mx = (b.ax + b.bx) / 2, mz = (b.az + b.bz) / 2;
     const len = Math.hypot(b.bx - b.ax, b.bz - b.az), ang = Math.atan2(b.bx - b.ax, b.bz - b.az);
@@ -731,7 +767,9 @@ export function createWorld(scene, seed = 1337) {
   locations.push({ name: 'Moonlit Glade', x: byKey.glade.x, z: byKey.glade.z });
   locations.push({ name: 'Saltcrest Shoals', x: 80 * WS, z: 200 * WS });
   locations.push({ name: 'Amberfell Woods', x: 50 * WS, z: -148 * WS });
-  function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak', jungle: 'Kytari Spire', badlands: 'Red Mesa', highland: 'Thunderpeak', glade: 'Moonspire', amberfell: 'Amber Tor' })[key] || 'Peak'; }
+  locations.push({ name: 'The Spore Vale', x: byKey.sporevale.x, z: byKey.sporevale.z });
+  locations.push({ name: 'Cinderbreak Isle', x: byKey.cinderbreak.x, z: byKey.cinderbreak.z });
+  function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak', jungle: 'Kytari Spire', badlands: 'Red Mesa', highland: 'Thunderpeak', glade: 'Moonspire', amberfell: 'Amber Tor', shardspire: 'Prism Peak', skyreach: 'Aerie Spire', cinderbreak: 'Cinder Cone', sporevale: 'Spore Knoll' })[key] || 'Peak'; }
 
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
   function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }
@@ -742,7 +780,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture, ferries, snapLand,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);
@@ -767,6 +805,7 @@ export function createWorld(scene, seed = 1337) {
       for (const f of fireMeshes) { f.m.scale.setScalar(0.82 + Math.sin(animT * 9 + f.seed) * 0.18); f.m.position.y = f.baseY + Math.sin(animT * 13 + f.seed) * 0.05; }
       for (const o of orbMeshes) { o.m.rotation.y = animT * 0.8; o.m.position.y = o.baseY + Math.sin(animT * 1.4 + o.seed) * 0.4; }
       water.position.y = WATER_Y + Math.sin(animT * 0.5) * 0.08;
+      for (const f of ferryBoats) { const t = (Math.sin(animT * 0.18) + 1) / 2; f.m.position.set(f.ax + (f.bx - f.ax) * t, 0.9 + Math.sin(animT * 2) * 0.06, f.az + (f.bz - f.az) * t); f.m.rotation.y = Math.atan2(f.bx - f.ax, f.bz - f.az); }
       for (const o of oreNodes) if (!o.alive) { o.respawn -= dt; if (o.respawn <= 0) { o.alive = true; setOreScale(o, 1); } }
       for (const pl of plots) if (pl.state === 'growing') { pl.grow -= dt; if (pl.grow <= 0) { pl.state = 'grown'; plotVisual(pl); } }
       for (const s of stalls) if (s.cooldown > 0) s.cooldown -= dt;
