@@ -1065,7 +1065,7 @@ try {
     let mit = 1;                                 // then fold every multiplier into one, and CAP it
     const apT = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apT && apT.dmgTaken) mit *= apT.dmgTaken;
-    const eStyle = ATK_STYLE[src && src.enemyKey] || 'melee';   // protection prayer cuts the matching style (slams = melee)
+    const eStyle = (src && src.atkStyle) || ATK_STYLE[src && src.enemyKey] || 'melee';   // protection prayer cuts the matching style (boss phases can flip src.atkStyle; slams = melee)
     if (apT && apT.protect === eStyle) mit *= apT.protectMult;
     const bf = player.state.buffs;
     if (bf && bf.defence) mit *= bf.defence.mult;   // defence potion soaks damage

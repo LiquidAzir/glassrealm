@@ -592,12 +592,12 @@ export const ENEMIES = {
   myconid_warden: { name: 'Myconid Warden', hp: 124, dmg: 23, speed: 3.0, xp: 250, color: 0x7a4a8a, aggro: 12, shape: 'humanoid', scale: 1.4, poison: 4, loot: { sporecap: 2, herb: 1, bones: 1 } },
   spore_thrall:   { name: 'Spore-Thrall',   hp: 96,  dmg: 21, speed: 5.0, xp: 220, color: 0x9a6aaf, aggro: 15, shape: 'beast', poison: 5, loot: { sporecap: 1, pelt: 1, meat: 1 } },
   pollen_drifter: { name: 'Pollen Drifter', hp: 88,  dmg: 20, speed: 3.6, xp: 235, color: 0xc060c0, aggro: 14, shape: 'beast', scale: 0.9, poison: 6, loot: { creeping_ichor: 1, sporecap: 1 } },
-  the_chorus:     { name: 'The Chorus', hp: 440, dmg: 36, speed: 3.2, xp: 1180, color: 0xb86adf, aggro: 20, shape: 'beast', scale: 2.3, boss: true, poison: 8, loot: { gold: 420, hyphae_lash: 1, creeping_ichor: 4, sporecap: 6, emerald: 2 }, rare: { item: 'pall_amulet', chance: 0.3 } },
+  the_chorus:     { name: 'The Chorus', hp: 440, dmg: 36, speed: 3.2, xp: 1180, color: 0xb86adf, aggro: 20, shape: 'beast', scale: 2.3, boss: true, poison: 8, grove: { enemies: ['spore_thrall', 'pollen_drifter', 'myconid_warden'], regen: 7, r: 22 }, loot: { gold: 420, hyphae_lash: 1, creeping_ichor: 4, sporecap: 6, emerald: 2 }, rare: { item: 'pall_amulet', chance: 0.3 } },
   // --- Cinderbreak: a doomsday cult on the cold caldera ---
   obsidian_sentinel: { name: 'Obsidian Sentinel', hp: 175, dmg: 26, speed: 3.0, xp: 300, color: 0x201826, aggro: 12, shape: 'humanoid', scale: 1.5, loot: { obsidian_shard: 1, coal: 3, gold: 26 } },
   cinder_cultist:    { name: 'Cinder Cultist',    hp: 96,  dmg: 24, speed: 4.4, xp: 250, color: 0x9a2a2a, aggro: 15, shape: 'humanoid', loot: { obsidian_shard: 1, herb: 1, gold: 30 } },
   ashen_revenant:    { name: 'Ashen Revenant',    hp: 130, dmg: 23, speed: 4.2, xp: 270, color: 0x6a5a52, aggro: 16, shape: 'humanoid', poison: 6, loot: { demon_ash: 1, bones: 2, obsidian_shard: 1 } },
-  pyraxis:           { name: 'Pyraxis, the Unkindled', hp: 520, dmg: 40, speed: 3.2, xp: 1320, color: 0xff5a2a, aggro: 20, shape: 'humanoid', scale: 2.4, boss: true, poison: 8, loot: { gold: 480, obsidian_maul: 1, obsidian_shard: 6, magma_core: 3, relic: 1 }, rare: { item: 'ashen_signet', chance: 0.3 } },
+  pyraxis:           { name: 'Pyraxis, the Unkindled', hp: 520, dmg: 40, speed: 3.2, xp: 1320, color: 0xff5a2a, aggro: 20, shape: 'humanoid', scale: 2.4, boss: true, poison: 8, enrageAt: 0.33, phase: { at: 0.66, adds: { enemy: 'cinder_cultist', n: 2 }, atkStyle: 'magic', msg: 'Pyraxis cracks — cultists rush to feed the fire! (pray Magic)' }, loot: { gold: 480, obsidian_maul: 1, obsidian_shard: 6, magma_core: 3, relic: 1 }, rare: { item: 'ashen_signet', chance: 0.3 } },
 };
 
 // ---------- Combat triangle ----------

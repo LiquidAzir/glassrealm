@@ -165,8 +165,21 @@ export function createEntities(scene, world, G) {
 
       let moving = false;
       if (e.state === 'chase') {
-        if (e.def.boss) {   // boss mechanics: enrage at half health, periodic telegraphed slam to dodge
-          if (!e.enraged && e.hp < e.maxHp * 0.5) { e.enraged = true; if (G.ui) G.ui.toast(`${e.def.name} enrages!`, 'bad', 2200); }
+        if (e.def.boss) {   // boss mechanics: enrage, telegraphed slam, optional phase-adds + grove-feed
+          if (!e.enraged && e.hp < e.maxHp * (e.def.enrageAt || 0.5)) { e.enraged = true; if (G.ui) G.ui.toast(`${e.def.name} enrages!`, 'bad', 2200); }
+          const ph = e.def.phase;   // one-shot phase: spawn adds + shift attack style when HP crosses the threshold
+          if (ph && !e.phased && e.hp < e.maxHp * ph.at) {
+            e.phased = true;
+            if (ph.atkStyle) e.atkStyle = ph.atkStyle;
+            if (ph.adds) for (let i = 0; i < ph.adds.n; i++) { const a = (i / ph.adds.n) * TAU; spawnEnemy(ph.adds.enemy, e.pos.x + Math.cos(a) * 4, e.pos.z + Math.sin(a) * 4); }
+            if (G.ui) G.ui.toast(ph.msg || `${e.def.name} shifts!`, 'bad', 2600);
+          }
+          const gr = e.def.grove;   // grove-feed: while its minions live nearby, the boss heals — clear the grove first
+          if (gr) {
+            let fed = false;
+            for (const o of enemies) if (o.alive && o !== e && gr.enemies.includes(o.enemyKey) && dist2D(o.pos.x, o.pos.z, e.pos.x, e.pos.z) < (gr.r || 24) * WS) { fed = true; break; }
+            if (fed && e.hp < e.maxHp) { e.hp = Math.min(e.maxHp, e.hp + (gr.regen || 5) * dt); if (G.fx && Math.random() < 0.06) G.fx.burst(e.pos.x, e.pos.y + 1.6, e.pos.z, 0x6ad06a, { n: 3, up: 1.4 }); }
+          }
           e.slamCd = (e.slamCd == null ? 4 : e.slamCd) - dt;
           if (e.slamCd <= 0 && d < e.def.aggro * 2 + 6) { e.slamCd = (e.enraged ? 4.5 : 6.5) + Math.random() * 2; spawnTelegraph(player.position.x, player.position.z, Math.round(e.def.dmg * 1.6), e.enraged ? 0.95 : 1.25); }
         }
