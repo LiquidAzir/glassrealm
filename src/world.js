@@ -632,17 +632,28 @@ export function createWorld(scene, seed = 1337) {
     const g = new THREE.Group(); g.position.set(x, y, z); group.add(g);
     const bx = (w, h, d, c, px, py, pz, ry) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lmat(c)); m.position.set(px, py, pz); if (ry) m.rotation.y = ry; g.add(m); return m; };
     const gl = (geo, c) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: c })); g.add(m); return m; };
-    if (sig.kind === 'pyramid') { for (let i = 0; i < 5; i++) { const w = 7 - i * 1.3; bx(w, 1.4, w, i % 2 ? 0xd6b25e : 0xe3c277, 0, 0.7 + i * 1.3, 0); } gl(new THREE.IcosahedronGeometry(0.7, 0), 0xffe066).position.y = 7.3; }
+    if (sig.kind === 'pyramid') { for (let i = 0; i < 5; i++) { const w = 7 - i * 1.3; bx(w, 1.4, w, i % 2 ? 0xd6b25e : 0xe3c277, 0, 0.7 + i * 1.3, 0); } gl(new THREE.IcosahedronGeometry(0.7, 0), 0xffe066).position.y = 7.3; solids.push({ x, z, r: 4.2 }); }
     else if (sig.kind === 'frozenlake') { const disc = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 0.2, 20), new THREE.MeshLambertMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.7 })); disc.position.y = 0.12; g.add(disc); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; bx(0.6, 1.6 + (i % 2), 0.6, 0xeaf6ff, Math.cos(a) * 4, 0.9, Math.sin(a) * 4, a); } }
-    else if (sig.kind === 'mushrooms') { for (let i = 0; i < 5; i++) { const a = i / 5 * TAU, r = 2.2, sx = Math.cos(a) * r, sz = Math.sin(a) * r, hh = 2.4 + (i % 2); bx(0.5, hh, 0.5, 0xe0d0c0, sx, hh / 2, sz); const cap = gl(new THREE.SphereGeometry(1.2 + (i % 2) * 0.4, 10, 6, 0, TAU, 0, Math.PI / 2), 0xb04acf); cap.position.set(sx, hh, sz); cap.material.transparent = true; cap.material.opacity = 0.85; shimMeshes.push({ m: cap, baseY: hh, seed: i * 2, kind: 'pulse' }); } ambientEmitters.push({ x, y: y + 1.6, z, color: 0xc6a8ff, every: 0.8, opts: { n: 5, spread: 3, up: 2.4, life: 1.6 } }); }
-    else if (sig.kind === 'lavalake') { const lake = gl(new THREE.CylinderGeometry(7, 7, 0.2, 18), 0xff5a2a); lake.position.y = 0.14; lake.material.transparent = true; lake.material.opacity = 0.85; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; bx(1.3, 0.8, 1.3, 0x5a4632, Math.cos(a) * 7.3, 0.4, Math.sin(a) * 7.3); } ambientEmitters.push({ x, y: y + 0.6, z, color: 0xff8a3d, every: 0.5, opts: { n: 6, spread: 5, up: 5, life: 1.4 } }); }
-    else if (sig.kind === 'giantoak') { const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.5, 6, 8), lmat(0x5c4326)); tr.position.y = 3; tr.rotation.z = 0.08; g.add(tr); for (let i = 0; i < 3; i++) { const cv = new THREE.Mesh(new THREE.IcosahedronGeometry(3 - i * 0.5, 0), lmat(i % 2 ? 0xe0852e : 0xf0b040)); cv.position.set(0.3, 6 + i * 1.6, 0); cv.scale.y = 0.8; g.add(cv); } }
-    else if (sig.kind === 'spires') { for (let i = 0; i < 4; i++) { const a = i / 4 * TAU, r = 2, hh = 2 + (i % 2); const col = gl(new THREE.ConeGeometry(0.6, 4 + (i % 2) * 2, 5), 0x9bd0ff); col.position.set(Math.cos(a) * r, hh, Math.sin(a) * r); col.material.transparent = true; col.material.opacity = 0.8; shimMeshes.push({ m: col, baseY: hh, seed: i, kind: 'spin' }); } }
-    else if (sig.kind === 'skytemple') { bx(8, 0.6, 8, 0xcdd6e6, 0, 0.3, 0); for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.78; bx(0.7, 4, 0.7, 0xe8eef6, Math.cos(a) * 3, 2.3, Math.sin(a) * 3); } bx(6, 0.5, 6, 0xe8eef6, 0, 4.5, 0); gl(new THREE.IcosahedronGeometry(0.8, 0), 0x8fd0ff).position.y = 5.4; }
-    else if (sig.kind === 'totem') { bx(1.2, 5, 1.2, 0x6a4a2a, 0, 2.5, 0); bx(1.9, 1, 1.9, 0xc97a3a, 0, 1, 0); bx(1.7, 1, 1.7, 0x4f7a32, 0, 3, 0); gl(new THREE.IcosahedronGeometry(0.7, 0), 0xffd24a).position.y = 5.4; }
-    else if (sig.kind === 'henge') { for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; bx(0.8, 3, 0.8, 0x8a8f96, Math.cos(a) * 3.2, 1.5, Math.sin(a) * 3.2); } gl(new THREE.IcosahedronGeometry(0.7, 0), 0x8fd0ff).position.y = 1.5; }
+    else if (sig.kind === 'mushrooms') { for (let i = 0; i < 5; i++) { const a = i / 5 * TAU, r = 2.2, sx = Math.cos(a) * r, sz = Math.sin(a) * r, hh = 2.4 + (i % 2); bx(0.5, hh, 0.5, 0xe0d0c0, sx, hh / 2, sz); solids.push({ x: x + sx, z: z + sz, r: 0.7 }); const cap = gl(new THREE.SphereGeometry(1.2 + (i % 2) * 0.4, 10, 6, 0, TAU, 0, Math.PI / 2), 0xb04acf); cap.position.set(sx, hh, sz); cap.material.transparent = true; cap.material.opacity = 0.85; shimMeshes.push({ m: cap, baseY: hh, seed: i * 2, kind: 'pulse' }); } ambientEmitters.push({ x, y: y + 1.6, z, color: 0xc6a8ff, every: 0.8, opts: { n: 5, spread: 3, up: 2.4, life: 1.6 } }); }
+    else if (sig.kind === 'lavalake') { const lake = gl(new THREE.CylinderGeometry(7, 7, 0.2, 18), 0xff5a2a); lake.position.y = 0.14; lake.material.transparent = true; lake.material.opacity = 0.85; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; bx(1.3, 0.8, 1.3, 0x5a4632, Math.cos(a) * 7.3, 0.4, Math.sin(a) * 7.3); } solids.push({ x, z, r: 6.6 }); ambientEmitters.push({ x, y: y + 0.6, z, color: 0xff8a3d, every: 0.5, opts: { n: 6, spread: 5, up: 5, life: 1.4 } }); }
+    else if (sig.kind === 'giantoak') { const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.5, 6, 8), lmat(0x5c4326)); tr.position.y = 3; tr.rotation.z = 0.08; g.add(tr); for (let i = 0; i < 3; i++) { const cv = new THREE.Mesh(new THREE.IcosahedronGeometry(3 - i * 0.5, 0), lmat(i % 2 ? 0xe0852e : 0xf0b040)); cv.position.set(0.3, 6 + i * 1.6, 0); cv.scale.y = 0.8; g.add(cv); } solids.push({ x, z, r: 1.5 }); }
+    else if (sig.kind === 'spires') { for (let i = 0; i < 4; i++) { const a = i / 4 * TAU, r = 2, hh = 2 + (i % 2); const col = gl(new THREE.ConeGeometry(0.6, 4 + (i % 2) * 2, 5), 0x9bd0ff); col.position.set(Math.cos(a) * r, hh, Math.sin(a) * r); col.material.transparent = true; col.material.opacity = 0.8; shimMeshes.push({ m: col, baseY: hh, seed: i, kind: 'spin' }); solids.push({ x: x + Math.cos(a) * r, z: z + Math.sin(a) * r, r: 0.7 }); } }
+    else if (sig.kind === 'skytemple') { bx(8, 0.6, 8, 0xcdd6e6, 0, 0.3, 0); for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.78; bx(0.7, 4, 0.7, 0xe8eef6, Math.cos(a) * 3, 2.3, Math.sin(a) * 3); solids.push({ x: x + Math.cos(a) * 3, z: z + Math.sin(a) * 3, r: 0.7 }); } bx(6, 0.5, 6, 0xe8eef6, 0, 4.5, 0); gl(new THREE.IcosahedronGeometry(0.8, 0), 0x8fd0ff).position.y = 5.4; }
+    else if (sig.kind === 'totem') { bx(1.2, 5, 1.2, 0x6a4a2a, 0, 2.5, 0); bx(1.9, 1, 1.9, 0xc97a3a, 0, 1, 0); bx(1.7, 1, 1.7, 0x4f7a32, 0, 3, 0); gl(new THREE.IcosahedronGeometry(0.7, 0), 0xffd24a).position.y = 5.4; solids.push({ x, z, r: 1.2 }); }
+    else if (sig.kind === 'henge') { for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; bx(0.8, 3, 0.8, 0x8a8f96, Math.cos(a) * 3.2, 1.5, Math.sin(a) * 3.2); solids.push({ x: x + Math.cos(a) * 3.2, z: z + Math.sin(a) * 3.2, r: 0.7 }); } gl(new THREE.IcosahedronGeometry(0.7, 0), 0x8fd0ff).position.y = 1.5; }
   }
   for (const reg of REGIONS) buildSignature(reg);
+
+  // ---- collision: props, gatherables + landmarks block the player (dynamic refs unblock when chopped/depleted) ----
+  for (const t of trees) solids.push({ x: t.x, z: t.z, r: 0.7, ref: t });
+  for (const c of cacti) solids.push({ x: c.x, z: c.z, r: 0.6 });
+  for (const o of oreNodes) solids.push({ x: o.x, z: o.z, r: 0.95, ref: o });   // re-blocks when the node respawns (o.alive)
+  for (const rk of rocks) if (rk.s > 0.7) solids.push({ x: rk.x, z: rk.z, r: 0.5 + rk.s * 0.4 });   // only the larger boulders
+  const BLOCK_DISC = { obelisk: 1.0, tower: 1.0, statue: 1.0, lighthouse: 1.1, crystal: 0.9, well: 0.9, idol: 0.8, shrine: 0.7, cairn: 0.7, meteor: 1.0, wreck: 1.4 };
+  for (const d of discoveries) { const r = BLOCK_DISC[d.kind]; if (r) solids.push({ x: d.x, z: d.z, r }); }
+  // find a spot that's both walkable AND clear of solids — used by teleports so you never land stuck inside an obstacle
+  function inSolid(x, z) { for (const o of solids) { if (o.ref && !o.ref.alive) continue; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return true; } return false; }
+  function findClear(x, z) { if (isWalkable(x, z) && !inSolid(x, z)) return { x, z }; for (let r = 2; r <= 40; r += 2) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz) && !inSolid(nx, nz)) return { x: nx, z: nz }; } return { x, z }; }
 
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
   const trophyMeshes = {};
@@ -683,7 +694,13 @@ export function createWorld(scene, seed = 1337) {
     const post = (x, z, h) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.22, h || 1.2, 0.22), lmat(0x6e4a2b)); m.position.set(x, height(x, z) + (h || 1.2) / 2, z); group.add(m); };
     const rail = (x, z, len, ang) => { const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.13, 0.09), lmat(0x9a7a52)); m.position.set(x, height(x, z) + 0.85, z); m.rotation.y = ang; group.add(m); };
     for (let i = -R; i <= R; i += 2.4) { post(cx + i, cz - R); post(cx + i, cz + R); post(cx - R, cz + i); post(cx + R, cz + i); }
-    for (let i = -R + 1.2; i < R; i += 2.4) { rail(cx + i, cz - R, 2.4, 0); rail(cx + i, cz + R, 2.4, 0); rail(cx - R, cz + i, 2.4, Math.PI / 2); rail(cx + R, cz + i, 2.4, Math.PI / 2); }
+    for (let i = -R + 1.2; i < R; i += 2.4) {
+      rail(cx + i, cz - R, 2.4, 0); solids.push({ x: cx + i, z: cz - R, r: 1.2 });
+      rail(cx + i, cz + R, 2.4, 0); solids.push({ x: cx + i, z: cz + R, r: 1.2 });
+      rail(cx - R, cz + i, 2.4, Math.PI / 2); solids.push({ x: cx - R, z: cz + i, r: 1.2 });
+      if (Math.abs(i) > 2.5) { rail(cx + R, cz + i, 2.4, Math.PI / 2); solids.push({ x: cx + R, z: cz + i, r: 1.2 }); }   // east GATE gap (toward the village + the Farm Deed)
+    }
+    for (const [sx, sz] of [[-R, -R], [-R, R], [R, -R], [R, R]]) solids.push({ x: cx + sx, z: cz + sz, r: 1.3 });   // seal the corners
     { const bx = cx - 6.5, bz = cz - 7.5, by = height(bx, bz); const wall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 5), lmat(0x9a3a2e)); wall.position.set(bx, by + 2, bz); const roof = new THREE.Mesh(new THREE.ConeGeometry(4.8, 2.6, 4), lmat(0x6a2a22)); roof.position.set(bx, by + 5.2, bz); roof.rotation.y = Math.PI / 4; const door = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.6, 0.2), lmat(0x4a2018)); door.position.set(bx, by + 1.3, bz + 2.5); group.add(wall, roof, door); solids.push({ x: bx, z: bz, r: 3 }); }
     const animal = (x, z, body, head, big) => { const s = big ? 1.4 : 0.8, y = height(x, z); const b = new THREE.Mesh(new THREE.BoxGeometry(1.0 * s, 0.7 * s, 0.6 * s), lmat(body)); b.position.set(x, y + 0.45 * s, z); const h = new THREE.Mesh(new THREE.BoxGeometry(0.5 * s, 0.5 * s, 0.5 * s), lmat(head)); h.position.set(x + 0.6 * s, y + 0.6 * s, z); group.add(b, h); };
     animal(cx + 4, cz - 6, 0xf2efe6, 0xe0584a, false); animal(cx + 6, cz - 5, 0xf2efe6, 0xe0584a, false); animal(cx + 5, cz - 7.5, 0xf2efe6, 0xe0584a, false);   // chickens
@@ -702,7 +719,7 @@ export function createWorld(scene, seed = 1337) {
       const a = (i / cols) * TAU; if (a > 3.3 && a < 4.3) continue;
       const x = CAVE.x + Math.cos(a) * CAVE.r, z = CAVE.z + Math.sin(a) * CAVE.r, hh = 4 + rng() * 2;
       const col = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), new THREE.MeshLambertMaterial({ color: 0x6a6358, flatShading: true }));
-      col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.3, hh, 1.3); col.rotation.y = rng() * TAU; group.add(col);
+      col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.3, hh, 1.3); col.rotation.y = rng() * TAU; group.add(col); solids.push({ x, z, r: 1.6 });
     }
     const cy = height(CAVE.x, CAVE.z);
     const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true })); chest.position.set(CAVE.x, cy + 0.5, CAVE.z); group.add(chest);
@@ -716,7 +733,7 @@ export function createWorld(scene, seed = 1337) {
       const a = (i / cols) * TAU; if (a > 3.3 && a < 4.3) continue;
       const x = CAVE2.x + Math.cos(a) * CAVE2.r, z = CAVE2.z + Math.sin(a) * CAVE2.r, hh = 4 + rng() * 2.5;
       const col = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), new THREE.MeshLambertMaterial({ color: 0xbcd0e6, flatShading: true }));
-      col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.2, hh, 1.2); col.rotation.y = rng() * TAU; group.add(col);
+      col.position.set(x, height(x, z) + hh * 0.4, z); col.scale.set(1.2, hh, 1.2); col.rotation.y = rng() * TAU; group.add(col); solids.push({ x, z, r: 1.6 });
     }
     const cy = height(CAVE2.x, CAVE2.z);
     const chest = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.9), new THREE.MeshLambertMaterial({ color: 0x9bd0ff, flatShading: true })); chest.position.set(CAVE2.x, cy + 0.5, CAVE2.z); group.add(chest);
@@ -737,7 +754,7 @@ export function createWorld(scene, seed = 1337) {
       else if (style === 'crystal') { col = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1, 5), cmat); col.scale.set(1, hh * 1.5, 1); col.position.set(x, gy + hh * 0.65, z); col.rotation.set((rng() - 0.5) * 0.5, rng() * TAU, (rng() - 0.5) * 0.5); }
       else if (style === 'fungal') { const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, hh * 1.4, 6), new THREE.MeshLambertMaterial({ color: 0xd8d0e6, flatShading: true })); stalk.position.set(x, gy + hh * 0.7, z); group.add(stalk); col = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 5, 0, TAU, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: dg.spire })); col.position.set(x, gy + hh * 1.4, z); }
       else { col = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), cmat); col.scale.set(1.25, hh, 1.25); col.position.set(x, gy + hh * 0.4, z); col.rotation.y = rng() * TAU; }
-      group.add(col);
+      group.add(col); solids.push({ x, z, r: 1.5 });   // dungeon walls (SW gap stays the entrance)
     }
     const cy = height(dg.x, dg.z);
     const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshBasicMaterial({ color: dg.orb })); orb.position.set(dg.x, cy + 4.6, dg.z); group.add(orb); orbMeshes.push({ m: orb, baseY: cy + 4.6, seed: dg.x });
@@ -836,7 +853,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, ambientEmitters,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);

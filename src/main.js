@@ -96,6 +96,8 @@ try {
     }
   }
 
+  { const d = world.findClear(player.group.position.x, player.group.position.z); player.group.position.set(d.x, world.height(d.x, d.z), d.z); }   // never load stuck inside a (new) solid
+
   const skillName = (key) => (G.skills.DEFS.find((d) => d.key === key) || { name: key }).name;
   const npcName = (key) => { const n = G.entities.npcs.find((x) => x.def.key === key); return n ? n.def.name : key; };
   const maxPrayer = () => 20 + G.skills.level('prayer') * 2;
@@ -965,14 +967,15 @@ try {
     G.gainXp('agility', 16); G.ui.toast(s.name, 'good', 1200);
   };
   G.useFerry = (f) => {   // sail across a sea-lane to the paired dock (a ferry link is travel, not free fast-travel)
-    const d = world.snapLand(f.toX, f.toZ);
+    const d = world.findClear(f.toX, f.toZ);
     cancelChannel(); clearCombat();
     player.group.position.set(d.x, world.height(d.x, d.z), d.z); player.snapCamera();
     G.audio.sfx('ui'); G.ui.toast('You sail across.', 'good', 1600); G.gainXp('agility', 8); G.save.save();
   };
   G.travelTo = (x, z, label) => {   // waystone fast-travel
     cancelChannel(); clearCombat();
-    player.group.position.set(x, world.height(x, z), z); player.snapCamera();
+    const d = world.findClear(x, z);   // land beside the waystone, never inside its (or any) solid
+    player.group.position.set(d.x, world.height(d.x, d.z), d.z); player.snapCamera();
     G.audio.sfx('ui'); if (label) G.ui.toast(label, 'good', 1800); G.save.save();
   };
   const travelCfg = {

@@ -155,8 +155,8 @@ export function createPlayer(scene, world) {
   function clear(x, z) {
     if (state.bounds) { if (!inB(state.bounds, x, z)) return false; }
     else if (!world.isWalkable(x, z)) return false;
-    const s = state.solids;                                  // circular obstacle collision (buildings / furniture / NPCs)
-    if (s) for (let i = 0; i < s.length; i++) { const o = s[i], dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return false; }
+    const s = state.solids;                                  // circular obstacle collision (buildings / props / fences / furniture / NPCs)
+    if (s) for (let i = 0; i < s.length; i++) { const o = s[i]; if (o.ref && !o.ref.alive) continue; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return false; }   // o.ref = chopped tree / depleted ore → no longer blocks
     return true;
   }
   function tryMove(dt, dir) {
