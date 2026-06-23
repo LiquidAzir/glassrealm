@@ -77,6 +77,7 @@ export function createPlayer(scene, world) {
   const hand = new THREE.Group(); hand.position.set(0, -0.62, 0); rightArm.add(hand);
   hand.add(mkBox(0.18, 0.18, 0.18, skin, 0, 0, 0));          // fist
   const weaponHolder = new THREE.Group(); hand.add(weaponHolder);
+  weaponHolder.rotation.z = Math.PI;   // weapons are modelled extending -Y; flip so they're held UPRIGHT (blade/orb up), still forward-facing
   const toolHolder = new THREE.Group(); hand.add(toolHolder); toolHolder.visible = false;   // axe/pick/rod shown while gathering
 
   function clearHolder() { while (weaponHolder.children.length) weaponHolder.remove(weaponHolder.children[0]); }
@@ -222,8 +223,10 @@ export function createPlayer(scene, world) {
 
     group.position.y = state.bounds ? state.bounds.y : world.height(group.position.x, group.position.z);
     group.rotation.y = state.heading;
+    state.t = (state.t || 0) + dt;
     if (state.moving) state.bob += dt * 11;
-    body.position.y = state.moving ? Math.abs(Math.sin(state.bob)) * 0.08 : body.position.y * (1 - damp(8, dt));
+    const idleBreath = 0.02 + Math.sin(state.t * 1.6) * 0.018;   // gentle breathing so standing still still feels alive
+    body.position.y = state.moving ? Math.abs(Math.sin(state.bob)) * 0.08 : idleBreath;
 
     // walk cycle — legs swing at the hips, arms counter-swing (the right arm yields to an attack)
     const gait = state.moving ? Math.sin(state.bob) * 0.5 : 0;
