@@ -268,7 +268,7 @@ export function createUI(G) {
       return `<div class="row ${ri === row ? 'sel' : ''}"><span class="row-icon">${d.icon}</span><div class="row-main"><div class="row-title">${d.name} <span style="color:var(--gold)">Lv ${lv}</span>${stars}</div><div class="skillbar"><span style="width:${pr}%"></span></div><div class="row-sub">${sub}</div></div></div>`;
     }).join('');
     const L = (k) => G.skills.level(k);
-    els.menuBody.innerHTML = `<div class="section-head">Total ${G.skills.total()} &nbsp;·&nbsp; ⚔️${L('combat')} 🏹${L('ranged')} 🪄${L('magic')} 🛡️${L('defence')} ☠️${L('slayer')}</div><div class="section-head">⚔️ Attack stance</div>${stanceHtml}<div class="section-head">Skills</div>${skillHtml}`;
+    els.menuBody.innerHTML = `<div class="section-head">Total ${G.skills.total()} &nbsp;·&nbsp; ⚔️${L('combat')} 🏹${L('ranged')} 🪄${L('magic')} 🛡️${L('defence')} ☠️${L('slayer')} (${G.slayerPoints || 0}pts)</div><div class="section-head">⚔️ Attack stance</div>${stanceHtml}<div class="section-head">Skills</div>${skillHtml}`;
   }
   function renderPrayer() {
     const lvl = G.skills.level('prayer');

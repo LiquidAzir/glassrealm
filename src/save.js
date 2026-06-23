@@ -38,6 +38,8 @@ export function createSave(G) {
       farm: G.farm ? G.farm.serialize() : undefined,
       quests: G.quests.serialize(),
       slayer: G.slayer ? { ...G.slayer } : undefined,
+      slayerPoints: G.slayerPoints || 0,
+      slayerPerks: G.slayerPerks ? [...G.slayerPerks] : [],
       tracked: G.trackedQuest || undefined,
       audioMuted: G.audio ? G.audio.muted : false,
       worldScale: WORLD_SCALE,

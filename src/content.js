@@ -101,6 +101,7 @@ export const ITEMS = {
   ranger_ring:   { name: 'Ranger Ring',   icon: '💍', type: 'ring',   set: 'ranger', bonus: { ranged: 5 }, desc: 'Ranger set. +5 ranged.' },
   sorcerer_robes:  { name: 'Sorcerer Robes',  icon: '🧥', type: 'armor',  set: 'sorcerer', defense: 9, bonus: { magic: 10 }, desc: 'Sorcerer set. +10 magic.' },
   sorcerer_amulet: { name: 'Sorcerer Amulet', icon: '📿', type: 'amulet', set: 'sorcerer', bonus: { magic: 8 }, desc: 'Sorcerer set. +8 magic.' },
+  slayer_helm: { name: 'Slayer Helm', icon: '⛑️', type: 'amulet', bonus: { melee: 6, ranged: 6, magic: 6 }, desc: 'Slayer reward. +6 to all combat styles.' },
   sorcerer_ring:   { name: 'Sorcerer Ring',   icon: '💍', type: 'ring',   set: 'sorcerer', bonus: { magic: 6 }, desc: 'Sorcerer set. +6 magic.' },
   vigor_amulet:    { name: 'Amulet of Vigor', icon: '📿', type: 'amulet', bonus: { maxhp: 25 }, desc: '+25 max HP.' },
 
@@ -530,6 +531,17 @@ export const ATK_STYLE = {
   prism_tyrant: 'magic', hollow_king: 'magic', drowned_king: 'magic', drowned_captain: 'magic',
   storm_harpy: 'ranged', thruun: 'ranged', warchief: 'ranged',
 };
+
+// ---------- Slayer reward shop ----------  (spend points earned from contracts)
+export const SLAYER_REWARDS = [
+  { key: 'cancel',     name: 'Cancel current task',  icon: '❌', cost: 2,  cancel: true,            desc: 'Abandon your current contract.' },
+  { key: 'rune_pack',  name: 'Rune Essence Cache',   icon: '🔮', cost: 6,  grant: { rune_essence: 25 }, desc: '25 rune essence for the altar.' },
+  { key: 'gem_bag',    name: 'Gem Bag',              icon: '💎', cost: 12, grant: { sapphire: 2, emerald: 2, ruby: 1 }, desc: 'A pouch of cut gems.' },
+  { key: 'xp_lamp',    name: 'Slayer XP Lamp',       icon: '🪔', cost: 15, lampXp: 2500,            desc: 'Rub for 2500 Slayer XP.' },
+  { key: 'perk_xp',    name: 'Sharper Contracts',    icon: '📜', cost: 20, perk: 'slayerXp',        desc: 'Permanent: +20% Slayer XP from contracts.' },
+  { key: 'perk_luck',  name: 'Keen Eye',             icon: '🍀', cost: 30, perk: 'luck',            desc: 'Permanent: +50% rare-drop chance.' },
+  { key: 'slayer_helm', name: 'Slayer Helm',         icon: '⛑️', cost: 35, grant: { slayer_helm: 1 }, once: true, desc: 'Exclusive amulet: +6 to all combat styles.' },
+];
 
 // ---------- Attack stances ----------  (combat risk/reward toggle; defShare routes kill-xp into Defence)
 export const ATTACK_STYLES = {
@@ -1052,11 +1064,12 @@ export const DIALOGUE = {
   slayermaster: {
     root: (G) => {
       const s = G.slayer;
-      if (!s || !s.active) return node('Slayer Master Krael', 'Looking for a contract? I’ll mark a beast for you to cull — good Slayer training.',
-        [{ label: 'Assign me a task.', action: (g) => g.slayerAssign(), to: 'assigned' }, end('Not now.')]);
+      const shop = { label: `Reward shop · ${G.slayerPoints || 0} pts`, action: (g) => { g.pendingSlayerShop = true; }, to: null };
+      if (!s || !s.active) return node('Slayer Master Krael', `Looking for a contract? I’ll mark a beast for you to cull. You hold ${G.slayerPoints || 0} Slayer points.`,
+        [{ label: 'Assign me a task.', action: (g) => g.slayerAssign(), to: 'assigned' }, shop, end('Not now.')]);
       if (s.progress >= s.count) return node('Slayer Master Krael', `${s.count} ${ENEMIES[s.enemy].name}s slain — contract complete.`,
-        [{ label: 'Claim reward.', action: (g) => g.slayerClaim(), to: 'claimed' }]);
-      return node('Slayer Master Krael', `Your contract: slay ${s.count} ${ENEMIES[s.enemy].name}s (${s.progress}/${s.count}).`, [end('On it.')]);
+        [{ label: 'Claim reward.', action: (g) => g.slayerClaim(), to: 'claimed' }, shop]);
+      return node('Slayer Master Krael', `Your contract: slay ${s.count} ${ENEMIES[s.enemy].name}s (${s.progress}/${s.count}).`, [shop, end('On it.')]);
     },
     assigned: (G) => node('Slayer Master Krael', `Hunt down ${G.slayer.count} ${ENEMIES[G.slayer.enemy].name}s out in the wilds. Off you go.`, [end('Understood.')]),
     claimed: node('Slayer Master Krael', 'Fine work. A new contract waits whenever you’re ready.', [end('Thanks.')]),

@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -122,8 +122,41 @@ try {
   G.slayer = (saved && saved.slayer) ? { ...saved.slayer } : { active: false, enemy: null, count: 0, progress: 0 };
   G.trackedQuest = (saved && saved.tracked) || null;   // quest pinned in the Quests menu
   const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
+  G.slayerPoints = (saved && saved.slayerPoints) || 0;
+  G.slayerPerks = new Set((saved && saved.slayerPerks) || []);
   G.slayerAssign = () => { const enemy = SLAYER_POOL[Math.floor(Math.random() * SLAYER_POOL.length)]; const count = 6 + Math.floor(Math.random() * 7); G.slayer = { active: true, enemy, count, progress: 0 }; G.ui.toast(`Slayer task: ${count} ${ENEMIES[enemy].name}s`, 'good', 2600); G.save.save(); };
-  G.slayerClaim = () => { const s = G.slayer; if (!s.active || s.progress < s.count) return; const reward = s.count * 8; G.inventory.add('gold', reward); G.gainXp('slayer', s.count * 15); s.active = false; G.ui.toast(`Slayer contract complete! +${reward}g`, 'good', 2800); G.ach.evaluate(); G.save.save(); };
+  G.slayerClaim = () => {
+    const s = G.slayer; if (!s.active || s.progress < s.count) return;
+    const reward = s.count * 8; G.inventory.add('gold', reward);
+    G.gainXp('slayer', Math.round(s.count * 15 * (G.slayerPerks.has('slayerXp') ? 1.2 : 1)));
+    const pts = 3 + Math.floor(s.count / 3); G.slayerPoints += pts; s.active = false;
+    G.ui.toast(`Slayer contract complete! +${reward}g · +${pts} Slayer points`, 'good', 3000);
+    G.ach.evaluate(); G.save.save();
+  };
+  G.slayerBuy = (key) => {
+    const r = SLAYER_REWARDS.find((x) => x.key === key); if (!r) return;
+    if (r.perk && G.slayerPerks.has(r.perk)) { G.ui.toast('Already unlocked.', '', 1500); return; }
+    if (r.once && r.grant) { const k0 = Object.keys(r.grant)[0]; if (G.collection.has(k0) || G.inventory.count(k0) > 0) { G.ui.toast('Already owned.', '', 1500); return; } }
+    if (r.cancel && (!G.slayer || !G.slayer.active)) { G.ui.toast('No active contract.', '', 1500); return; }
+    if (G.slayerPoints < r.cost) { G.ui.toast(`Need ${r.cost} Slayer points`, 'bad', 1800); return; }
+    G.slayerPoints -= r.cost;
+    if (r.cancel) { G.slayer.active = false; G.ui.toast('Contract cancelled.', 'good', 1600); }
+    if (r.grant) for (const k in r.grant) G.inventory.add(k, r.grant[k]);
+    if (r.lampXp) G.gainXp('slayer', r.lampXp);
+    if (r.perk) G.slayerPerks.add(r.perk);
+    if (!r.cancel) { G.audio.sfx('ach'); G.ui.toast(`✦ ${r.name} purchased`, 'gold', 2400); }
+    G.save.save();
+  };
+  const slayerShopCfg = {
+    title: 'Slayer Rewards', hint: '↑ ↓ select · tap to buy · ↑↓↑↓ leave',
+    rows: () => SLAYER_REWARDS.map((r) => {
+      const owned = (r.perk && G.slayerPerks.has(r.perk)) || (r.once && r.grant && (G.collection.has(Object.keys(r.grant)[0]) || G.inventory.count(Object.keys(r.grant)[0]) > 0));
+      const can = !owned && G.slayerPoints >= r.cost && !(r.cancel && (!G.slayer || !G.slayer.active));
+      return { section: r.perk ? 'Perks' : r.cancel ? 'Service' : 'Rewards', icon: r.icon, title: r.name, sub: `${r.desc} · ${G.slayerPoints} pts`, right: owned ? 'owned' : `${r.cost} pts${can ? '' : ' 🔒'}`, data: { key: r.key } };
+    }),
+    onSelect: (r) => G.slayerBuy(r.data.key),
+  };
+  G.openSlayerShop = () => { setMode('picker'); G.ui.openPicker(slayerShopCfg); };
   G.prestigeSkill = (key) => { if (!G.skills.canPrestige(key)) { G.ui.toast('Reach level 20 to prestige', 'bad', 1800); return; } if (G.skills.doPrestige(key)) { G.ui.toast(`⭐ Prestiged ${skillName(key)}!`, 'good', 3000); G.ui.levelBanner(`Prestige — ${skillName(key)}`); G.audio.sfx('ach'); if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, 0xffd45f, { n: 20, spread: 3.6, up: 4.6, life: 0.9 }); G.ach.evaluate(); G.save.save(); } };
   G.trackQuest = (id) => { G.trackedQuest = (G.trackedQuest === id) ? null : id; G.ui.toast(G.trackedQuest ? `Tracking: ${QUESTS[id].name}` : 'Tracking cleared', 'good', 1600); G.save.save(); };
   G.ach = {
@@ -211,7 +244,7 @@ try {
   G.talkTo = (n) => {
     setMode('dialogue'); G.ui.hidePrompt();
     G.quests.notifyTalk(n.def.key); checkQuestReady();   // 'talk' objectives complete on conversation
-    G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else setMode(G.inInterior ? 'interior' : 'world'); });
+    G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else if (G.pendingSlayerShop) { G.pendingSlayerShop = false; G.openSlayerShop(); } else setMode(G.inInterior ? 'interior' : 'world'); });
   };
 
   const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal', mithril: 'mithril_ore', essence: 'rune_essence' };
@@ -985,7 +1018,7 @@ try {
     const def = e.def;
     const names = [];
     for (const k in def.loot) { G.inventory.add(k, def.loot[k]); names.push(ITEMS[k].name); }
-    if (def.rare && Math.random() < def.rare.chance) { G.inventory.add(def.rare.item, 1); G.ui.toast(`✨ Rare drop: ${ITEMS[def.rare.item].name}!`, 'gold', 3400); }
+    if (def.rare && Math.random() < def.rare.chance * (G.slayerPerks.has('luck') ? 1.5 : 1)) { G.inventory.add(def.rare.item, 1); G.ui.toast(`✨ Rare drop: ${ITEMS[def.rare.item].name}!`, 'gold', 3400); }
     const ksk = e._lastSkill || 'combat';   // attack stance can route part of the kill XP into Defence
     const kstance = ATTACK_STYLES[e._xpStance || 'accurate'] || {};
     if (kstance.defShare) { G.gainXp('defence', Math.round(def.xp * kstance.defShare)); G.gainXp(ksk, Math.round(def.xp * (1 - kstance.defShare))); }
