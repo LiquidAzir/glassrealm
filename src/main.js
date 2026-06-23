@@ -1357,6 +1357,12 @@ try {
       player.update(dt, input);
       G.entities.update(dt, player);
       world.tick(dt);
+      for (const em of world.ambientEmitters) {   // region ambience (embers, fae motes) near the player only
+        const dx = player.position.x - em.x, dz = player.position.z - em.z;
+        if (dx * dx + dz * dz > 4900) continue;
+        em._t = (em._t || 0) + dt;
+        if (em._t >= em.every) { em._t = 0; if (G.fx) G.fx.burst(em.x, em.y, em.z, em.color, em.opts); }
+      }
       G.projectiles.update(dt);
       G.fx.update(dt);
       updateChannel(dt);

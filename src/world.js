@@ -71,6 +71,18 @@ const BRIDGE_LINKS = [
   ['lagoon', 'amberfell', 'ferry'], ['snow', 'skyreach', 'isthmus'], ['skyreach', 'amberfell', 'span'],
   ['skyreach', 'ember', 'ferry'], ['cinderbreak', 'mistmoor', 'ferry'], ['cinderbreak', 'saltcrest', 'ferry'],
 ];
+// One signature landmark per region (offsets are raw, scaled by WS at build time).
+const REGION_SIG = {
+  verdant:    { kind: 'henge',      dx: -20, dz: -22 },
+  desert:     { kind: 'pyramid',    dx: 14,  dz: -14 },
+  snow:       { kind: 'frozenlake', dx: -16, dz: 8 },
+  ember:      { kind: 'lavalake',   dx: -18, dz: -4 },
+  glade:      { kind: 'mushrooms',  dx: 16,  dz: 10 },
+  amberfell:  { kind: 'giantoak',   dx: -14, dz: 8 },
+  shardspire: { kind: 'spires',     dx: 14,  dz: 10 },
+  skyreach:   { kind: 'skytemple',  dx: -16, dz: 10 },
+  jungle:     { kind: 'totem',      dx: -18, dz: 12 },
+};
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
 // Dedicated mining sites — ore clustered near the mountains (RuneScape-style), each with a
@@ -352,6 +364,7 @@ export function createWorld(scene, seed = 1337) {
   // --- settlements + stations (modular kit per village) ------------------
   let animT = 0;
   const fireMeshes = [], orbMeshes = [];   // ambient meshes animated in tick()
+  const shimMeshes = [], ambientEmitters = [];   // region-signature shimmer meshes + particle emitter anchors
   const solids = [];                       // circular collision obstacles (buildings, wells)
   const stations = [];
   const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });   // hoisted: used by builders below
@@ -612,6 +625,25 @@ export function createWorld(scene, seed = 1337) {
   waystone('ws_emberdeep', 'Emberdeep Waystone', CAVE.x + 6, CAVE.z + 6);   // a couple of frontier stones away from towns
   waystone('ws_crossroads', 'Crossroads Waystone', 61 * WS, 4 * WS);
 
+  // region signatures — one big landmark per region so each reads distinctly from afar
+  function buildSignature(reg) {
+    const sig = REGION_SIG[reg.key]; if (!sig) return;
+    const s = snapLand(reg.x + (sig.dx || 0) * WS, reg.z + (sig.dz || 0) * WS); const x = s.x, z = s.z, y = height(x, z);
+    const g = new THREE.Group(); g.position.set(x, y, z); group.add(g);
+    const bx = (w, h, d, c, px, py, pz, ry) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lmat(c)); m.position.set(px, py, pz); if (ry) m.rotation.y = ry; g.add(m); return m; };
+    const gl = (geo, c) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: c })); g.add(m); return m; };
+    if (sig.kind === 'pyramid') { for (let i = 0; i < 5; i++) { const w = 7 - i * 1.3; bx(w, 1.4, w, i % 2 ? 0xd6b25e : 0xe3c277, 0, 0.7 + i * 1.3, 0); } gl(new THREE.IcosahedronGeometry(0.7, 0), 0xffe066).position.y = 7.3; }
+    else if (sig.kind === 'frozenlake') { const disc = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 0.2, 20), new THREE.MeshLambertMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.7 })); disc.position.y = 0.12; g.add(disc); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; bx(0.6, 1.6 + (i % 2), 0.6, 0xeaf6ff, Math.cos(a) * 4, 0.9, Math.sin(a) * 4, a); } }
+    else if (sig.kind === 'mushrooms') { for (let i = 0; i < 5; i++) { const a = i / 5 * TAU, r = 2.2, sx = Math.cos(a) * r, sz = Math.sin(a) * r, hh = 2.4 + (i % 2); bx(0.5, hh, 0.5, 0xe0d0c0, sx, hh / 2, sz); const cap = gl(new THREE.SphereGeometry(1.2 + (i % 2) * 0.4, 10, 6, 0, TAU, 0, Math.PI / 2), 0xb04acf); cap.position.set(sx, hh, sz); cap.material.transparent = true; cap.material.opacity = 0.85; shimMeshes.push({ m: cap, baseY: hh, seed: i * 2, kind: 'pulse' }); } ambientEmitters.push({ x, y: y + 1.6, z, color: 0xc6a8ff, every: 0.8, opts: { n: 5, spread: 3, up: 2.4, life: 1.6 } }); }
+    else if (sig.kind === 'lavalake') { const lake = gl(new THREE.CylinderGeometry(7, 7, 0.2, 18), 0xff5a2a); lake.position.y = 0.14; lake.material.transparent = true; lake.material.opacity = 0.85; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; bx(1.3, 0.8, 1.3, 0x5a4632, Math.cos(a) * 7.3, 0.4, Math.sin(a) * 7.3); } ambientEmitters.push({ x, y: y + 0.6, z, color: 0xff8a3d, every: 0.5, opts: { n: 6, spread: 5, up: 5, life: 1.4 } }); }
+    else if (sig.kind === 'giantoak') { const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.5, 6, 8), lmat(0x5c4326)); tr.position.y = 3; tr.rotation.z = 0.08; g.add(tr); for (let i = 0; i < 3; i++) { const cv = new THREE.Mesh(new THREE.IcosahedronGeometry(3 - i * 0.5, 0), lmat(i % 2 ? 0xe0852e : 0xf0b040)); cv.position.set(0.3, 6 + i * 1.6, 0); cv.scale.y = 0.8; g.add(cv); } }
+    else if (sig.kind === 'spires') { for (let i = 0; i < 4; i++) { const a = i / 4 * TAU, r = 2, hh = 2 + (i % 2); const col = gl(new THREE.ConeGeometry(0.6, 4 + (i % 2) * 2, 5), 0x9bd0ff); col.position.set(Math.cos(a) * r, hh, Math.sin(a) * r); col.material.transparent = true; col.material.opacity = 0.8; shimMeshes.push({ m: col, baseY: hh, seed: i, kind: 'spin' }); } }
+    else if (sig.kind === 'skytemple') { bx(8, 0.6, 8, 0xcdd6e6, 0, 0.3, 0); for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.78; bx(0.7, 4, 0.7, 0xe8eef6, Math.cos(a) * 3, 2.3, Math.sin(a) * 3); } bx(6, 0.5, 6, 0xe8eef6, 0, 4.5, 0); gl(new THREE.IcosahedronGeometry(0.8, 0), 0x8fd0ff).position.y = 5.4; }
+    else if (sig.kind === 'totem') { bx(1.2, 5, 1.2, 0x6a4a2a, 0, 2.5, 0); bx(1.9, 1, 1.9, 0xc97a3a, 0, 1, 0); bx(1.7, 1, 1.7, 0x4f7a32, 0, 3, 0); gl(new THREE.IcosahedronGeometry(0.7, 0), 0xffd24a).position.y = 5.4; }
+    else if (sig.kind === 'henge') { for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; bx(0.8, 3, 0.8, 0x8a8f96, Math.cos(a) * 3.2, 1.5, Math.sin(a) * 3.2); } gl(new THREE.IcosahedronGeometry(0.7, 0), 0x8fd0ff).position.y = 1.5; }
+  }
+  for (const reg of REGIONS) buildSignature(reg);
+
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
   const trophyMeshes = {};
   const houseFurniture = {};
@@ -804,7 +836,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, ambientEmitters,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);
@@ -828,6 +860,7 @@ export function createWorld(scene, seed = 1337) {
       animT += dt;
       for (const f of fireMeshes) { f.m.scale.setScalar(0.82 + Math.sin(animT * 9 + f.seed) * 0.18); f.m.position.y = f.baseY + Math.sin(animT * 13 + f.seed) * 0.05; }
       for (const o of orbMeshes) { o.m.rotation.y = animT * 0.8; o.m.position.y = o.baseY + Math.sin(animT * 1.4 + o.seed) * 0.4; }
+      for (const s of shimMeshes) { if (s.kind === 'spin') s.m.rotation.y = animT * 0.6 + s.seed; else if (s.kind === 'pulse') s.m.scale.setScalar(0.9 + Math.sin(animT * 2 + s.seed) * 0.12); s.m.position.y = s.baseY + Math.sin(animT * 1.1 + s.seed) * 0.25; }
       water.position.y = WATER_Y + Math.sin(animT * 0.5) * 0.08;
       for (const f of ferryBoats) { const t = (Math.sin(animT * 0.18) + 1) / 2; f.m.position.set(f.ax + (f.bx - f.ax) * t, 0.9 + Math.sin(animT * 2) * 0.06, f.az + (f.bz - f.az) * t); f.m.rotation.y = Math.atan2(f.bx - f.ax, f.bz - f.az); }
       for (const o of oreNodes) if (!o.alive) { o.respawn -= dt; if (o.respawn <= 0) { o.alive = true; setOreScale(o, 1); } }
