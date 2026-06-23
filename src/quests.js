@@ -28,12 +28,24 @@ export function createQuests(G, saved) {
   const api = {
     status(id) { return state[id] ? state[id].status : 'unknown'; },
     progress(id, objId) { return state[id] ? (state[id].progress[objId] || 0) : 0; },
+    canAccept(id) {
+      const def = QUESTS[id]; if (!def || !def.reqSkills) return true;
+      for (const sk in def.reqSkills) if (G.skills.level(sk) < def.reqSkills[sk]) return false;
+      return true;
+    },
+    reqText(id) {
+      const def = QUESTS[id]; if (!def || !def.reqSkills) return '';
+      return Object.keys(def.reqSkills).map((sk) => `${sk} ${def.reqSkills[sk]}`).join(', ');
+    },
     accept(id) {
       if (state[id] && state[id].status === 'available') {
+        if (!this.canAccept(id)) { if (G.ui) G.ui.toast(`Requires ${this.reqText(id)} to start this quest`, 'bad', 2600); return; }
         state[id].status = 'active';
         if (G.onQuestAccepted) G.onQuestAccepted(id, QUESTS[id]);
       }
     },
+    points() { let p = 0; for (const id in QUESTS) if (state[id].status === 'complete') p += QUESTS[id].saga ? 2 : 1; return p; },
+    maxPoints() { let p = 0; for (const id in QUESTS) p += QUESTS[id].saga ? 2 : 1; return p; },
     notifyKill(enemyKey) {
       for (const id in QUESTS) {
         if (state[id].status !== 'active') continue;

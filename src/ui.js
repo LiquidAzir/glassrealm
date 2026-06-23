@@ -204,7 +204,10 @@ export function createUI(G) {
       else if (d.type === 'armor') sub = `armor · -${d.defense} dmg${d.set ? ' · ' + d.set : ''}`;
       else if (d.type === 'shield') sub = `shield · -${d.defense} dmg`;
       else sub = Object.keys(d.bonus || {}).map((k) => `+${d.bonus[k]} ${k}`).join(', ') + (d.set ? ' · ' + d.set : '');
-      html += `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${icon}</span><div class="row-main"><div class="row-title">${title}${equipped ? ' <span style="color:var(--gold)">✓</span>' : ''}</div><div class="row-sub">${sub}</div></div></div>`;
+      const req = d && G.equipReq ? G.equipReq(r.key) : 0;
+      const locked = req > 1 && G.skills.level(G.equipReqSkill(r.key)) < req;
+      if (req > 1) sub += ` · ${locked ? '🔒 ' : ''}lvl ${req} ${G.equipReqSkill(r.key)}`;
+      html += `<div class="row ${i === row ? 'sel' : ''}" style="${locked ? 'opacity:.5' : ''}"><span class="row-icon">${icon}</span><div class="row-main"><div class="row-title">${title}${equipped ? ' <span style="color:var(--gold)">✓</span>' : ''}</div><div class="row-sub">${sub}</div></div></div>`;
     });
     els.menuBody.innerHTML = html;
   }
@@ -270,8 +273,9 @@ export function createUI(G) {
       const tracked = G.trackedQuest === q.id;
       return `<div class="row ${i === row ? 'sel' : ''}"><div class="row-main"><div class="row-title">${tracked ? '📍 ' : ''}${q.def.saga ? '📜 ' : ''}${q.def.name}${tracked ? ' <span style="color:var(--gold)">tracking</span>' : ''}</div><div class="row-sub">${q.def.desc} &nbsp;·&nbsp; tap to ${tracked ? 'untrack' : 'track'}</div>${objs}</div></div>`;
     };
-    let html = sect('Active', all.filter((q) => q.status === 'active'), active);
-    html += sect('Available', all.filter((q) => q.status === 'available'), (q) => `<div class="row"><div class="row-main"><div class="row-title">${q.def.saga ? '📜 ' : ''}${q.def.name}</div><div class="row-sub">See ${npcName(q.def.giver)} &nbsp;·&nbsp; ${q.def.desc}</div></div></div>`);
+    let html = `<div class="section-head">⭐ Quest points: ${G.quests.points()}/${G.quests.maxPoints()}</div>`;
+    html += sect('Active', all.filter((q) => q.status === 'active'), active);
+    html += sect('Available', all.filter((q) => q.status === 'available'), (q) => { const req = G.quests.reqText(q.id), can = G.quests.canAccept(q.id); return `<div class="row" style="${can ? '' : 'opacity:.5'}"><div class="row-main"><div class="row-title">${q.def.saga ? '📜 ' : ''}${q.def.name}</div><div class="row-sub">See ${npcName(q.def.giver)}${req ? ` &nbsp;·&nbsp; ${can ? '' : '🔒 '}needs ${req}` : ''} &nbsp;·&nbsp; ${q.def.desc}</div></div></div>`; });
     html += sect('Completed', all.filter((q) => q.status === 'complete'), (q) => `<div class="row" style="opacity:.55"><div class="row-main"><div class="row-title">✓ ${q.def.name}</div></div></div>`);
     els.menuBody.innerHTML = html || `<div class="empty-note">No quests yet. Speak with the villagers around the hearth.</div>`;
   }

@@ -527,7 +527,7 @@ export const QUESTS = {
     rewards: { xp: { smithing: 200 }, items: { gold: 60, iron_bar: 2 } },
   },
   q_boss: {
-    name: 'The Ember Beast', giver: 'smith', requires: 'q_supply',
+    name: 'The Ember Beast', giver: 'smith', requires: 'q_supply', reqSkills: { combat: 15 },
     desc: 'Slay Emberfang prowling the Emberpeak — bring a real weapon.',
     objectives: [{ id: 'boss', type: 'kill', enemy: 'ember_boss', count: 1 }],
     rewards: { xp: { combat: 650 }, items: { gold: 220 } },
@@ -643,7 +643,7 @@ export const QUESTS = {
 
   // --- Kytari Jungle / Overgrown Ziggurat ---
   q_zigg: { name: 'Jungle Hunt', giver: 'pathfinder', startsAvailable: true, desc: 'Cull the coil serpents around the Overgrown Ziggurat.', objectives: [{ id: 'k', type: 'kill', enemy: 'serpent', count: 4 }], rewards: { xp: { combat: 300, woodcutting: 120 }, items: { gold: 120 } } },
-  q_jorath: { name: 'Jorath the Coiled', giver: 'pathfinder', requires: 'q_zigg', desc: 'Slay the great serpent Jorath atop the ziggurat.', objectives: [{ id: 'boss', type: 'kill', enemy: 'jorath', count: 1 }], rewards: { xp: { combat: 950, slayer: 240 }, items: { gold: 360 } } },
+  q_jorath: { name: 'Jorath the Coiled', giver: 'pathfinder', requires: 'q_zigg', reqSkills: { combat: 30 }, desc: 'Slay the great serpent Jorath atop the ziggurat.', objectives: [{ id: 'boss', type: 'kill', enemy: 'jorath', count: 1 }], rewards: { xp: { combat: 950, slayer: 240 }, items: { gold: 360 } } },
   // --- Scorched Wastes / The Ashpit ---
   q_ashpit: { name: 'Into the Ashes', giver: 'cinderwarden', startsAvailable: true, desc: 'Put down the ash hounds prowling the Scorched Wastes.', objectives: [{ id: 'k', type: 'kill', enemy: 'ash_hound', count: 3 }], rewards: { xp: { combat: 320 }, items: { gold: 130 } } },
   q_vurak: { name: 'Ashlord Vurak', giver: 'cinderwarden', requires: 'q_ashpit', desc: 'Destroy Ashlord Vurak in the Ashpit.', objectives: [{ id: 'boss', type: 'kill', enemy: 'vurak', count: 1 }], rewards: { xp: { combat: 1050, slayer: 280 }, items: { gold: 400 } } },
@@ -680,7 +680,7 @@ export const QUESTS = {
   q_galleon: { name: 'The Drowned Galleon', giver: 'harbormaster', requires: 'q_harbor', desc: 'Board the low-tide wreck and end Captain Mordrake.', objectives: [{ id: 'boss', type: 'kill', enemy: 'drowned_captain', count: 1 }], rewards: { xp: { combat: 1040, slayer: 240 }, items: { gold: 420 } } },
   // ===== Amberfell / The Hollow Barrow =====
   q_amberhunt: { name: 'Blighted Wood', giver: 'amberwarden', startsAvailable: true, desc: 'Put down the blight wolves stalking Amberfell’s groves.', objectives: [{ id: 'k', type: 'kill', enemy: 'blight_wolf', count: 5 }], rewards: { xp: { combat: 380, foraging: 150 }, items: { gold: 150 } } },
-  q_barrow:    { name: 'The Hollow Barrow', giver: 'amberwarden', requires: 'q_amberhunt', desc: 'Descend the barrow and lay the Barrow Wight to rest.', objectives: [{ id: 'boss', type: 'kill', enemy: 'barrow_wight', count: 1 }], rewards: { xp: { combat: 1120, prayer: 260 }, items: { gold: 440 } } },
+  q_barrow:    { name: 'The Hollow Barrow', giver: 'amberwarden', requires: 'q_amberhunt', reqSkills: { combat: 40, prayer: 15 }, desc: 'Descend the barrow and lay the Barrow Wight to rest.', objectives: [{ id: 'boss', type: 'kill', enemy: 'barrow_wight', count: 1 }], rewards: { xp: { combat: 1120, prayer: 260 }, items: { gold: 440 } } },
 
   // ===== Saga: Salt & Sorrow (Old Corsair Sabine) — ties Saltcrest to desert + Tide Isle =====
   q_saga_s1: { name: 'Salt & Sorrow', saga: true, giver: 'corsair', startsAvailable: true, desc: 'Sabine’s old crew scattered to the sands. Search the Sunspire Oasis for word of them.', objectives: [{ id: 'oasis', type: 'visit', x: 26, z: 104, r: 14, name: 'the Sunspire Oasis' }, { id: 'brig', type: 'kill', enemy: 'brigand', count: 4 }, { id: 'fish', type: 'have', item: 'raw_trout', count: 4 }], rewards: { xp: { combat: 320, fishing: 180 }, items: { gold: 180 } } },

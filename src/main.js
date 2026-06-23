@@ -790,8 +790,22 @@ try {
       G.ui.toast(`Needs ${Object.keys(rec.cost).map((k) => `${rec.cost[k]} ${ITEMS[k].name}`).join(', ')}`, 'bad', 2400);
     }
   };
+  // Gear is gated by skill level, derived from its power so it scales to all gear (starters,
+  // power <=6, stay free). Weapons need their combat style's skill; armour/shields need Defence.
+  function equipReq(def) {
+    if (!def) return 0;
+    if (def.type === 'weapon') return Math.max(1, Math.round(((def.bonus || 0) - 6) * 2.3));
+    if (def.type === 'armor' || def.type === 'shield') return Math.max(1, Math.round(((def.defense || 0) - 6) * 2.4));
+    return 0;
+  }
+  G.equipReq = (key) => equipReq(ITEMS[key]);
+  G.equipReqSkill = (key) => { const d = ITEMS[key]; return d && d.type === 'weapon' ? (d.skill || 'combat') : 'defence'; };
   G.equipChoice = (r) => {
     const eq = player.state.equipment;
+    if (r.key) {
+      const def = ITEMS[r.key], req = equipReq(def);
+      if (req > 1) { const sk = G.equipReqSkill(r.key); if (G.skills.level(sk) < req) { G.ui.toast(`Requires ${sk[0].toUpperCase() + sk.slice(1)} ${req} to wield ${def.name}`, 'bad', 2400); return; } }
+    }
     if (r.kind === 'unequipW') eq.weapon = null;
     else if (r.kind === 'unequipA') eq.armor = null;
     else if (r.kind === 'unequipAm') eq.amulet = null;
