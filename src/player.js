@@ -130,6 +130,7 @@ export function createPlayer(scene, world) {
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
     equipment: { weapon: null, armor: null, amulet: null, ring: null, shield: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
+    combatStance: 'accurate',   // attack stance (accurate/aggressive/defensive/controlled)
     bounds: null,   // set while inside a building → clamp movement to the room
     solids: null,   // circular obstacles (buildings outdoors, furniture/NPCs indoors)
   };

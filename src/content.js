@@ -204,6 +204,9 @@ export const PRAYERS = [
   { key: 'stoneskin', name: 'Stone Skin', level: 1,  drain: 0.5, dmgTaken: 0.7, desc: 'Take 30% less damage.' },
   { key: 'keenedge',  name: 'Keen Edge',  level: 8,  drain: 0.6, dmgDealt: 1.2, desc: 'Deal 20% more damage.' },
   { key: 'rapidheal', name: 'Rapid Heal', level: 15, drain: 0.4, regen: 1.2,    desc: 'Slowly regenerate health.' },
+  { key: 'protmelee',  name: 'Protect from Melee',  level: 10, drain: 1.2, protect: 'melee',  protectMult: 0.4, desc: 'Take 60% less melee damage (and from slams).' },
+  { key: 'protranged', name: 'Protect from Ranged', level: 13, drain: 1.2, protect: 'ranged', protectMult: 0.4, desc: 'Take 60% less ranged damage.' },
+  { key: 'protmagic',  name: 'Protect from Magic',  level: 16, drain: 1.2, protect: 'magic',  protectMult: 0.4, desc: 'Take 60% less magic damage.' },
 ];
 
 // Crafting bench recipes (gems + bars -> jewelry / set armour) and set bonuses.
@@ -502,6 +505,38 @@ export const ENEMIES = {
   blight_wolf: { name: 'Blight Wolf', hp: 84,  dmg: 18, speed: 4.8, xp: 200, color: 0x8a6a3a, aggro: 14, shape: 'beast',    loot: { pelt: 1, bones: 1 } },
   grave_husk:  { name: 'Grave Husk',  hp: 100, dmg: 21, speed: 3.2, xp: 245, color: 0x9a8a6a, aggro: 12, shape: 'humanoid', scale: 1.1, loot: { grave_iron: 1, bones: 2 } },
   barrow_wight: { name: 'The Barrow Wight', hp: 430, dmg: 35, speed: 3.4, xp: 1120, color: 0xe0a050, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 380, grave_iron: 4, ruby: 2, emerald: 1 }, rare: { item: 'wight_crown', chance: 0.3 } },
+};
+
+// ---------- Combat triangle ----------
+// strong = attack with the style the foe is weak to; weak = the style that style "beats" (so it's the worst pick).
+// pen[wk] = the style penalised when a foe is weak to `wk` (melee>ranged>magic>melee loop, read defensively).
+export const TRIANGLE = { strong: 1.30, weak: 0.80, pen: { melee: 'magic', ranged: 'melee', magic: 'ranged' } };
+// Each foe is weakest to ONE of your styles (read-only; never written per-instance). Distributed so all
+// three styles have plenty of strong targets — beasts→ranged, armoured/undead/golems→magic, casters/fast→melee.
+export const WEAKNESS = {
+  boar: 'ranged', frost_wolf: 'ranged', scorpion: 'ranged', jungle_panther: 'ranged', glimmer_bat: 'ranged',
+  scorchling: 'ranged', marsh_crab: 'ranged', blight_wolf: 'ranged', storm_harpy: 'ranged', deep_lurker: 'ranged', lava_hound: 'ranged',
+  bandit: 'magic', goblin_brute: 'magic', skeleton: 'magic', crystal_golem: 'magic', crag_golem: 'magic',
+  grave_husk: 'magic', brigand: 'magic', ash_hound: 'magic', thornling: 'magic',
+  wolf: 'melee', goblin: 'melee', serpent: 'melee', crystal_sprite: 'melee', magma_imp: 'melee', wraith: 'melee', tide_priest: 'melee', wisp: 'melee',
+  // bosses — spread evenly so switching styles is a real choice
+  ember_boss: 'ranged', cinder_colossus: 'ranged', drowned_king: 'ranged', jorath: 'ranged', hollow_king: 'ranged',
+  sandwyrm: 'magic', warchief: 'magic', vurak: 'magic', drowned_captain: 'magic',
+  frost_warden: 'melee', bonelord: 'melee', prism_tyrant: 'melee', thruun: 'melee', barrow_wight: 'melee',
+};
+// The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
+export const ATK_STYLE = {
+  wraith: 'magic', tide_priest: 'magic', wisp: 'magic', frost_warden: 'magic', bonelord: 'magic',
+  prism_tyrant: 'magic', hollow_king: 'magic', drowned_king: 'magic', drowned_captain: 'magic',
+  storm_harpy: 'ranged', thruun: 'ranged', warchief: 'ranged',
+};
+
+// ---------- Attack stances ----------  (combat risk/reward toggle; defShare routes kill-xp into Defence)
+export const ATTACK_STYLES = {
+  accurate:   { name: 'Accurate',   icon: '🎯', dmgMult: 1.00, desc: 'Balanced. Full skill XP.' },
+  aggressive: { name: 'Aggressive', icon: '💢', dmgMult: 1.18, desc: '+18% damage, but you guard less (take ~12% more).' },
+  defensive:  { name: 'Defensive',  icon: '🛡️', dmgMult: 0.90, defShare: 0.5, defBonus: 6, desc: '−10% damage, +6 armour, half XP into Defence.' },
+  controlled: { name: 'Controlled', icon: '⚖️', dmgMult: 1.00, defShare: 0.33, desc: 'Balanced; a third of XP into Defence.' },
 };
 
 export const ENEMY_SPAWNS = [

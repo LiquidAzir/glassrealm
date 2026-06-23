@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -84,6 +84,7 @@ try {
       player.state.heading = saved.player.heading;
       player.state.hp = Math.max(1, saved.player.hp || player.state.maxHp);
       if (saved.player.prayer != null) player.state.prayer = saved.player.prayer;
+      if (saved.player.combatStance && ATTACK_STYLES[saved.player.combatStance]) player.state.combatStance = saved.player.combatStance;
       if (saved.player.equipment) { const e = saved.player.equipment; player.state.equipment = { weapon: e.weapon || null, armor: e.armor || null, amulet: e.amulet || null, ring: e.ring || null, shield: e.shield || null }; }
       player.refreshEquipment();
     }
@@ -199,6 +200,8 @@ try {
     else if (player.state.prayer <= 0) { G.ui.toast('No prayer points — bury bones at an altar', 'bad', 2000); }
     else { player.state.activePrayer = key; G.ui.toast(`${pr.name} active`, 'good', 1300); }
   };
+  G.combatStances = ATTACK_STYLES;
+  G.setCombatStance = (key) => { if (!ATTACK_STYLES[key]) return; player.state.combatStance = key; G.ui.toast(`${ATTACK_STYLES[key].icon} ${ATTACK_STYLES[key].name} stance`, 'good', 1300); G.save.save(); };
   G.talkTo = (n) => {
     setMode('dialogue'); G.ui.hidePrompt();
     G.quests.notifyTalk(n.def.key); checkQuestReady();   // 'talk' objectives complete on conversation
@@ -304,6 +307,11 @@ try {
     if (w.style === 'magic') { let rune = null; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'rune' && (!rune || d.bonus > rune.def.bonus)) rune = it; } if (rune) { G.inventory.remove(rune.key, 1); dmg += rune.def.bonus; } }   // channel your strongest runes
     const bf = player.state.buffs;   // combat potions multiply your damage
     if (bf) { if (w.style === 'ranged' && bf.ranging) dmg = Math.round(dmg * bf.ranging.mult); else if (w.style === 'magic' && bf.magic) dmg = Math.round(dmg * bf.magic.mult); else if (bf.strength && w.style !== 'ranged' && w.style !== 'magic') dmg = Math.round(dmg * bf.strength.mult); }
+    const stance = ATTACK_STYLES[player.state.combatStance] || ATTACK_STYLES.accurate;   // attack stance: damage trade-off
+    if (stance.dmgMult !== 1) dmg = Math.round(dmg * stance.dmgMult);
+    const wk = WEAKNESS[e.enemyKey];   // COMBAT TRIANGLE: exploit the foe's weakness, suffer with the wrong style
+    if (wk) { const tri = wk === sk ? TRIANGLE.strong : (TRIANGLE.pen[wk] === sk ? TRIANGLE.weak : 1); if (tri !== 1) dmg = Math.max(1, Math.round(dmg * tri)); }
+    e._xpStance = player.state.combatStance;
     // status: magic hits may burn; a Venom Flask makes melee/ranged hits poison the foe (DoT ticked in entities.js)
     if (w.style === 'magic' && Math.random() < 0.3) e.dot = { kind: 'burn', dmg: Math.max(2, Math.round(dmg * 0.25)), t: 6, tick: 1.5 };
     else if (bf && bf.venom && w.style !== 'magic') e.dot = { kind: 'poison', dmg: 4, t: 8, tick: 1.5 };
@@ -892,12 +900,19 @@ try {
   let hurtFlash = 0;
   G.damagePlayer = (amount, src) => {
     if (player.state.hp <= 0) return;
-    const defv = gearBonus().def;
-    let taken = Math.max(1, Math.round(amount - defv * 0.6));
+    const stanceDef = (ATTACK_STYLES[player.state.combatStance] || {}).defBonus || 0;
+    const defv = gearBonus().def + stanceDef;
+    let taken = amount - defv * 0.6;            // flat armour soak first
+    let mit = 1;                                 // then fold every multiplier into one, and CAP it
     const apT = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
-    if (apT && apT.dmgTaken) taken = Math.max(1, Math.round(taken * apT.dmgTaken));
+    if (apT && apT.dmgTaken) mit *= apT.dmgTaken;
+    const eStyle = ATK_STYLE[src && src.enemyKey] || 'melee';   // protection prayer cuts the matching style (slams = melee)
+    if (apT && apT.protect === eStyle) mit *= apT.protectMult;
     const bf = player.state.buffs;
-    if (bf && bf.defence) taken = Math.max(1, Math.round(taken * bf.defence.mult));   // defence potion soaks damage
+    if (bf && bf.defence) mit *= bf.defence.mult;   // defence potion soaks damage
+    if (player.state.combatStance === 'aggressive') mit *= 1.12;   // aggressive: you guard less
+    mit = Math.max(0.25, mit);                   // never below 25% of post-armour damage (no invincibility stack)
+    taken = Math.max(1, Math.round(taken * mit));
     player.state.hp -= taken;
     hurtFlash = 0.25;
     G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, taken, 'player');
@@ -922,7 +937,10 @@ try {
     const names = [];
     for (const k in def.loot) { G.inventory.add(k, def.loot[k]); names.push(ITEMS[k].name); }
     if (def.rare && Math.random() < def.rare.chance) { G.inventory.add(def.rare.item, 1); G.ui.toast(`✨ Rare drop: ${ITEMS[def.rare.item].name}!`, 'gold', 3400); }
-    G.gainXp(e._lastSkill || 'combat', def.xp);
+    const ksk = e._lastSkill || 'combat';   // attack stance can route part of the kill XP into Defence
+    const kstance = ATTACK_STYLES[e._xpStance || 'accurate'] || {};
+    if (kstance.defShare) { G.gainXp('defence', Math.round(def.xp * kstance.defShare)); G.gainXp(ksk, Math.round(def.xp * (1 - kstance.defShare))); }
+    else G.gainXp(ksk, def.xp);
     G.stats.kills++; G.stats.killsByType[e.enemyKey] = (G.stats.killsByType[e.enemyKey] || 0) + 1;
     if (def.boss) { G.stats.bosses.add(e.enemyKey); world.showTrophy(e.enemyKey); }
     if (G.slayer.active && G.slayer.enemy === e.enemyKey && G.slayer.progress < G.slayer.count) { G.slayer.progress++; if (G.slayer.progress >= G.slayer.count) G.ui.toast('Slayer task complete — see the Slayer Master', 'good', 2600); }
