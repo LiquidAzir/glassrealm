@@ -345,7 +345,8 @@ export function createUI(G) {
     G.world.villages.forEach((v) => { const [x, y] = to(v.x, v.z); ctx.fillStyle = '#ffd45f'; ctx.fillRect(x - 3, y - 3, 6, 6); ctx.fillStyle = '#ffe9a8'; ctx.fillText(v.name, x, y - 7); });
     for (const wp of (G.world.waystones || [])) { const [x, y] = to(wp.x, wp.z); const on = G.waystonesAttuned && G.waystonesAttuned.has(wp.key); ctx.fillStyle = on ? '#9bf2ff' : '#3a5a66'; ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-2.4, -2.4, 4.8, 4.8); ctx.restore(); }
     (G.world.mines || []).forEach((m) => { const [x, y] = to(m.x, m.z); ctx.fillStyle = '#caa050'; ctx.beginPath(); ctx.arc(x, y, 3.4, 0, 7); ctx.fill(); ctx.fillStyle = '#1a1208'; ctx.fillText('⛏', x, y + 3.2); });
-    ctx.fillStyle = '#5fe3ff'; G.entities.npcs.forEach((n) => { const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill(); });
+    const mGivers = new Set(G.quests.all().filter((q) => q.status === 'available').map((q) => q.def.giver));   // gold = has a quest to offer
+    G.entities.npcs.forEach((n) => { const gv = mGivers.has(n.def.key); const [x, y] = to(n.pos.x, n.pos.z); ctx.fillStyle = gv ? '#ffd24a' : '#5fe3ff'; ctx.beginPath(); ctx.arc(x, y, gv ? 3.2 : 2.2, 0, 7); ctx.fill(); });
     G.entities.enemies.forEach((e) => { if (!e.alive) return; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 5 : 2, 0, 7); ctx.fill(); });
     const [hx, hy] = to(G.player.position.x, G.player.position.z);
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(Math.PI - G.player.state.heading);
@@ -379,7 +380,8 @@ export function createUI(G) {
       ctx.fillStyle = '#08161c'; ctx.fillText(BUILD_ICON[s.building] || '?', x, y + 0.5);
     }
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#5fe3ff'; for (const n of G.entities.npcs) { const dx = n.pos.x - px, dz = n.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(n.pos.x, n.pos.z); ctx.beginPath(); ctx.arc(x, y, 1.7, 0, 7); ctx.fill(); }
+    const mmGivers = new Set(G.quests.all().filter((q) => q.status === 'available').map((q) => q.def.giver));
+    for (const n of G.entities.npcs) { const dx = n.pos.x - px, dz = n.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const gv = mmGivers.has(n.def.key); const [x, y] = to(n.pos.x, n.pos.z); ctx.fillStyle = gv ? '#ffd24a' : '#5fe3ff'; ctx.beginPath(); ctx.arc(x, y, gv ? 2.6 : 1.7, 0, 7); ctx.fill(); }
     for (const e of G.entities.enemies) { if (!e.alive) continue; const dx = e.pos.x - px, dz = e.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 3 : 1.7, 0, 7); ctx.fill(); }
     if (G.questGuide) { const [x, y] = to(G.questGuide.x, G.questGuide.z); ctx.fillStyle = '#6db3ff'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#ffffff'; ctx.stroke(); }
     ctx.restore();

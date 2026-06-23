@@ -40,6 +40,7 @@ export function createQuests(G, saved) {
     accept(id) {
       if (state[id] && state[id].status === 'available') {
         if (!this.canAccept(id)) { if (G.ui) G.ui.toast(`Requires ${this.reqText(id)} to start this quest`, 'bad', 2600); return; }
+        if (this.activeList().length > 0) { if (G.ui) G.ui.toast('Finish your current quest first — one quest at a time', 'bad', 2800); return; }
         state[id].status = 'active';
         if (G.onQuestAccepted) G.onQuestAccepted(id, QUESTS[id]);
       }

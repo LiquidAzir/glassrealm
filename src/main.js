@@ -140,7 +140,8 @@ try {
   G.grave = null;                                          // active gravestone {x,z,items,t,mesh}
   G.waystonesAttuned = new Set((saved && saved.world && saved.world.waystonesAttuned) || []);   // fast-travel nodes you've walked up to
   G.slayer = (saved && saved.slayer) ? { ...saved.slayer } : { active: false, enemy: null, count: 0, progress: 0 };
-  G.trackedQuest = (saved && saved.tracked) || null;   // quest pinned in the Quests menu
+  G.trackedQuest = (saved && saved.tracked) || null;   // selected quest the arrow guides (auto-set on accept)
+  if (!(G.trackedQuest && G.quests.status(G.trackedQuest) === 'active')) { const a = G.quests.activeList(); G.trackedQuest = a.length ? a[0] : null; }   // default-select the active quest so it's guided
   const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
   G.slayerPoints = (saved && saved.slayerPoints) || 0;
   G.slayerPerks = new Set((saved && saved.slayerPerks) || []);
@@ -1124,8 +1125,8 @@ try {
     if (!G.activeClue && Math.random() < 0.04) { G.inventory.add('clue_scroll', 1); G.ui.toast('📜 A clue scroll dropped!', 'gold', 2800); }
     G.ach.evaluate(); checkQuestReady(); G.save.save();
   };
-  G.onQuestAccepted = (id, def) => { G.ui.toast(`Quest accepted: ${def.name}`, 'good', 2600); G.save.save(); };
-  G.onQuestComplete = (id, def) => { G.ui.toast(`Quest complete: ${def.name}!`, 'good', 3400); readyToasted.delete(id); G.save.save(); };
+  G.onQuestAccepted = (id, def) => { G.trackedQuest = id; G.ui.toast(`Quest accepted: ${def.name}`, 'good', 2600); G.save.save(); };   // auto-select the quest you just took so the arrow guides it
+  G.onQuestComplete = (id, def) => { if (G.trackedQuest === id) G.trackedQuest = null; G.ui.toast(`Quest complete: ${def.name}!`, 'good', 3400); readyToasted.delete(id); G.save.save(); };
 
   // ---------- mode state machine ----------
   let mode = 'world';
@@ -1310,12 +1311,9 @@ try {
     return null;
   }
   function questTarget() {
-    // a quest pinned in the Quests menu takes priority
-    if (G.trackedQuest && G.quests.status(G.trackedQuest) === 'active') { const t = targetForQuest(G.trackedQuest); if (t) return t; }
-    for (const id of G.quests.activeList()) { const t = targetForQuest(id); if (t) return t; }
-    let best = null, bd = Infinity;
-    for (const q of G.quests.all()) { if (q.status !== 'available') continue; const n = npcByKey(q.def.giver); if (!n) continue; const d = dist2D(player.position.x, player.position.z, n.pos.x, n.pos.z); if (d < bd) { bd = d; best = { x: n.pos.x, z: n.pos.z, y: n.pos.y + 2.9, label: 'New quest: ' + n.def.name }; } }
-    return best;
+    // the arrow ONLY guides your selected (tracked) active quest's objective — never new/available quests
+    if (G.trackedQuest && G.quests.status(G.trackedQuest) === 'active') return targetForQuest(G.trackedQuest);
+    return null;
   }
 
   const STATION_PIP = { cook: '🍳', bank: '🏦', anvil: '⚒️', furnace: '🔥', craft: '💍', cauldron: '⚗️', bed: '🛏️', shop: '🛒', exit: '🚪', ledger: '🏛️', jobboard: '📋' };
