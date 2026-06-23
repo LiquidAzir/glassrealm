@@ -190,6 +190,12 @@ export const ITEMS = {
   pearl_amulet:   { name: 'Pearl Amulet',   icon: '📿', type: 'amulet', bonus: { magic: 8, maxhp: 20 }, desc: 'A great pearl on a kelp cord. +8 magic, +20 max HP.' },
   songpearl:      { name: 'Songpearl',      icon: '📿', type: 'amulet', bonus: { def: 9, maxhp: 35 }, desc: 'Rare drop. The pearl that was a voice. +9 defence, +35 max HP.' },
   tideglass_ring: { name: 'Tideglass Ring', icon: '💍', type: 'ring', bonus: { magic: 7, def: 5 }, desc: 'Crafted. Sea-glass set in coral. +7 magic, +5 defence.' },
+  // --- Shardspire (The Singing Geode): prismatic crystal gear ---
+  shard_dust:     { name: 'Tuned Shard-Dust', icon: '🔮', type: 'material', desc: 'Crystal dust that hums one held note. Crafts prismatic gear.' },
+  chord_staff:    { name: 'Discord Chord-Staff', icon: '🪄', type: 'weapon', style: 'magic', skill: 'magic', bonus: 31, range: 16, speed: 0.66, desc: "Resona's seed-crystal cut into a focus; sings a discordant note. +31 magic." },
+  prism_carapace: { name: 'Prismglass Carapace', icon: '🛡️', type: 'armor', defense: 20, desc: 'Plate grown from cooled Bloom-crystal — light as glass, hard as grief. −20 damage.' },
+  resonant_heart: { name: 'Resonant Heart', icon: '📿', type: 'amulet', bonus: { magic: 13, maxhp: 25 }, desc: "Rare drop. The First Note's stilled core. +13 magic, +25 max HP." },
+  geode_charm:    { name: 'Geode Charm', icon: '📿', type: 'amulet', bonus: { magic: 9, def: 8 }, desc: 'Crafted. A pocket of silent crystal. +9 magic, +8 defence.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -242,6 +248,7 @@ export const CRAFT = [
   { out: 'grave_plate',     cost: { grave_iron: 3, emerald: 2 }, xp: 220 },
   { out: 'tideglass_ring',  cost: { coral_chunk: 3, sapphire: 2 }, xp: 190 },
   { out: 'coral_armor',     cost: { coral_chunk: 4, pearl: 2 }, xp: 200 },
+  { out: 'geode_charm',     cost: { shard_dust: 3, sapphire: 2 }, xp: 205 },
 ];
 export const SETS = {
   guardian: { name: 'Guardian', def: 10, melee: 8, maxhp: 20 },
@@ -338,6 +345,8 @@ export const NPCS = [
   { key: 'amberwarden',  name: 'Warden Rowan',       color: 0xe0852e, pos: { x: 56, z: -160 }, dialogue: 'amberwarden' },
   { key: 'loreseeker',   name: 'Loreseeker Wynn',    color: 0xc6a8ff, pos: { x: 44, z: -160 }, dialogue: 'saga_amber' },
   { key: 'tidecaptain',  name: 'Diver-Captain Yara', color: 0x4fd0c4, pos: { x: -96, z: -116 }, dialogue: 'saga_lagoon' },
+  { key: 'veyra',        name: 'Lapidary Veyra',     color: 0xc0a8ff, pos: { x: -138, z: 100 }, dialogue: 'saga_veyra' },
+  { key: 'quarryman',    name: 'Quarryman Toll',     color: 0x9ab0d0, pos: { x: -134, z: 110 }, dialogue: 'quarryman' },
 ];
 
 // Ambient mobile NPCs (not quest-givers): patrolling guard squads + lone wanderers
@@ -542,6 +551,11 @@ export const ENEMIES = {
   coral_warden: { name: 'Coral Warden', hp: 138, dmg: 21, speed: 2.8, xp: 255, color: 0xe07a8a, aggro: 11, shape: 'humanoid', scale: 1.4, loot: { coral_chunk: 2, pearl: 1, gold: 22 } },
   lure_siren:   { name: 'Lure-Siren',   hp: 84,  dmg: 22, speed: 4.0, xp: 230, color: 0x7ae6d6, aggro: 16, shape: 'humanoid', loot: { siren_scale: 1, pearl: 1 } },
   sea_witch:    { name: 'Maelys the Sea-Witch', hp: 370, dmg: 30, speed: 3.6, xp: 1000, color: 0x35c8d6, aggro: 19, shape: 'humanoid', scale: 2.1, boss: true, loot: { gold: 320, brinecaller: 1, siren_scale: 4, pearl: 5 }, rare: { item: 'songpearl', chance: 0.3 } },
+  // --- Shardspire crystal canyon + The Singing Geode (the Bloom) ---
+  shard_skitter: { name: 'Shard-Skitter',  hp: 78,  dmg: 19, speed: 5.0, xp: 200, color: 0x8fe4ff, aggro: 14, shape: 'beast',    scale: 0.8, loot: { shard_dust: 1, sapphire: 1 } },
+  stoneward:     { name: 'Stoneward Thrall', hp: 150, dmg: 24, speed: 3.0, xp: 250, color: 0xa9b6d8, aggro: 12, shape: 'humanoid', scale: 1.3, loot: { shard_dust: 1, bones: 1, gold: 22 } },
+  chime_warden:  { name: 'Chime Warden',   hp: 130, dmg: 26, speed: 3.4, xp: 270, color: 0xc6b0ff, aggro: 14, shape: 'humanoid', scale: 1.4, loot: { shard_dust: 2, emerald: 1 } },
+  resona:        { name: 'Resona, the First Note', hp: 420, dmg: 36, speed: 3.6, xp: 1140, color: 0xd0a8ff, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 400, chord_staff: 1, shard_dust: 5, sapphire: 3 }, rare: { item: 'resonant_heart', chance: 0.3 } },
 };
 
 // ---------- Combat triangle ----------
@@ -561,6 +575,7 @@ export const WEAKNESS = {
   sandwyrm: 'magic', warchief: 'magic', vurak: 'magic', drowned_captain: 'magic',
   frost_warden: 'melee', bonelord: 'melee', prism_tyrant: 'melee', thruun: 'melee', barrow_wight: 'melee',
   reef_reaver: 'ranged', coral_warden: 'magic', lure_siren: 'melee', sea_witch: 'melee',
+  shard_skitter: 'ranged', stoneward: 'melee', chime_warden: 'magic', resona: 'magic',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -568,6 +583,7 @@ export const ATK_STYLE = {
   prism_tyrant: 'magic', hollow_king: 'magic', drowned_king: 'magic', drowned_captain: 'magic',
   storm_harpy: 'ranged', thruun: 'ranged', warchief: 'ranged',
   lure_siren: 'magic', sea_witch: 'magic',
+  chime_warden: 'magic', resona: 'magic',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -648,6 +664,11 @@ export const ENEMY_SPAWNS = [
   { enemy: 'coral_warden', x: -112, z: -130 }, { enemy: 'lure_siren', x: -90, z: -134 },
   { enemy: 'reef_reaver', x: -104, z: -122 }, { enemy: 'lure_siren', x: -96, z: -120 },
   { enemy: 'sea_witch', x: -100, z: -126 },
+  // Shardspire crystal canyon (surface) + The Singing Geode (-120,116)
+  { enemy: 'shard_skitter', x: -150, z: 104 }, { enemy: 'shard_skitter', x: -132, z: 122 },
+  { enemy: 'stoneward', x: -160, z: 118 }, { enemy: 'chime_warden', x: -128, z: 110 },
+  { enemy: 'shard_skitter', x: -118, z: 112 }, { enemy: 'stoneward', x: -122, z: 120 }, { enemy: 'chime_warden', x: -116, z: 118 },
+  { enemy: 'resona', x: -120, z: 116 },
 ];
 
 export const QUESTS = {
@@ -882,6 +903,10 @@ export const QUESTS = {
   q_saga_l1: { name: 'The Drowned Song', saga: true, giver: 'tidecaptain', startsAvailable: true, desc: 'Coralside’s divers vanish into the reef, lured by a song. Drive the reef-things back and recover what the tide took.', objectives: [{ id: 'reef', type: 'kill', enemy: 'reef_reaver', count: 4 }, { id: 'pearls', type: 'have', item: 'pearl', count: 3 }, { id: 'arch', type: 'visit', x: -86, z: -108, r: 9, name: 'the Great Coral Arch' }], rewards: { xp: { combat: 220, fishing: 150 }, items: { gold: 150, reef_harpoon: 1 } } },
   q_saga_l2: { name: 'The Drowned Song — Her Voice', saga: true, giver: 'tidecaptain', requires: 'q_saga_l1', reqSkills: { combat: 22 }, desc: 'A Lure-Siren sings in the captain’s own apprentice’s voice. Silence one, take its scale, and learn the truth.', objectives: [{ id: 'siren', type: 'kill', enemy: 'lure_siren', count: 2 }, { id: 'scale', type: 'have', item: 'siren_scale', count: 1 }, { id: 'yara', type: 'talk', npc: 'tidecaptain', name: 'Diver-Captain Yara' }], rewards: { xp: { combat: 320, magic: 140 }, items: { gold: 220 } } },
   q_saga_l3: { name: 'The Drowned Song — Maelys', saga: true, giver: 'tidecaptain', requires: 'q_saga_l2', reqSkills: { combat: 28 }, desc: 'The Sea-Witch Maelys holds the grotto and the souls she sang under. End her and free them.', objectives: [{ id: 'boss', type: 'kill', enemy: 'sea_witch', count: 1 }, { id: 'yara', type: 'talk', npc: 'tidecaptain', name: 'Diver-Captain Yara' }], rewards: { xp: { combat: 980, defence: 200 }, items: { gold: 440, pearl_amulet: 1 } } },
+  // --- Shardspire: The Singing Stone saga (Lapidary Veyra) ---
+  q_saga_sh1: { name: 'The Singing Stone', saga: true, giver: 'veyra', startsAvailable: true, desc: 'Walk the crystal canyon, cull the shard-skitters the Bloom sheds, and bring Veyra raw shard-dust to read.', objectives: [{ id: 'visit', type: 'visit', x: -120, z: 116, r: 9, name: 'the Singing Geode' }, { id: 'skitter', type: 'kill', enemy: 'shard_skitter', count: 5 }, { id: 'dust', type: 'have', item: 'shard_dust', count: 4 }], rewards: { xp: { combat: 320, mining: 180 }, items: { gold: 200 } } },
+  q_saga_sh2: { name: 'The Singing Stone — Those Who Hardened', saga: true, giver: 'veyra', requires: 'q_saga_sh1', desc: 'The Bloom petrifies Prismhold’s own. Free the stoneward thralls, silence chime wardens, and hear Quarryman Toll before he turns.', objectives: [{ id: 'thrall', type: 'kill', enemy: 'stoneward', count: 4 }, { id: 'warden', type: 'kill', enemy: 'chime_warden', count: 2 }, { id: 'toll', type: 'talk', npc: 'quarryman', name: 'Quarryman Toll' }], rewards: { xp: { combat: 380, crafting: 180 }, items: { gold: 280 } } },
+  q_saga_sh3: { name: 'The Singing Stone — The First Note', saga: true, giver: 'veyra', requires: 'q_saga_sh2', reqSkills: { combat: 34 }, desc: 'Descend into the Singing Geode and silence Resona, the First Note, at the Bloom’s heart — then return to Veyra.', objectives: [{ id: 'boss', type: 'kill', enemy: 'resona', count: 1 }, { id: 'veyra', type: 'talk', npc: 'veyra', name: 'Lapidary Veyra' }], rewards: { xp: { combat: 1180, magic: 260 }, items: { gold: 480 } } },
 };
 
 export function objectiveText(obj, n) {
@@ -1443,6 +1468,19 @@ export const DIALOGUE = {
     { id: 'q_saga_l2', intro: 'I have to tell you what I couldn’t tell the others. The clearest voice in that song — it’s my apprentice, Mira. I sent her down for the deep beds three moons gone. She came back as a *voice*. Find the siren that sings in her tone, silence it, bring me its scale. I have to know if anything of her is left.', accept: 'I’ll find Mira.', active: 'Silence a Lure-Siren, take a Siren Scale, and return to Yara with it.', done: 'This scale… it’s warm. It still remembers being a girl. The song doesn’t kill them — it *keeps* them. Maelys, the Sea-Witch, drowned first of us all and turned her own drowning into a lure. The great pearl at her throat is a stolen voice. Cut it loose and they go free.' },
     { id: 'q_saga_l3', intro: 'No more dirges. Take the grotto, take Maelys, and break the pearl at her throat. Free Mira and the rest — and if any part of the woman she was can hear me down there, tell her Yara’s sorry she ever sent the girl deep.', accept: 'The song ends today.', active: 'Maelys the Sea-Witch holds the Tide Grotto, north of Coralside. End her and shatter the songpearl.', done: 'The water’s gone quiet — truly quiet, for the first time in a season. I saw them surface at dawn, salt-skinned and *breathing*. Mira among them. You gave Coralside back its voices. This pearl’s yours now — let it only ever sing for you.' },
   ], 'Calm seas and a full net, diver. Coralside owes you its voices.'),
+  saga_veyra: sagaDialogue('Lapidary Veyra', [
+    { id: 'q_saga_sh1', intro: 'You hear it too, don’t you — the canyon humming? They call it the Bloom. It grows like coral and it sings, and where it sings, the living slow… and shine… and stop. I cut gems for forty years; I know stone that is only stone, and this is not that. Walk the canyon, break the skitters the Bloom sheds, and bring me raw shard-dust.', accept: 'I’ll bring you the dust.', active: 'The Bloom sings on, and I have no dust to read it by.', done: 'This dust… it is tuned. Every grain hums the same note, the way a choir holds one breath. The Bloom is learning a song — and I think I know the voice.' },
+    { id: 'q_saga_sh2', intro: 'It takes the people now. The slow ones crust over standing up, then walk again as stonewards, eyes like quartz. The chime wardens ring the Bloom’s note to harden everything near. Free the thralls — a hard blow shatters the crust and lets them rest — break two wardens, and find Quarryman Toll at the dig. He touched the deep seam first, and he is hardening as we speak.', accept: 'I’ll free them, and find Toll.', active: 'The thralls still walk, the wardens still ring, and Toll is going to stone with his words unsaid.', done: 'Toll told you, then — that the deep seam sings a woman’s voice, a girl’s name. It is my daughter’s name. Lyse went into the geode nine winters past and never came out, and the Bloom has worn her voice ever since. I must tell you what I’ve done.' },
+    { id: 'q_saga_sh3', intro: 'I fed it. There — said plain. I carried offerings into the geode gem by gem, because the Bloom sang in Lyse’s voice and I could not bear to silence the only sound of her left. At its heart sits Resona, the First Note — the seed-crystal that wears every voice it has swallowed, hers loudest of all. It is not Lyse. Crack the First Note and let the canyon fall silent.', accept: 'I’ll silence the First Note.', active: 'Resona sings at the heart of the geode, wearing a dead girl’s voice.', done: 'Quiet. Real quiet, for the first time in nine winters. You did what I could not — you loved her enough to let her be gone. Take this; I cut it from the First Note’s heart before it dimmed. A song you cannot let go of will hollow you out to keep singing.' },
+  ], 'The canyon is silent and Prismhold breathes its own breath again. Walk easy, Note-breaker.'),
+  quarryman: {
+    root: (G) => {
+      const st = G.quests.status('q_saga_sh2');
+      if (st === 'active') return node('Quarryman Toll', 'Don’t — don’t look at my arm, it’s near solid now. Listen. I struck the deep seam first. It SANG up the pick into my teeth — a woman’s voice, soft as anything. Veyra’s girl, Lyse, that’s the name in the stone. But it don’t sing TO you. It sings you UNTIL you’re part of the chord. Tell Veyra it isn’t Lyse — it’s just hungry, and it learned to sound like love.', [end('I’ll tell her. Rest now.')]);
+      if (st === 'complete' || G.quests.status('q_saga_sh3') !== 'locked') return node('Quarryman Toll', 'Most of me’s stone now, and it doesn’t hurt the way I feared. You silenced it? …Good. Then I’ll set down here by the dig and be a quiet rock — better company than I ever was warm.', [end('Rest, Toll.')]);
+      return node('Quarryman Toll', 'Pick’s down. Can’t grip it any more. The canyon does the singing now.', [end('Take care.')]);
+    },
+  },
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.
