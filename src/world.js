@@ -380,6 +380,8 @@ export function createWorld(scene, seed = 1337) {
   const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });   // hoisted: used by builders below
   const waystones = [];   // fast-travel network nodes
   const snapLand = (x, z) => { if (isWalkable(x, z)) return { x, z }; for (let r = 3; r <= 44; r += 3) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz)) return { x: nx, z: nz }; } return { x, z }; };
+  // nearest walkable tile that sits right by the water's edge (for ducks/waterfowl)
+  const shore = (x, z) => { const wet = (ax, az) => height(ax, az) <= 0.35; for (let r = 0; r <= 70; r += 2.5) for (let a = 0; a < TAU; a += TAU / 24) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (!isWalkable(nx, nz)) continue; for (let b = 0; b < TAU; b += TAU / 8) if (wet(nx + Math.cos(b) * 3.2, nz + Math.sin(b) * 3.2)) return { x: nx, z: nz }; } return snapLand(x, z); };
   function hut(x, z, a, wallHex, roofHex) {
     const y = height(x, z);
     const wall = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 3), new THREE.MeshLambertMaterial({ color: wallHex, flatShading: true }));
@@ -765,8 +767,9 @@ export function createWorld(scene, seed = 1337) {
   ]) {
     const reg = byKey[rk]; if (!reg) continue;
     for (let i = 0; i < n; i++) {
-      const p = snapLand(reg.x + ox + (rng() - 0.5) * 9, reg.z + oz + (rng() - 0.5) * 9);
-      if (!isWalkable(p.x, p.z)) continue;
+      const jx = reg.x + ox + (rng() - 0.5) * 9, jz = reg.z + oz + (rng() - 0.5) * 9;
+      const p = kind === 'duck' ? shore(jx, jz) : snapLand(jx, jz);   // ducks settle at the water's edge
+      if (kind !== 'duck' && !isWalkable(p.x, p.z)) continue;
       animalSpawns.push({ kind, x: p.x, z: p.z, home: { x: p.x, z: p.z } });
     }
   }
@@ -912,7 +915,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, animalSpawns, mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, animalSpawns, obstacles: solids.filter((s) => s.r >= 1.2), mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);

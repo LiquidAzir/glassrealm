@@ -81,7 +81,7 @@ const ANIMAL_DEF = {
   deer:    { body: 0xa0845a, accent: 0x5a4a3a, scale: 1.10, solidR: 0.40, speed: 2.9, roam: 12,  graze: true,  skittish: true,  lays: false, hop: false },
   rabbit:  { body: 0xc8a074, accent: 0xf4ece0, scale: 0.70, solidR: 0.25, speed: 2.6, roam: 9,   graze: true,  skittish: true,  lays: false, hop: true  },
   boar:    { body: 0x6a5a4a, accent: 0x241c16, scale: 1.15, solidR: 0.45, speed: 2.4, roam: 9,   graze: true,  skittish: false, lays: false, hop: false },
-  duck:    { body: 0x2f5560, accent: 0xe0a23a, scale: 0.70, solidR: 0.26, speed: 1.6, roam: 6,   graze: true,  skittish: true,  lays: true,  hop: false },
+  duck:    { body: 0x2f5560, accent: 0xe0a23a, scale: 0.70, solidR: 0.26, speed: 1.6, roam: 6,   graze: true,  skittish: true,  lays: true,  hop: false, water: true },
   fox:     { body: 0xd07a2a, accent: 0xf4e0c0, scale: 0.85, solidR: 0.32, speed: 2.6, roam: 13,  graze: false, skittish: false, lays: false, hop: false },
   badger:  { body: 0x4a4a4a, accent: 0xf2f2f2, scale: 0.80, solidR: 0.30, speed: 1.4, roam: 7,   graze: false, skittish: false, lays: false, hop: false },
   squirrel:{ body: 0x8a6a3a, accent: 0xf4e0c0, scale: 0.55, solidR: 0.20, speed: 2.2, roam: 8,   graze: true,  skittish: true,  lays: false, hop: true  },
@@ -230,7 +230,7 @@ export function createEntities(scene, world, G) {
   const animals = [];
   const eggs = [];
   function spawnEgg(x, z) {
-    const y = world.height(x, z) + 0.14;
+    const y = Math.max(world.height(x, z), world.WATER_Y) + 0.14;   // float on water (duck eggs), rest on land
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshLambertMaterial({ color: 0xf6e9a8, flatShading: true }));
     m.scale.y = 1.35; m.position.set(x, y, z); scene.add(m);
     eggs.push({ mesh: m, x, z, y, t: 90 });
@@ -251,6 +251,15 @@ export function createEntities(scene, world, G) {
       get pos() { return g.position; },
     });
   });
+  // Can an animal stand at (nx,nz)? Walkable land (or shallow water for waterfowl), clear of big
+  // structures (buildings/barn/spires) and not stacked on another animal.
+  function animalStep(a, nx, nz) {
+    if (!(world.isWalkable(nx, nz) || (a.def.water && world.height(nx, nz) <= 0.4))) return false;
+    const ob = world.obstacles;
+    if (ob) for (let i = 0; i < ob.length; i++) { const o = ob[i], dx = nx - o.x, dz = nz - o.z, rr = o.r + 0.3; if (dx * dx + dz * dz < rr * rr) return false; }
+    for (let i = 0; i < animals.length; i++) { const b = animals[i]; if (b === a) continue; const dx = nx - b.pos.x, dz = nz - b.pos.z, rr = a.solidR + b.solidR; if (dx * dx + dz * dz < rr * rr) return false; }
+    return true;
+  }
 
   const enemies = [];
   function spawnEnemy(key, x, z) {
@@ -449,7 +458,7 @@ export function createEntities(scene, world, G) {
       if (flee) {
         a.heading = Math.atan2(pdx, pdz);   // directly away from the player
         const nx = a.pos.x + Math.sin(a.heading) * D.speed * 1.7 * dt, nz = a.pos.z + Math.cos(a.heading) * D.speed * 1.7 * dt;
-        if (world.isWalkable(nx, nz)) { a.group.position.x = nx; a.group.position.z = nz; moving = true; }
+        if (world.isWalkable(nx, nz) || (D.water && world.height(nx, nz) <= 0.4)) { a.group.position.x = nx; a.group.position.z = nz; moving = true; }
         a.state = 'pause'; a.pauseT = 0.6; a.target = null;
       } else if (a.state === 'wander' && a.target) {
         const dx = a.target.x - a.pos.x, dz = a.target.z - a.pos.z, dd = Math.hypot(dx, dz);
@@ -459,7 +468,7 @@ export function createEntities(scene, world, G) {
           const nx = a.pos.x + Math.sin(a.heading) * D.speed * dt, nz = a.pos.z + Math.cos(a.heading) * D.speed * dt;
           const inPen = !a.penned || dist2D(nx, nz, a.home.x, a.home.z) <= a.roam + 0.4;
           const clearOfPlayer = ((nx - player.position.x) ** 2 + (nz - player.position.z) ** 2) > (a.solidR + 0.55) * (a.solidR + 0.55);   // don't walk onto the player
-          if (world.isWalkable(nx, nz) && inPen && clearOfPlayer) { a.group.position.x = nx; a.group.position.z = nz; moving = true; }
+          if (inPen && clearOfPlayer && animalStep(a, nx, nz)) { a.group.position.x = nx; a.group.position.z = nz; moving = true; }
           else { a.state = 'pause'; a.pauseT = 0.5 + Math.random(); a.target = null; }
         }
       } else {   // pause + graze, then pick a fresh roam target near home
@@ -467,7 +476,8 @@ export function createEntities(scene, world, G) {
         a.pauseT -= dt;
         if (a.pauseT <= 0) { const ang = Math.random() * TAU, r = (0.4 + Math.random() * 0.6) * a.roam; a.target = { x: a.home.x + Math.cos(ang) * r, z: a.home.z + Math.sin(ang) * r }; a.state = 'wander'; }
       }
-      a.group.position.y = world.height(a.pos.x, a.pos.z);
+      const gh = world.height(a.pos.x, a.pos.z);
+      a.group.position.y = (D.water && gh <= 0.4) ? world.WATER_Y + 0.06 : gh;   // waterfowl float on the surface
       a.group.rotation.y = a.heading;
       if (moving) a.walkPhase += dt * (D.hop ? 7 : 9);
       if (anim) {
