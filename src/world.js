@@ -171,7 +171,7 @@ export function createWorld(scene, seed = 1337) {
       if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.4 * fl); }   // natural neck: raise troughs only, keep rolling land
       else { const fl = smoothstep(clamp((b.halfW - d) / 4, 0, 1)); h = h * (1 - fl) + b.flat * fl; }   // causeway/span: flat walkway
     }
-    for (const v of villages) { const flat = smoothstep(clamp((11 - dist2D(x, z, v.x, v.z)) / 11, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
+    for (const v of villages) { const flat = smoothstep(clamp((16.5 - dist2D(x, z, v.x, v.z)) / 16.5, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
     // flatten the new dungeon floors into level arenas so the boss/chest never sink underwater near a coast
     for (const dg of DUNGEONS) { if (!dg.flat) continue; const flat = smoothstep(clamp((dg.r - 3 - dist2D(x, z, dg.x, dg.z)) / 6, 0, 1)); h = h * (1 - flat) + 1.8 * flat; }
     return h;
@@ -221,7 +221,7 @@ export function createWorld(scene, seed = 1337) {
       const h = height(x, z);
       if (h < hMin || h > hMax) continue;
       let bad = false;
-      for (const v of villages) if (dist2D(x, z, v.x, v.z) < 11) { bad = true; break; }
+      for (const v of villages) if (dist2D(x, z, v.x, v.z) < 16.5) { bad = true; break; }
       if (!bad) for (const dg of DUNGEONS) if (dist2D(x, z, dg.x, dg.z) < dg.r + 2) { bad = true; break; }
       if (!bad) for (const o of occupied) if (dist2D(x, z, o.x, o.z) < minGap) { bad = true; break; }
       if (bad) continue;
@@ -551,18 +551,22 @@ export function createWorld(scene, seed = 1337) {
   // cauldron services now live INSIDE their buildings (entered via the door).
   for (const v of villages) {
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
-    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * 8.5, v.z + Math.sin(a) * 8.5, v.x, v.z, types[i], v.hut, v.biome); }
+    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * 13, v.z + Math.sin(a) * 13, v.x, v.z, types[i], v.hut, v.biome); }
     well(v.x, v.z);
-    fire(v.x - 3.5, v.z + 3.5);
-    altar(v.x + 3.5, v.z + 3.5);
-    stall(v.x - 4, v.z - 3.5);
-    fletchBench(v.x + 5, v.z - 3);
-    runeAltar(v.x - 5.5, v.z + 1);
-    sawmill(v.x - 1, v.z + 6);
-    lampPost(v.x + 4.6, v.z - 4.6); lampPost(v.x - 4.6, v.z + 4.6);
-    plot(v.x + 12, v.z + 2); plot(v.x + 13.4, v.z + 3.2); plot(v.x + 12.6, v.z + 4.6);
-    { const lx = v.x - 2.4, lz = v.z - 5.0; signpost(lx, lz, 0xffd45f); stations.push({ kind: 'ledger', label: 'Merchants’ Guild', x: lx, z: lz, y: height(lx, lz) }); }
-    { const jx = v.x + 2.4, jz = v.z - 5.0; signpost(jx, jz, 0x9bf2ff); stations.push({ kind: 'jobboard', label: 'Job Board', x: jx, z: jz, y: height(jx, jz) }); }
+    // service stations spread evenly on an inner ring so each sits in its own clear sector (easy to navigate)
+    const svc = [
+      (x, z) => fire(x, z),
+      (x, z) => altar(x, z),
+      (x, z) => stall(x, z),
+      (x, z) => fletchBench(x, z),
+      (x, z) => runeAltar(x, z),
+      (x, z) => sawmill(x, z),
+      (x, z) => { signpost(x, z, 0xffd45f); stations.push({ kind: 'ledger', label: 'Merchants’ Guild', x, z, y: height(x, z) }); },
+      (x, z) => { signpost(x, z, 0x9bf2ff); stations.push({ kind: 'jobboard', label: 'Job Board', x, z, y: height(x, z) }); },
+    ];
+    svc.forEach((fn, i) => { const a = (i / svc.length) * TAU + 0.3; fn(v.x + Math.cos(a) * 6.5, v.z + Math.sin(a) * 6.5); });
+    for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU + 0.78; lampPost(v.x + Math.cos(a) * 8, v.z + Math.sin(a) * 8); }
+    plot(v.x + 15, v.z + 1.4); plot(v.x + 15.6, v.z + 2.9); plot(v.x + 14.7, v.z + 4.3);
   }
 
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
