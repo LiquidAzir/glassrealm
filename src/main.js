@@ -40,7 +40,7 @@ try {
   const world = createWorld(engine.scene);
   const player = createPlayer(engine.scene, world);
   const input = createInput();
-  createControls({ app: document.getElementById('app'), canvas, input });
+  createControls({ app: document.getElementById('app'), canvas, input, notify: (m) => { if (G.ui) G.ui.toast(m, 'good', 1800); } });
 
   G.engine = engine; G.world = world; G.player = player; G.input = input;
   G.skills = createSkills(saved && saved.skills, saved && saved.prestige);

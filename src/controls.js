@@ -8,7 +8,8 @@
 const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 const UIKEY = 'glassrealm.touchUI.v1';
 
-export function createControls({ app, canvas, input }) {
+export function createControls({ app, canvas, input, notify }) {
+  const note = notify || (() => {});
   // ---- responsive: scale the 600x600 logical app to fit any viewport, centred ----
   function fit() {
     if (!window.innerWidth || !window.innerHeight) return;   // ignore transient 0-size resizes (would blank the view)
@@ -18,6 +19,47 @@ export function createControls({ app, canvas, input }) {
   fit();
   window.addEventListener('resize', fit);
   window.addEventListener('orientationchange', fit);
+
+  // ---- Bluetooth / USB gamepad (PC + phone) via the Gamepad API ----
+  // Funnels into the same semantic actions as keyboard/touch, so it works everywhere:
+  // left stick + d-pad = move (held) & navigate menus; A = action/select, X = quick
+  // attack, B / Start / Back = open menu / back. Set up before the glasses early-return
+  // so a paired controller works on any platform (no-op when none is connected).
+  (function initGamepad() {
+    const DZ = 0.5, DIRS = ['up', 'down', 'left', 'right'];
+    const held = { up: false, down: false, left: false, right: false };
+    const nextRep = { up: 0, down: 0, left: 0, right: 0 };
+    let prev = [], raf = 0;
+    function applyPad(gp, now) {
+      const b = (i) => !!(gp.buttons[i] && gp.buttons[i].pressed);
+      const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+      const want = { up: ay < -DZ || b(12), down: ay > DZ || b(13), left: ax < -DZ || b(14), right: ax > DZ || b(15) };
+      for (const d of DIRS) {
+        input.setHeld(d, want[d]);                                  // continuous movement (survives blur/clearHeld)
+        if (want[d]) {                                              // discrete press + hold-repeat for menu/dialogue/picker nav
+          if (!held[d]) { input.emit(d); held[d] = true; nextRep[d] = now + 350; }
+          else if (now >= nextRep[d]) { input.emit(d); nextRep[d] = now + 150; }
+        } else held[d] = false;
+      }
+      const edge = (i) => b(i) && !prev[i];                          // buttons fire once per press
+      if (edge(0)) input.emit('tap');                               // A — interact / attack / select
+      if (edge(2)) input.emit('doubletap');                         // X — quick attack
+      if (edge(1) || edge(8) || edge(9)) input.emit('menu');        // B / Back / Start — open menu / back
+      prev = gp.buttons.map((x) => !!(x && x.pressed));
+    }
+    function activePad() { const pads = navigator.getGamepads ? navigator.getGamepads() : []; for (const p of pads) if (p && p.connected) return p; return null; }
+    function poll() {
+      const gp = activePad();
+      if (!gp) { for (const d of DIRS) { input.setHeld(d, false); held[d] = false; } raf = 0; return; }   // none → release + stop
+      applyPad(gp, performance.now());
+      raf = requestAnimationFrame(poll);
+    }
+    function start() { if (!raf) raf = requestAnimationFrame(poll); }
+    window.addEventListener('gamepadconnected', () => { note('🎮 Controller connected'); start(); });
+    window.addEventListener('gamepaddisconnected', () => { for (const d of DIRS) { input.setHeld(d, false); held[d] = false; } note('Controller disconnected'); });
+    if (activePad()) start();   // a pad already present at load
+    if (typeof window !== 'undefined') window.__grpad = { applyPad, held, start };   // test hook
+  })();
 
   // Glasses deliver input as arrow keys with no pointer — skip all touch/mouse
   // wiring there so on-device behaviour is exactly as before (only fit() applies).
