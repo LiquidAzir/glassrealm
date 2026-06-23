@@ -69,6 +69,8 @@ try {
   G.economy.tick();   // offline catch-up from the last saved tick
   G.farm = createFarm(saved && saved.farm);
   G.farm.tick();      // offline catch-up: grow livestock + accrue produce/earnings
+  G.market = { mult: (saved && saved.market && saved.market.mult) || {}, event: null, nextIn: 80, _d: 0 };   // dynamic prices + world events
+  const EVENT_NAME = { caravan: 'Merchant Caravan', shortage: 'Goods Shortage', invasion: 'Town Invasion' };
 
   // restore saved world edits + player
   if (saved) {
@@ -435,21 +437,29 @@ try {
     G.activeClue = null; if (G.ach) G.ach.evaluate(); G.save.save();
   };
 
+  // Dynamic market: a per-item price multiplier drifts over time; buy & sell share it (no same-item
+  // arbitrage), plus a transient event modifier (caravan = cheap buys, shortage = rich sells).
+  G.buyPrice = (key, base) => Math.max(1, Math.round(base * (G.market.mult[key] || 1) * (G.market.event && G.market.event.kind === 'caravan' ? 0.75 : 1)));
+  G.sellPrice = (key, base) => Math.max(1, Math.round(base * (G.market.mult[key] || 1) * (G.market.event && G.market.event.kind === 'shortage' ? 1.3 : 1)));
   G.buyItem = (key) => {
     const s = SHOP.stock.find((x) => x.key === key); if (!s) return;
-    if (G.inventory.count('gold') >= s.price) { G.inventory.remove('gold', s.price); G.inventory.add(key, 1); G.ui.toast(`Bought ${ITEMS[key].name}`, 'gold', 1300); G.save.save(); }
+    const price = G.buyPrice(key, s.price);
+    if (G.inventory.count('gold') >= price) { G.inventory.remove('gold', price); G.inventory.add(key, 1); G.ui.toast(`Bought ${ITEMS[key].name} (${price}g)`, 'gold', 1300); G.save.save(); }
     else G.ui.toast('Not enough gold', 'bad', 1400);
   };
   G.sellItem = (key) => {
-    const p = SHOP.sell[key]; if (!p || !G.inventory.has(key, 1)) return;
+    const base = SHOP.sell[key]; if (!base || !G.inventory.has(key, 1)) return;
+    const p = G.sellPrice(key, base);
     G.inventory.remove(key, 1); G.inventory.add('gold', p);
     G.ui.toast(`Sold ${ITEMS[key].name}  +${p}g`, 'gold', 1300); G.save.save();
   };
+  const priceArrow = (p, base) => (p > base ? ' ↑' : p < base ? ' ↓' : '');
   const shopCfg = {
     title: 'Trader Pell', hint: '↑ ↓ select · tap buy/sell · ↑↓↑↓ leave',
     rows: () => {
-      const rows = SHOP.stock.map((s) => ({ section: 'Buy', icon: ITEMS[s.key].icon, title: ITEMS[s.key].name, sub: ITEMS[s.key].desc, right: `🪙 ${s.price}`, data: { t: 'buy', key: s.key } }));
-      G.inventory.list().filter((it) => SHOP.sell[it.key]).forEach((it) => rows.push({ section: 'Sell (one)', icon: it.def.icon, title: it.def.name, sub: 'tap to sell', right: `🪙 ${SHOP.sell[it.key]} · ×${it.count}`, data: { t: 'sell', key: it.key } }));
+      const ev = G.market.event ? `📣 ${EVENT_NAME[G.market.event.kind]}!` : 'prices drift with supply & demand';
+      const rows = SHOP.stock.map((s) => { const p = G.buyPrice(s.key, s.price); return { section: `Buy · ${ev}`, icon: ITEMS[s.key].icon, title: ITEMS[s.key].name, sub: ITEMS[s.key].desc, right: `🪙 ${p}${priceArrow(p, s.price)}`, data: { t: 'buy', key: s.key } }; });
+      G.inventory.list().filter((it) => SHOP.sell[it.key]).forEach((it) => { const p = G.sellPrice(it.key, SHOP.sell[it.key]); rows.push({ section: 'Sell (one)', icon: it.def.icon, title: it.def.name, sub: 'tap to sell', right: `🪙 ${p}${priceArrow(p, SHOP.sell[it.key])} · ×${it.count}`, data: { t: 'sell', key: it.key } }); });
       return rows;
     },
     onSelect: (r) => { if (r.data.t === 'buy') G.buyItem(r.data.key); else G.sellItem(r.data.key); },
@@ -980,6 +990,29 @@ try {
   G.updateGrave = updateGrave;
   G.cycleDeathMode = () => { G.deathMode = G.deathMode === 'safe' ? 'standard' : 'safe'; G.ui.toast(`Death: ${G.deathMode === 'safe' ? 'Safe (no loss)' : 'Standard (gravestone)'}`, 'good', 1800); G.save.save(); };
 
+  // ---------- Dynamic market drift + random world events ----------
+  function updateMarket(dt) {
+    const M = G.market;
+    M._d += dt;
+    if (M._d >= 12) { M._d = 0; for (const k in SHOP.sell) { const m = M.mult[k] == null ? 1 : M.mult[k]; const nm = m + (Math.random() - 0.5) * 0.12 + (1 - m) * 0.12; M.mult[k] = Math.max(0.75, Math.min(1.3, +nm.toFixed(3))); } }
+    if (M.event) { M.event.t -= dt; if (M.event.t <= 0) { G.ui.toast(`The ${EVENT_NAME[M.event.kind]} has passed.`, '', 2400); M.event = null; M.nextIn = 120 + Math.random() * 120; } }
+    else { M.nextIn -= dt; if (M.nextIn <= 0) startEvent(); }
+  }
+  function startEvent(force) {
+    const kinds = ['caravan', 'shortage', 'invasion'];
+    const kind = force || kinds[Math.floor(Math.random() * kinds.length)];
+    G.market.event = { kind, t: 90 };
+    if (kind === 'caravan') G.ui.levelBanner('🐫 Merchant Caravan — buy prices slashed!');
+    else if (kind === 'shortage') G.ui.levelBanner('📈 Goods Shortage — sell prices soar!');
+    else { G.ui.levelBanner('⚔️ Town Invasion — defend the village!'); spawnInvasion(); }
+    G.audio.sfx('ach');
+  }
+  function spawnInvasion() {
+    const v = world.village, foes = ['bandit', 'wolf', 'goblin', 'skeleton'];
+    for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2, x = v.x + Math.cos(a) * 13, z = v.z + Math.sin(a) * 13; if (G.entities.spawnEnemy) G.entities.spawnEnemy(foes[i % foes.length], x, z); }
+  }
+  G.startEvent = startEvent;   // test hook
+
   G.damagePlayer = (amount, src) => {
     if (player.state.hp <= 0) return;
     const stanceDef = (ATTACK_STYLES[player.state.combatStance] || {}).defBonus || 0;
@@ -1285,6 +1318,7 @@ try {
       updateCombat();
       updateStatus(dt);
       updateGrave(dt);
+      updateMarket(dt);
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -1356,7 +1390,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);
