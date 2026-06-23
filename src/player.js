@@ -43,6 +43,8 @@ const ARMOR_MODEL = {
   valkyr_plate: { color: 0xeef2ff, shoulders: true, helm: true, plume: true, cape: true, trim: 0xffd45f }, stormweaver_robes: { color: 0x2a4a8a, hood: true, robe: true, trim: 0x6fd0ff },
 };
 const SHIELD_COL = { wooden_shield: 0x8a5a2e, iron_shield: 0x9aa0a8, steel_shield: 0xeaf2ff, barnacle_shield: 0x3a8a8a, mithril_shield: 0x8fb8d8, bronze_kiteshield: 0xb87333, tower_shield: 0x9aa0a8, aegis_bulwark: 0xffd45f, valkyr_shield: 0xfff0c0 };
+// styles that don't produce a melee swing arc — the swoosh trail stays hidden for these
+const MELEE_TRAIL_SKIP = new Set(['ranged', 'magic', 'chop', 'mine', 'fish', 'cook', 'forage']);
 
 export function createPlayer(scene, world) {
   const group = new THREE.Group();
@@ -75,12 +77,15 @@ export function createPlayer(scene, world) {
   const rightArm = new THREE.Group(); rightArm.position.set(0.5, 1.5, 0); body.add(rightArm);
   rightArm.add(mkBox(0.2, 0.62, 0.22, tunic, 0, -0.31, 0));  // upper arm
   const hand = new THREE.Group(); hand.position.set(0, -0.62, 0); rightArm.add(hand);
+  hand.rotation.x = 0.22;   // weapon carried at a slight forward "ready" tilt rather than dead-vertical
   hand.add(mkBox(0.18, 0.18, 0.18, skin, 0, 0, 0));          // fist
   const weaponHolder = new THREE.Group(); hand.add(weaponHolder);
   weaponHolder.rotation.z = Math.PI;   // weapons are modelled extending -Y; flip so they're held UPRIGHT (blade/orb up), still forward-facing
+  const bladeTip = new THREE.Object3D(); bladeTip.position.set(0, -1.0, 0); weaponHolder.add(bladeTip);   // approx blade tip — sampled for the swing trail
   const toolHolder = new THREE.Group(); hand.add(toolHolder); toolHolder.visible = false;   // axe/pick/rod shown while gathering
+  const weaponGlows = [];   // orb / magic-glow meshes that shimmer each frame
 
-  function clearHolder() { while (weaponHolder.children.length) weaponHolder.remove(weaponHolder.children[0]); }
+  function clearHolder() { for (let i = weaponHolder.children.length - 1; i >= 0; i--) { if (weaponHolder.children[i] !== bladeTip) weaponHolder.remove(weaponHolder.children[i]); } weaponGlows.length = 0; }
   function buildWeaponModel(model, tint) {
     const m = new THREE.MeshLambertMaterial({ color: tint, flatShading: true });
     const glow = new THREE.MeshBasicMaterial({ color: tint });
@@ -91,8 +96,8 @@ export function createPlayer(scene, world) {
     else if (model === 'spear') { weaponHolder.add(mkBox(0.06, 1.8, 0.06, woodMat, 0, -0.85, 0)); const t = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.45, 6), m); t.position.set(0, -1.78, 0); t.rotation.x = Math.PI; weaponHolder.add(t); }
     else if (model === 'trident') { weaponHolder.add(mkBox(0.06, 1.7, 0.06, woodMat, 0, -0.8, 0)); weaponHolder.add(mkBox(0.5, 0.08, 0.08, m, 0, -1.5, 0)); for (const dx of [-0.2, 0, 0.2]) { const p = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 5), m); p.position.set(dx, -1.7, 0); p.rotation.x = Math.PI; weaponHolder.add(p); } }
     else if (model === 'bow' || model === 'longbow') { const r = model === 'longbow' ? 0.62 : 0.46; const bow = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 6, 10, Math.PI * 1.2), m); bow.rotation.z = Math.PI / 2; bow.position.set(0, -0.1, 0.1); weaponHolder.add(bow); }
-    else if (model === 'staff') { weaponHolder.add(mkBox(0.07, 1.3, 0.07, woodMat, 0, -0.55, 0)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), glow); orb.position.set(0, -1.2, 0); weaponHolder.add(orb); }
-    else if (model === 'wand') { weaponHolder.add(mkBox(0.06, 0.85, 0.06, woodMat, 0, -0.45, 0)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 0), glow); orb.position.set(0, -0.9, 0); weaponHolder.add(orb); }
+    else if (model === 'staff') { weaponHolder.add(mkBox(0.07, 1.3, 0.07, woodMat, 0, -0.55, 0)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), glow); orb.position.set(0, -1.2, 0); weaponHolder.add(orb); weaponGlows.push(orb); }
+    else if (model === 'wand') { weaponHolder.add(mkBox(0.06, 0.85, 0.06, woodMat, 0, -0.45, 0)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 0), glow); orb.position.set(0, -0.9, 0); weaponHolder.add(orb); weaponGlows.push(orb); }
     else if (model === 'mace') { weaponHolder.add(mkBox(0.08, 0.95, 0.08, woodMat, 0, -0.5, 0)); weaponHolder.add(mkBox(0.3, 0.32, 0.3, m, 0, -1.02, 0)); for (const d of [[0.22, 0], [-0.22, 0], [0, 0.22], [0, -0.22]]) { const sp = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 4), m); sp.position.set(d[0], -1.02, d[1]); sp.rotation.z = d[0] ? (d[0] > 0 ? -Math.PI / 2 : Math.PI / 2) : 0; sp.rotation.x = d[1] ? (d[1] > 0 ? Math.PI / 2 : -Math.PI / 2) : 0; weaponHolder.add(sp); } }
     else if (model === 'warhammer') { weaponHolder.add(mkBox(0.09, 1.2, 0.09, woodMat, 0, -0.62, 0)); weaponHolder.add(mkBox(0.5, 0.42, 0.42, m, 0, -1.12, 0)); weaponHolder.add(mkBox(0.16, 0.3, 0.3, dark, 0.33, -1.12, 0)); }
     else if (model === 'scythe') { weaponHolder.add(mkBox(0.07, 1.7, 0.07, woodMat, 0, -0.85, 0)); const bl = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.06, 5, 8, Math.PI * 0.7), m); bl.position.set(-0.2, -1.6, 0); bl.rotation.z = 0.6; weaponHolder.add(bl); }
@@ -102,14 +107,15 @@ export function createPlayer(scene, world) {
     else if (model === 'flail') { weaponHolder.add(mkBox(0.07, 0.6, 0.07, woodMat, 0, -0.32, 0)); for (let i = 0; i < 3; i++) weaponHolder.add(mkBox(0.05, 0.05, 0.05, dark, 0, -0.66 - i * 0.12, 0)); const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), m); ball.position.set(0, -1.12, 0); weaponHolder.add(ball); }
     else if (model === 'claw') { weaponHolder.add(mkBox(0.26, 0.18, 0.26, dark, 0, -0.05, 0)); for (const dx of [-0.1, 0, 0.1]) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.5, 4), m); c.position.set(dx, -0.45, 0.12); c.rotation.x = -0.2; weaponHolder.add(c); } }
     else if (model === 'crossbow') { weaponHolder.add(mkBox(0.12, 0.7, 0.12, woodMat, 0, -0.3, 0.05)); const limb = mkBox(0.9, 0.06, 0.08, m, 0, -0.05, 0.18); weaponHolder.add(limb); weaponHolder.add(mkBox(0.06, 0.06, 0.4, dark, 0, -0.05, -0.05)); }
-    else if (model === 'grimoire') { weaponHolder.add(mkBox(0.5, 0.62, 0.12, m, 0, -0.3, 0.1)); weaponHolder.add(mkBox(0.44, 0.54, 0.13, new THREE.MeshLambertMaterial({ color: 0xf4ecd0, flatShading: true }), 0, -0.3, 0.11)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), glow); orb.position.set(0, -0.05, 0.2); weaponHolder.add(orb); }
-    else if (model === 'scepter') { weaponHolder.add(mkBox(0.06, 1.0, 0.06, m, 0, -0.5, 0)); const head = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), glow); head.position.set(0, -1.05, 0); weaponHolder.add(head); for (const a of [0, Math.PI * 2 / 3, Math.PI * 4 / 3]) { const p = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 4), glow); p.position.set(Math.cos(a) * 0.18, -1.05, Math.sin(a) * 0.18); p.rotation.z = -Math.PI / 2; p.rotation.y = a; weaponHolder.add(p); } }
+    else if (model === 'grimoire') { weaponHolder.add(mkBox(0.5, 0.62, 0.12, m, 0, -0.3, 0.1)); weaponHolder.add(mkBox(0.44, 0.54, 0.13, new THREE.MeshLambertMaterial({ color: 0xf4ecd0, flatShading: true }), 0, -0.3, 0.11)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), glow); orb.position.set(0, -0.05, 0.2); weaponHolder.add(orb); weaponGlows.push(orb); }
+    else if (model === 'scepter') { weaponHolder.add(mkBox(0.06, 1.0, 0.06, m, 0, -0.5, 0)); const head = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), glow); head.position.set(0, -1.05, 0); weaponHolder.add(head); weaponGlows.push(head); for (const a of [0, Math.PI * 2 / 3, Math.PI * 4 / 3]) { const p = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 4), glow); p.position.set(Math.cos(a) * 0.18, -1.05, Math.sin(a) * 0.18); p.rotation.z = -Math.PI / 2; p.rotation.y = a; weaponHolder.add(p); } }
   }
   function setWeaponMesh(key) {
     clearHolder();
-    if (!key) return;   // unarmed → just fists
+    if (!key) { weaponTint = 0xdfe6ef; return; }   // unarmed → just fists; a soft pale swoosh for punches (not stale colour / pure white)
     const it = weaponOf(key);
     const md = WEAPON_MODEL[key] || [it.style === 'ranged' ? 'bow' : it.style === 'magic' ? 'staff' : 'sword', 0xcdd6e0];
+    weaponTint = md[1];   // swing trail tints to match the blade
     buildWeaponModel(md[0], md[1]);
   }
   function buildArmor(key) {
@@ -137,6 +143,7 @@ export function createPlayer(scene, world) {
   }
   function setToolMesh(kind) {
     while (toolHolder.children.length) toolHolder.remove(toolHolder.children[0]);
+    toolHolder.rotation.z = (kind === 'fish' || kind === 'cook') ? 0 : Math.PI;   // pick/axe head UP so you strike head-first; rod & ladle hang as before
     if (kind === 'mine') {                                                    // pickaxe
       toolHolder.add(mkBox(0.06, 0.95, 0.06, woodMat, 0, -0.5, 0));
       toolHolder.add(mkBox(0.55, 0.09, 0.09, steel, 0, -0.92, 0));
@@ -155,6 +162,43 @@ export function createPlayer(scene, world) {
   const sx = world.village.x, sz = world.village.z + 12;
   group.position.set(sx, world.height(sx, sz), sz);
   scene.add(group);
+
+  // melee swing trail — a short fading after-image that traces the blade tip through the air
+  const TRAIL_N = 7;
+  const trailSeg = [], trailMat = [], trailPts = [];
+  for (let i = 0; i < TRAIL_N; i++) {
+    const tm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+    const sg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 1), tm);   // streak along local +Z; oriented + length-scaled per frame
+    sg.visible = false; sg.frustumCulled = false; scene.add(sg); trailSeg.push(sg); trailMat.push(tm);
+  }
+  for (let i = 0; i <= TRAIL_N; i++) trailPts.push(new THREE.Vector3());
+  let trailFill = 0, weaponTint = 0xffffff, trailColor = 0xffffff;
+  const _tipW = new THREE.Vector3();
+  function updateTrail(active) {
+    if (active) {
+      if (trailFill === 0) trailColor = weaponTint;   // lock the tint at swing start so a mid-swing weapon swap won't recolour the live arc
+      bladeTip.getWorldPosition(_tipW);
+      for (let i = TRAIL_N; i > 0; i--) trailPts[i].copy(trailPts[i - 1]);   // age the ring buffer
+      trailPts[0].copy(_tipW);
+      trailFill = Math.min(TRAIL_N + 1, trailFill + 1);
+      const inten = Math.sin((1 - state.attackAnim / state.animDur) * Math.PI);   // brightest at mid-swing
+      for (let i = 0; i < TRAIL_N; i++) {
+        const sg = trailSeg[i];
+        if (i + 1 >= trailFill) { sg.visible = false; continue; }
+        const a = trailPts[i], b = trailPts[i + 1];
+        const len = a.distanceTo(b);
+        if (len < 0.001) { sg.visible = false; continue; }
+        sg.visible = true;
+        sg.position.copy(a).add(b).multiplyScalar(0.5);   // segment spans a→b
+        sg.lookAt(b); sg.scale.set(1, 1, len);
+        trailMat[i].color.setHex(trailColor);
+        trailMat[i].opacity = inten * (1 - i / TRAIL_N) * 0.7;   // older = fainter; bright enough to read on the additive display
+      }
+    } else if (trailFill > 0) {                                  // swing ended → clear the trail once
+      trailFill = 0;
+      for (let i = 0; i < TRAIL_N; i++) { trailSeg[i].visible = false; trailMat[i].opacity = 0; }
+    }
+  }
 
   const state = {
     heading: Math.PI,
@@ -228,6 +272,9 @@ export function createPlayer(scene, world) {
     const idleBreath = 0.02 + Math.sin(state.t * 1.6) * 0.018;   // gentle breathing so standing still still feels alive
     body.position.y = state.moving ? Math.abs(Math.sin(state.bob)) * 0.08 : idleBreath;
 
+    // magic weapons shimmer: a gentle orb pulse + slow spin
+    if (weaponGlows.length) { const pul = 1 + Math.sin(state.t * 5) * 0.16; for (let i = 0; i < weaponGlows.length; i++) { weaponGlows[i].scale.setScalar(pul); weaponGlows[i].rotation.y += dt * 1.4; } }
+
     // walk cycle — legs swing at the hips, arms counter-swing (the right arm yields to an attack)
     const gait = state.moving ? Math.sin(state.bob) * 0.5 : 0;
     const gk = Math.min(1, dt * 12);
@@ -243,18 +290,25 @@ export function createPlayer(scene, world) {
       switch (state.attackStyle) {
         case 'ranged': rightArm.rotation.x = -1.2 - 0.5 * s; break;
         case 'magic':  rightArm.rotation.x = -1.5 - 0.4 * s; break;
-        case 'chop':   rightArm.rotation.x = -2.4 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two overhead chops
-        case 'mine':   rightArm.rotation.x = -2.1 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two pick swings
+        case 'chop':   rightArm.rotation.x = -2.0 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two overhead chops
+        case 'mine':   rightArm.rotation.x = -1.8 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two pick swings
         case 'fish':   rightArm.rotation.x = -1.5 + 0.6 * s; break;                               // cast & settle
         case 'cook':   rightArm.rotation.x = -0.9 + 0.3 * Math.sin(t * Math.PI * 3); break;       // stir the pot
         case 'forage': rightArm.rotation.x = -1.0 * s; break;                                     // reach down
-        default:       rightArm.rotation.x = -2.3 * s;   // melee / unarmed swing
+        default: {   // melee / unarmed: quick overhead wind-up, then a fast slash down & through (no dwell behind the head)
+          if (t < 0.3) { const u = t / 0.3; rightArm.rotation.x = -1.7 * u * u; }
+          else { const u = (t - 0.3) / 0.7; rightArm.rotation.x = -1.7 + 2.3 * u * (2 - u); }
+          break;
+        }
       }
       if (state.attackAnim === 0 && state.toolActive) showTool(false);
     } else {
       rightArm.rotation.x += (gait - rightArm.rotation.x) * gk;   // counter-swing with the gait
       if (!state.moving && Math.abs(rightArm.rotation.x) < 0.01) rightArm.rotation.x = 0;
     }
+
+    // swoosh trail follows the blade during a melee swing only (not casts, shots or tool gathering)
+    updateTrail(state.attackAnim > 0 && !state.toolActive && !MELEE_TRAIL_SKIP.has(state.attackStyle));
 
     if (state.attackCd > 0) state.attackCd = Math.max(0, state.attackCd - dt);
   }
