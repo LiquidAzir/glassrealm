@@ -210,6 +210,12 @@ export const ITEMS = {
   sporeweave_robes: { name: 'Sporeweave Robes', icon: '🧥', type: 'armor', defense: 14, bonus: { magic: 12 }, desc: 'Robes grown, not sewn; the threads breathe out antitoxins. +12 magic, −14 damage.' },
   pall_amulet:    { name: 'Pall of the Quiet Mind', icon: '📿', type: 'amulet', bonus: { magic: 9, maxhp: 24 }, desc: "Pressed from the hermit's last lucid thought. +9 magic, +24 max HP." },
   verdant_antitoxin: { name: 'Verdant Antitoxin', icon: '🧴', type: 'potion', cure: 'poison', buff: 'venom', mult: 1, dur: 90, col: 0x7ad06a, desc: 'Brewed from sporecap: cures poison AND turns the same venom on your foes for 90s.' },
+  // --- Cinderbreak (Caldera Sanctum): obsidian endgame gear ---
+  obsidian_shard: { name: 'Obsidian Shard', icon: '🔺', type: 'material', desc: 'Volcanic glass, edged sharp enough to cut light. Forged in cult ritual.' },
+  obsidian_maul:  { name: 'Obsidian Maul',  icon: '🔨', type: 'weapon', style: 'melee', skill: 'combat', bonus: 38, range: 3.0, speed: 0.6, desc: "The forge-titan's maul. +38 melee, heavy and slow. Best-in-slot." },
+  cinderveil_staff: { name: 'Cinderveil Staff', icon: '🪄', type: 'weapon', style: 'magic', skill: 'magic', bonus: 33, range: 16, speed: 0.6, desc: 'Carved from the monolith; channels the smothered fire-god. +33 magic.' },
+  emberward_plate: { name: 'Emberward Plate', icon: '🛡️', type: 'armor', defense: 22, desc: 'Obsidian scale-plate, ash-quenched. −22 damage taken. Best-in-slot armour.' },
+  ashen_signet:   { name: 'Ashen Signet', icon: '💍', type: 'ring', bonus: { melee: 10, magic: 10 }, desc: 'Rare drop. The cult-leader’s ring. +10 melee, +10 magic.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -265,6 +271,7 @@ export const CRAFT = [
   { out: 'coral_armor',     cost: { coral_chunk: 4, pearl: 2 }, xp: 200 },
   { out: 'geode_charm',     cost: { shard_dust: 3, sapphire: 2 }, xp: 205 },
   { out: 'windborne_cloak', cost: { skyfeather: 3, gale_core: 2 }, xp: 230 },
+  { out: 'ashen_signet',    cost: { obsidian_shard: 4, ruby: 2 }, xp: 240 },
 ];
 export const SETS = {
   guardian: { name: 'Guardian', def: 10, melee: 8, maxhp: 20 },
@@ -366,6 +373,7 @@ export const NPCS = [
   { key: 'quarryman',    name: 'Quarryman Toll',     color: 0x9ab0d0, pos: { x: -134, z: 110 }, dialogue: 'quarryman' },
   { key: 'skyfalconer',  name: 'Stormcaller Maelis', color: 0x9bdcff, pos: { x: 138, z: -126 }, dialogue: 'saga_skyreach' },
   { key: 'sporehermit',  name: 'Hesper the Listener', color: 0x9aff7a, pos: { x: -130, z: 50 }, dialogue: 'saga_spore' },
+  { key: 'pyrewarden',   name: 'Pyrewarden Calla',   color: 0xff7a3a, pos: { x: -30, z: 178 }, dialogue: 'saga_calla' },
 ];
 
 // Ambient mobile NPCs (not quest-givers): patrolling guard squads + lone wanderers
@@ -585,6 +593,11 @@ export const ENEMIES = {
   spore_thrall:   { name: 'Spore-Thrall',   hp: 96,  dmg: 21, speed: 5.0, xp: 220, color: 0x9a6aaf, aggro: 15, shape: 'beast', poison: 5, loot: { sporecap: 1, pelt: 1, meat: 1 } },
   pollen_drifter: { name: 'Pollen Drifter', hp: 88,  dmg: 20, speed: 3.6, xp: 235, color: 0xc060c0, aggro: 14, shape: 'beast', scale: 0.9, poison: 6, loot: { creeping_ichor: 1, sporecap: 1 } },
   the_chorus:     { name: 'The Chorus', hp: 440, dmg: 36, speed: 3.2, xp: 1180, color: 0xb86adf, aggro: 20, shape: 'beast', scale: 2.3, boss: true, poison: 8, loot: { gold: 420, hyphae_lash: 1, creeping_ichor: 4, sporecap: 6, emerald: 2 }, rare: { item: 'pall_amulet', chance: 0.3 } },
+  // --- Cinderbreak: a doomsday cult on the cold caldera ---
+  obsidian_sentinel: { name: 'Obsidian Sentinel', hp: 175, dmg: 26, speed: 3.0, xp: 300, color: 0x201826, aggro: 12, shape: 'humanoid', scale: 1.5, loot: { obsidian_shard: 1, coal: 3, gold: 26 } },
+  cinder_cultist:    { name: 'Cinder Cultist',    hp: 96,  dmg: 24, speed: 4.4, xp: 250, color: 0x9a2a2a, aggro: 15, shape: 'humanoid', loot: { obsidian_shard: 1, herb: 1, gold: 30 } },
+  ashen_revenant:    { name: 'Ashen Revenant',    hp: 130, dmg: 23, speed: 4.2, xp: 270, color: 0x6a5a52, aggro: 16, shape: 'humanoid', poison: 6, loot: { demon_ash: 1, bones: 2, obsidian_shard: 1 } },
+  pyraxis:           { name: 'Pyraxis, the Unkindled', hp: 520, dmg: 40, speed: 3.2, xp: 1320, color: 0xff5a2a, aggro: 20, shape: 'humanoid', scale: 2.4, boss: true, poison: 8, loot: { gold: 480, obsidian_maul: 1, obsidian_shard: 6, magma_core: 3, relic: 1 }, rare: { item: 'ashen_signet', chance: 0.3 } },
 };
 
 // ---------- Combat triangle ----------
@@ -607,6 +620,7 @@ export const WEAKNESS = {
   shard_skitter: 'ranged', stoneward: 'melee', chime_warden: 'magic', resona: 'magic',
   roc_fledgling: 'melee', sky_warden: 'magic', gale_harrier: 'ranged', stormcrown: 'magic',
   myconid_warden: 'ranged', spore_thrall: 'melee', pollen_drifter: 'magic', the_chorus: 'ranged',
+  ashen_revenant: 'ranged', obsidian_sentinel: 'magic', cinder_cultist: 'melee', pyraxis: 'magic',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -617,6 +631,7 @@ export const ATK_STYLE = {
   chime_warden: 'magic', resona: 'magic',
   gale_harrier: 'ranged', stormcrown: 'ranged',
   pollen_drifter: 'magic', the_chorus: 'magic',
+  cinder_cultist: 'magic', pyraxis: 'magic',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -713,6 +728,11 @@ export const ENEMY_SPAWNS = [
   { enemy: 'spore_thrall', x: -152, z: 62 }, { enemy: 'spore_thrall', x: -160, z: 70 },
   { enemy: 'pollen_drifter', x: -152, z: 70 }, { enemy: 'myconid_warden', x: -160, z: 62 },
   { enemy: 'the_chorus', x: -156, z: 66 },
+  // Cinderbreak (cinder isle) — The Caldera Sanctum (-56,160)
+  { enemy: 'obsidian_sentinel', x: -60, z: 158 }, { enemy: 'obsidian_sentinel', x: -52, z: 162 },
+  { enemy: 'cinder_cultist', x: -56, z: 164 }, { enemy: 'cinder_cultist', x: -50, z: 156 },
+  { enemy: 'ashen_revenant', x: -62, z: 156 }, { enemy: 'ashen_revenant', x: -46, z: 176 },
+  { enemy: 'pyraxis', x: -56, z: 160 },
 ];
 
 export const QUESTS = {
@@ -959,6 +979,10 @@ export const QUESTS = {
   q_spore1: { name: 'The Quiet in the Vale', saga: true, giver: 'sporehermit', startsAvailable: true, reqSkills: { combat: 32 }, desc: "Hesper's specimens are walking. Thin the puppeted hosts and bring him living sporecaps to study.", objectives: [{ id: 'thrall', type: 'kill', enemy: 'spore_thrall', count: 5 }, { id: 'caps', type: 'have', item: 'sporecap', count: 4 }], rewards: { xp: { combat: 360, herblore: 220 }, items: { gold: 200 } } },
   q_spore2: { name: 'The Quiet in the Vale — What the Spores Say', saga: true, giver: 'sporehermit', requires: 'q_spore1', reqSkills: { combat: 36, herblore: 20 }, desc: 'The drifters carry the hive’s voice. Cull the pollen drifters, climb Spore Knoll to read the bloom from above, and bring ichor — Hesper insists he must taste it.', objectives: [{ id: 'drift', type: 'kill', enemy: 'pollen_drifter', count: 4 }, { id: 'knoll', type: 'visit', x: -172, z: 46, r: 12, name: 'Spore Knoll' }, { id: 'ichor', type: 'have', item: 'creeping_ichor', count: 3 }], rewards: { xp: { combat: 420, herblore: 260 }, items: { gold: 260, verdant_antitoxin: 2 } } },
   q_spore3: { name: 'The Quiet in the Vale — The Chorus', saga: true, giver: 'sporehermit', requires: 'q_spore2', reqSkills: { combat: 40, herblore: 25 }, desc: "Hesper won't answer to his name anymore. Burn out the hive's fruiting body — The Chorus — at the Mycelial Heart, then return to whatever is left of him.", objectives: [{ id: 'boss', type: 'kill', enemy: 'the_chorus', count: 1 }, { id: 'hesper', type: 'talk', npc: 'sporehermit', name: 'Hesper the Listener' }], rewards: { xp: { combat: 1180, herblore: 300 }, items: { gold: 500, sporeweave_robes: 1 } } },
+  // --- Cinderbreak: Ash & Apostasy saga (Pyrewarden Calla) — endgame ---
+  q_saga_c1: { name: 'Ash & Apostasy', saga: true, giver: 'pyrewarden', startsAvailable: true, reqSkills: { combat: 44 }, desc: 'A cult works the cold caldera, trying to wake the dead volcano. Break their watch on the ash flats and bring back proof of their rite.', objectives: [{ id: 'visit', type: 'visit', x: -56, z: 166, r: 9, name: 'the cold caldera' }, { id: 'sent', type: 'kill', enemy: 'obsidian_sentinel', count: 4 }, { id: 'shard', type: 'have', item: 'obsidian_shard', count: 3 }], rewards: { xp: { combat: 520, mining: 220 }, items: { gold: 280 } } },
+  q_saga_c2: { name: 'Ash & Apostasy — The Kindler’s Sin', saga: true, giver: 'pyrewarden', requires: 'q_saga_c1', reqSkills: { combat: 47 }, desc: 'The chants are nearly complete. Silence the cultists, lay the ashen dead to rest, and let Calla read the ritual she once wrote.', objectives: [{ id: 'cult', type: 'kill', enemy: 'cinder_cultist', count: 5 }, { id: 'rev', type: 'kill', enemy: 'ashen_revenant', count: 4 }, { id: 'calla', type: 'talk', npc: 'pyrewarden', name: 'Pyrewarden Calla' }], rewards: { xp: { combat: 640, prayer: 220 }, items: { gold: 360, emberward_plate: 1 } } },
+  q_saga_c3: { name: 'Ash & Apostasy — Unkindling', saga: true, giver: 'pyrewarden', requires: 'q_saga_c2', reqSkills: { combat: 50, prayer: 20 }, desc: 'The fire-god is half-woken in the Sanctum. End Pyraxis before the caldera answers, then return to Calla — if she still wishes to be found.', objectives: [{ id: 'boss', type: 'kill', enemy: 'pyraxis', count: 1 }, { id: 'calla', type: 'talk', npc: 'pyrewarden', name: 'Pyrewarden Calla' }], rewards: { xp: { combat: 1320, prayer: 320 }, items: { gold: 620, cinderveil_staff: 1 } } },
 };
 
 export function objectiveText(obj, n) {
@@ -1543,6 +1567,11 @@ export const DIALOGUE = {
     { id: 'q_spore2', intro: "The drifting ones are its mouths. Kill enough and the chorus stutters — I can almost make out words in the gaps. Climb the Knoll and look down on the bloom; from above it makes a pattern, a script. And the ichor — bring the ichor. I have to taste it. Don't look at me like that; it's the only way to read it from the inside.", accept: "I'll silence the drifters.", active: "Drifters to the south and west; the Knoll to read the pattern; ichor for me. Three things. Three. I keep losing the count.", done: "Oh. Oh, it's not a disease, it's a conversation, and we've been so RUDE, slamming doors on it for centuries — it only wants to be heard, it only wants us to stop being so terribly, terribly alone. …Whose voice was that? Was that mine?" },
     { id: 'q_spore3', intro: "We have decided you should not go to the Heart. We have decided — no. NO. That's not — listen, friend, while I'm still the one saying 'friend': there's a fruiting body at the Mycelial Heart, the Chorus, the throat of the whole thing. Burn it. Don't mourn me. Come back after and see if there's a Hesper left to thank you.", accept: "I'll end the Chorus.", active: "The Chorus sits at the Heart, patient, and it grows back what you kill unless you cut the grove first. Hurry — I can feel myself going quiet.", done: "…You came back. I wasn't sure which of us would answer the door. The Heart's gone silent, and so is most of me. There's still a little Hesper in here, knocking around the empty rooms. Take these robes; the threads still know how to keep a person their own. Mostly." },
   ], "I keep a chair out for you. Some evenings I'm all here, and we talk of orchids. Some evenings the chair talks back. Visit anyway."),
+  saga_calla: sagaDialogue('Pyrewarden Calla', [
+    { id: 'q_saga_c1', intro: 'Off the ferry already? Most turn back at the smell — ash that never cooled, and a cult that means to relight it. I tend this dock and warn folk off the rock, but you’ve the look of someone the word “don’t” only sharpens. So: a cult squats on the dead caldera, chanting to wake what sleeps under it. Their obsidian sentinels watch the flats. Break that watch and bring me a shard of their work — I must be sure what they’re building.', accept: 'I’ll break their watch.', active: 'The sentinels don’t tire and don’t flee — that’s the trouble with stone. Crack them open; the shards will tell me what I dread to hear.', done: 'This shard… they’ve cut it to focus the rite, not just to fight. I hoped I was wrong. I’m not. The fire under us is being called, and it is beginning to listen.' },
+    { id: 'q_saga_c2', intro: 'I’ll not lie to you, not now. I know how this shard is cut because I taught them the cut. I was their High Kindler. I wrote the rite that wakes the god — and I fled the night I felt it turn its eye back on me. What answers is not warmth. It is hunger. Go up: silence the chanters, put the ashen dead to rest — they were my flock once — and come back so I can read how far the rite has gone.', accept: 'Lead me up the caldera.', active: 'Every chant left unbroken brings the fire a verse closer. The revenants were people whose names I knew. Free them, and forgive me that I can’t do it myself.', done: 'It’s as far gone as it can be without the final kindling. One thing stands between the cult and the god: the vessel they’ve raised to hold it. They call it Pyraxis. Unkindled — for now.' },
+    { id: 'q_saga_c3', intro: 'Hear the whole of it before you climb, for you’ve earned the truth. Pyraxis is the forge-titan I shaped to be the god’s body — obsidian without, fire learning to live within. Strike its shell and you’ll find magic cracks the cold stone best. But when it splits, the cult will feed it, and it will turn to fire and choke you blind — guard against the flame then, not the fist. And when it burns lowest it will rage, for it knows it is dying. That is your moment, or your grave. I should be the one to end it — my sin, my hand — but I would only slow you, and this must not fail. Go. End it. Then come find me at the dock, if I have the courage left to be found.', accept: 'I’ll unkindle your god.', active: 'Pyraxis stands in the Sanctum, half-awake. Magic to crack the shell; ward the flame when it splits; burn it down when it rages. There is no fourth verse.', done: 'You came back. I half-hoped you wouldn’t — that you’d let the sea have me too. It’s truly done? The caldera’s cold for good. I lit a fire meant to end the world, and a stranger off a ferry put it out. Take the Cinderveil — I carved it to channel the god. Let it channel something better in your hands.' },
+  ], 'The fire under Cinderbreak is unkindled, and the woman who lit it keeps the dock now — turning the curious away, one ferry at a time. Some apostasies are just the long way back.'),
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.

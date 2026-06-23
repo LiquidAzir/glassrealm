@@ -84,6 +84,7 @@ const REGION_SIG = {
   jungle:     { kind: 'totem',      dx: -18, dz: 12 },
   lagoon:     { kind: 'coralarch',  dx: 14,  dz: 10 },
   sporevale:  { kind: 'mushrooms',  dx: 8,   dz: 4 },
+  cinderbreak: { kind: 'monolith',  dx: 14,  dz: 6 },
 };
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
@@ -147,6 +148,7 @@ const DUNGEONS = [
   { key: 'geode',     name: 'The Singing Geode',   x: -120, z: 116,  r: 12, flat: true, style: 'crystal', spire: 0x6a5fb0, orb: 0xd0a8ff, chest: { label: 'Geode-Heart Vault', gold: 400, loot: { shard_dust: 4, sapphire: 3, emerald: 2 } }, ore: [['gem_rock', 2], ['coal', 2]] },
   { key: 'stormcrowneyrie', name: 'Stormcrown Eyrie', x: 118, z: -150, r: 12, flat: true, style: 'spire', spire: 0xb9c6e0, orb: 0x8fd6ff, chest: { label: 'Windward Vault', gold: 400, loot: { skyfeather: 3, gale_core: 2, storm_shard: 2, sapphire: 2 } }, ore: [['iron', 3], ['coal', 3]] },
   { key: 'mycelheart', name: 'The Mycelial Heart', x: -156, z: 66, r: 12, flat: true, style: 'fungal', spire: 0x7a4a8a, orb: 0x9aff7a, chest: { label: 'Spore Vault', gold: 340, loot: { creeping_ichor: 3, sporecap: 5, emerald: 1 } }, ore: [['copper', 3]] },
+  { key: 'caldera', name: 'The Caldera Sanctum', x: -56, z: 160, r: 12, flat: true, style: 'spike', spire: 0x16121a, orb: 0xff5a2a, chest: { label: 'Reliquary of Ash', gold: 480, loot: { obsidian_shard: 4, magma_core: 2, ruby: 2 } }, ore: [['coal', 4], ['iron', 3]] },
 ];
 const SHORTCUT_LINKS = [
   { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
@@ -658,6 +660,16 @@ export function createWorld(scene, seed = 1337) {
       gl(new THREE.SphereGeometry(0.32, 8, 6), 0x7ae6d6).position.set(1.9, 3.2, 0);
       solids.push({ x: x - 2.6, z, r: 1.1 }, { x: x + 2.6, z, r: 1.1 });
       ambientEmitters.push({ x, y: y + 0.5, z, color: 0x9ff2e6, every: 0.9, opts: { n: 4, spread: 5, up: 3, life: 1.8 } });
+    }
+    else if (sig.kind === 'monolith') {
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(6.5, 6.5, 0.18, 18), new THREE.MeshLambertMaterial({ color: 0x2a2222, flatShading: true })); ring.position.y = 0.1; g.add(ring);
+      const shard = gl(new THREE.OctahedronGeometry(2.4, 0), 0x16121a); shard.scale.set(1, 3.0, 1); shard.position.y = 6.2; shard.rotation.z = 0.12;
+      const shard2 = new THREE.Mesh(new THREE.OctahedronGeometry(1.3, 0), lmat(0x201826)); shard2.scale.set(1, 2.2, 1); shard2.position.set(2.6, 3.0, 0.4); shard2.rotation.z = -0.18; g.add(shard2);
+      gl(new THREE.IcosahedronGeometry(0.55, 0), 0xff5a2a).position.set(0.2, 5.4, 0);
+      const core = gl(new THREE.IcosahedronGeometry(0.32, 0), 0xff8a3d); core.position.set(-0.1, 8.6, 0);
+      shimMeshes.push({ m: core, baseY: 8.6, seed: 3, kind: 'pulse' });
+      solids.push({ x, z, r: 2.4 });
+      ambientEmitters.push({ x, y: y + 5.0, z, color: 0xff7a3a, every: 1.2, opts: { n: 3, spread: 1.6, up: 3.4, life: 1.8 } });
     }
   }
   for (const reg of REGIONS) buildSignature(reg);
