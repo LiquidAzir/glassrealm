@@ -203,6 +203,13 @@ export const ITEMS = {
   skywarden_bow: { name: 'Skywarden Greatbow', icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 28, range: 18, speed: 0.6, desc: "The Stormcrown's bow. +28 ranged, vast reach." },
   stormcrown_amulet: { name: 'Stormcrown Pinion', icon: '📿', type: 'amulet', bonus: { ranged: 14, magic: 6 }, desc: 'Rare drop. A roc-feather circlet. +14 ranged, +6 magic.' },
   windborne_cloak:   { name: 'Windborne Cloak', icon: '🧥', type: 'amulet', bonus: { ranged: 10, def: 5, maxhp: 15 }, desc: 'Crafted. A cloak of woven skyfeathers. +10 ranged, +5 defence, +15 max HP.' },
+  // --- Sporevale (The Mycelial Heart): venom/herblore fungal gear ---
+  sporecap:       { name: 'Sporecap', icon: '🍄', type: 'material', desc: 'Living fungal flesh, twitching faintly. The hive grows it like fingernails.' },
+  creeping_ichor: { name: 'Creeping Ichor', icon: '🟢', type: 'material', desc: 'Luminous sap that carries the hive-mind. It seems to listen.' },
+  hyphae_lash:    { name: 'Hyphae Lash', icon: '🌿', type: 'weapon', style: 'melee', skill: 'combat', bonus: 21, range: 3.1, speed: 0.5, poison: 5, desc: 'A whip of living mycelium. +21 melee, and every lash injects spores (poison).' },
+  sporeweave_robes: { name: 'Sporeweave Robes', icon: '🧥', type: 'armor', defense: 14, bonus: { magic: 12 }, desc: 'Robes grown, not sewn; the threads breathe out antitoxins. +12 magic, −14 damage.' },
+  pall_amulet:    { name: 'Pall of the Quiet Mind', icon: '📿', type: 'amulet', bonus: { magic: 9, maxhp: 24 }, desc: "Pressed from the hermit's last lucid thought. +9 magic, +24 max HP." },
+  verdant_antitoxin: { name: 'Verdant Antitoxin', icon: '🧴', type: 'potion', cure: 'poison', buff: 'venom', mult: 1, dur: 90, col: 0x7ad06a, desc: 'Brewed from sporecap: cures poison AND turns the same venom on your foes for 90s.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -222,6 +229,7 @@ export const BREW = [
   { in: { herb: 1, iron_ore: 1 }, out: 'defence_potion', xp: 50, level: 12 },
   { in: { herb: 1, vine_coil: 1 }, out: 'venom_flask', xp: 54, level: 16 },
   { in: { herb: 1, bones: 1 }, out: 'prayer_potion', xp: 58, level: 18 },
+  { in: { herb: 1, sporecap: 1 }, out: 'verdant_antitoxin', xp: 62, level: 20 },
 ];
 export const PRAYERS = [
   { key: 'stoneskin', name: 'Stone Skin', level: 1,  drain: 0.5, dmgTaken: 0.7, desc: 'Take 30% less damage.' },
@@ -357,6 +365,7 @@ export const NPCS = [
   { key: 'veyra',        name: 'Lapidary Veyra',     color: 0xc0a8ff, pos: { x: -138, z: 100 }, dialogue: 'saga_veyra' },
   { key: 'quarryman',    name: 'Quarryman Toll',     color: 0x9ab0d0, pos: { x: -134, z: 110 }, dialogue: 'quarryman' },
   { key: 'skyfalconer',  name: 'Stormcaller Maelis', color: 0x9bdcff, pos: { x: 138, z: -126 }, dialogue: 'saga_skyreach' },
+  { key: 'sporehermit',  name: 'Hesper the Listener', color: 0x9aff7a, pos: { x: -130, z: 50 }, dialogue: 'saga_spore' },
 ];
 
 // Ambient mobile NPCs (not quest-givers): patrolling guard squads + lone wanderers
@@ -571,6 +580,11 @@ export const ENEMIES = {
   sky_warden:    { name: 'Sky Warden',    hp: 180, dmg: 30, speed: 3.0, xp: 320, color: 0xb9c6e0, aggro: 13, shape: 'humanoid', scale: 1.2, loot: { gale_core: 1, storm_shard: 1, iron_ore: 1 } },
   gale_harrier:  { name: 'Gale Harrier',  hp: 130, dmg: 26, speed: 4.6, xp: 270, color: 0x8fd6ff, aggro: 16, shape: 'beast',    scale: 0.9, loot: { storm_shard: 1, gale_core: 1 } },
   stormcrown:    { name: 'The Stormcrown', hp: 440, dmg: 38, speed: 4.0, xp: 1180, color: 0xe6d8a0, aggro: 20, shape: 'beast', scale: 2.3, boss: true, loot: { gold: 420, skywarden_bow: 1, skyfeather: 5, storm_shard: 4 }, rare: { item: 'stormcrown_amulet', chance: 0.3 } },
+  // --- Sporevale: a sentient mycelial hive-mind ---
+  myconid_warden: { name: 'Myconid Warden', hp: 124, dmg: 23, speed: 3.0, xp: 250, color: 0x7a4a8a, aggro: 12, shape: 'humanoid', scale: 1.4, poison: 4, loot: { sporecap: 2, herb: 1, bones: 1 } },
+  spore_thrall:   { name: 'Spore-Thrall',   hp: 96,  dmg: 21, speed: 5.0, xp: 220, color: 0x9a6aaf, aggro: 15, shape: 'beast', poison: 5, loot: { sporecap: 1, pelt: 1, meat: 1 } },
+  pollen_drifter: { name: 'Pollen Drifter', hp: 88,  dmg: 20, speed: 3.6, xp: 235, color: 0xc060c0, aggro: 14, shape: 'beast', scale: 0.9, poison: 6, loot: { creeping_ichor: 1, sporecap: 1 } },
+  the_chorus:     { name: 'The Chorus', hp: 440, dmg: 36, speed: 3.2, xp: 1180, color: 0xb86adf, aggro: 20, shape: 'beast', scale: 2.3, boss: true, poison: 8, loot: { gold: 420, hyphae_lash: 1, creeping_ichor: 4, sporecap: 6, emerald: 2 }, rare: { item: 'pall_amulet', chance: 0.3 } },
 };
 
 // ---------- Combat triangle ----------
@@ -592,6 +606,7 @@ export const WEAKNESS = {
   reef_reaver: 'ranged', coral_warden: 'magic', lure_siren: 'melee', sea_witch: 'melee',
   shard_skitter: 'ranged', stoneward: 'melee', chime_warden: 'magic', resona: 'magic',
   roc_fledgling: 'melee', sky_warden: 'magic', gale_harrier: 'ranged', stormcrown: 'magic',
+  myconid_warden: 'ranged', spore_thrall: 'melee', pollen_drifter: 'magic', the_chorus: 'ranged',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -601,6 +616,7 @@ export const ATK_STYLE = {
   lure_siren: 'magic', sea_witch: 'magic',
   chime_warden: 'magic', resona: 'magic',
   gale_harrier: 'ranged', stormcrown: 'ranged',
+  pollen_drifter: 'magic', the_chorus: 'magic',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -690,6 +706,13 @@ export const ENEMY_SPAWNS = [
   { enemy: 'roc_fledgling', x: 132, z: -120 }, { enemy: 'roc_fledgling', x: 158, z: -152 }, { enemy: 'gale_harrier', x: 124, z: -110 },
   { enemy: 'sky_warden', x: 114, z: -146 }, { enemy: 'gale_harrier', x: 122, z: -154 }, { enemy: 'sky_warden', x: 122, z: -146 }, { enemy: 'roc_fledgling', x: 116, z: -156 },
   { enemy: 'stormcrown', x: 118, z: -150 },
+  // Sporevale surface + The Mycelial Heart (-156,66) — a grove rings the boss
+  { enemy: 'myconid_warden', x: -178, z: 52 }, { enemy: 'myconid_warden', x: -150, z: 44 },
+  { enemy: 'spore_thrall', x: -168, z: 64 }, { enemy: 'spore_thrall', x: -148, z: 76 },
+  { enemy: 'pollen_drifter', x: -160, z: 48 }, { enemy: 'pollen_drifter', x: -176, z: 70 },
+  { enemy: 'spore_thrall', x: -152, z: 62 }, { enemy: 'spore_thrall', x: -160, z: 70 },
+  { enemy: 'pollen_drifter', x: -152, z: 70 }, { enemy: 'myconid_warden', x: -160, z: 62 },
+  { enemy: 'the_chorus', x: -156, z: 66 },
 ];
 
 export const QUESTS = {
@@ -932,6 +955,10 @@ export const QUESTS = {
   q_saga_sk1: { name: 'The Broken Ward', saga: true, giver: 'skyfalconer', startsAvailable: true, reqSkills: { combat: 38, ranged: 30 }, desc: 'The sky-ward over Aerie Watch is failing and the storms worsen. Climb the Aerie Spire, ground the rocs nesting in the broken stones, and bring gale cores so Maelis can read the damage.', objectives: [{ id: 'spire', type: 'visit', x: 152, z: -140, r: 12, name: 'the Aerie Spire' }, { id: 'roc', type: 'kill', enemy: 'roc_fledgling', count: 4 }, { id: 'core', type: 'have', item: 'gale_core', count: 4 }], rewards: { xp: { combat: 360, ranged: 220 }, items: { gold: 220 } } },
   q_saga_sk2: { name: 'The Broken Ward — The Warden’s Watch', saga: true, giver: 'skyfalconer', requires: 'q_saga_sk1', reqSkills: { combat: 40 }, desc: 'The ward-stones still answer the wardens of the Stormcrown Eyrie. Ground the gale harriers screening the gate, break the sky wardens at its mouth, and bring storm shards to re-anchor the failing runes.', objectives: [{ id: 'eyrie', type: 'visit', x: 118, z: -150, r: 13, name: 'the Stormcrown Eyrie' }, { id: 'harrier', type: 'kill', enemy: 'gale_harrier', count: 4 }, { id: 'warden', type: 'kill', enemy: 'sky_warden', count: 3 }, { id: 'shard', type: 'have', item: 'storm_shard', count: 4 }], rewards: { xp: { combat: 420, ranged: 260, magic: 120 }, items: { gold: 300 } } },
   q_saga_sk3: { name: 'The Broken Ward — The Stormcrown', saga: true, giver: 'skyfalconer', requires: 'q_saga_sk2', reqSkills: { combat: 44, ranged: 38 }, desc: 'No storm broke the ward — Maelis did, a lifetime ago, to free a dying roc-chick caged in its heart. That chick is the Stormcrown now. End it atop the Eyrie, then return to Maelis.', objectives: [{ id: 'boss', type: 'kill', enemy: 'stormcrown', count: 1 }, { id: 'maelis', type: 'talk', npc: 'skyfalconer', name: 'Stormcaller Maelis' }], rewards: { xp: { combat: 1180, ranged: 300 }, items: { gold: 500, windborne_cloak: 1 } } },
+  // --- Sporevale: The Quiet in the Vale saga (Hesper the Listener) ---
+  q_spore1: { name: 'The Quiet in the Vale', saga: true, giver: 'sporehermit', startsAvailable: true, reqSkills: { combat: 32 }, desc: "Hesper's specimens are walking. Thin the puppeted hosts and bring him living sporecaps to study.", objectives: [{ id: 'thrall', type: 'kill', enemy: 'spore_thrall', count: 5 }, { id: 'caps', type: 'have', item: 'sporecap', count: 4 }], rewards: { xp: { combat: 360, herblore: 220 }, items: { gold: 200 } } },
+  q_spore2: { name: 'The Quiet in the Vale — What the Spores Say', saga: true, giver: 'sporehermit', requires: 'q_spore1', reqSkills: { combat: 36, herblore: 20 }, desc: 'The drifters carry the hive’s voice. Cull the pollen drifters, climb Spore Knoll to read the bloom from above, and bring ichor — Hesper insists he must taste it.', objectives: [{ id: 'drift', type: 'kill', enemy: 'pollen_drifter', count: 4 }, { id: 'knoll', type: 'visit', x: -172, z: 46, r: 12, name: 'Spore Knoll' }, { id: 'ichor', type: 'have', item: 'creeping_ichor', count: 3 }], rewards: { xp: { combat: 420, herblore: 260 }, items: { gold: 260, verdant_antitoxin: 2 } } },
+  q_spore3: { name: 'The Quiet in the Vale — The Chorus', saga: true, giver: 'sporehermit', requires: 'q_spore2', reqSkills: { combat: 40, herblore: 25 }, desc: "Hesper won't answer to his name anymore. Burn out the hive's fruiting body — The Chorus — at the Mycelial Heart, then return to whatever is left of him.", objectives: [{ id: 'boss', type: 'kill', enemy: 'the_chorus', count: 1 }, { id: 'hesper', type: 'talk', npc: 'sporehermit', name: 'Hesper the Listener' }], rewards: { xp: { combat: 1180, herblore: 300 }, items: { gold: 500, sporeweave_robes: 1 } } },
 };
 
 export function objectiveText(obj, n) {
@@ -1511,6 +1538,11 @@ export const DIALOGUE = {
     { id: 'q_saga_sk2', intro: 'The ward was never one stone — it was a ring, kept by the sky wardens out at the Stormcrown Eyrie, with the gale harriers wheeling guard. Get past the harriers, break the wardens at the mouth, and bring storm shards to anchor the runes while I work. Go armed; the wind out there will try to throw you off the ledges.', accept: 'I’ll reach the Eyrie.', active: 'The harriers still screen the gate, the wardens still hold the mouth, and I need storm shards to anchor the runes.', done: 'It’s anchored — barely. And now I have seen the heart of the ward with my own eyes, I can lie to you no longer. Sit. I owe you the truth before you take one more step.' },
     { id: 'q_saga_sk3', intro: 'No storm broke the ward. I did. A lifetime ago, when the wardens caged a dying roc-chick in the ward’s very heart to feed it their bound winds. I could not bear its crying, so I cracked one stone — just one — to set it free. It lived. It grew. It is the Stormcrown now, and every gale that batters Aerie Watch is its grief, looking for me. End it — I am too old and too guilty to climb. Then come back, whatever you find up there.', accept: 'I’ll end it — and judge you after.', active: 'The Stormcrown rages atop the Eyrie. Until it falls, the sky has no mercy in it.', done: 'It’s done, then. The wind… listen — it’s only wind again. I gave that creature a freedom that broke a town, and you gave it the peace I could not. Take this cloak; the wardens wove it from skyfeathers in the old days, and it should sit on braver shoulders than mine.' },
   ], 'The Broken Ward is mended and the truth is told. I keep the Spire now with a lighter heart — and the rocs, what few remain, no longer cry at night.'),
+  saga_spore: sagaDialogue('Hesper the Listener', [
+    { id: 'q_spore1', intro: "Don't — don't step on the soft ground, it remembers feet. I'm Hesper. Was a botanist. The vale's fungus is one creature, you understand — one mind wearing a thousand bodies — and lately my specimens get up and walk. Thin the walking ones and bring me sporecaps, fresh, still twitching. I need to know what it's growing toward.", accept: "I'll cull your specimens.", active: "The hosts wear the shapes of beasts but the hive holds the leash. Bring sporecaps while they're still soft.", done: "Still warm. Still… singing, a little. Put your ear close — no? Of course not. You hear nothing. Lucky." },
+    { id: 'q_spore2', intro: "The drifting ones are its mouths. Kill enough and the chorus stutters — I can almost make out words in the gaps. Climb the Knoll and look down on the bloom; from above it makes a pattern, a script. And the ichor — bring the ichor. I have to taste it. Don't look at me like that; it's the only way to read it from the inside.", accept: "I'll silence the drifters.", active: "Drifters to the south and west; the Knoll to read the pattern; ichor for me. Three things. Three. I keep losing the count.", done: "Oh. Oh, it's not a disease, it's a conversation, and we've been so RUDE, slamming doors on it for centuries — it only wants to be heard, it only wants us to stop being so terribly, terribly alone. …Whose voice was that? Was that mine?" },
+    { id: 'q_spore3', intro: "We have decided you should not go to the Heart. We have decided — no. NO. That's not — listen, friend, while I'm still the one saying 'friend': there's a fruiting body at the Mycelial Heart, the Chorus, the throat of the whole thing. Burn it. Don't mourn me. Come back after and see if there's a Hesper left to thank you.", accept: "I'll end the Chorus.", active: "The Chorus sits at the Heart, patient, and it grows back what you kill unless you cut the grove first. Hurry — I can feel myself going quiet.", done: "…You came back. I wasn't sure which of us would answer the door. The Heart's gone silent, and so is most of me. There's still a little Hesper in here, knocking around the empty rooms. Take these robes; the threads still know how to keep a person their own. Mostly." },
+  ], "I keep a chair out for you. Some evenings I'm all here, and we talk of orchids. Some evenings the chair talks back. Visit anyway."),
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.

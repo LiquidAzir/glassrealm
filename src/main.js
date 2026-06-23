@@ -360,6 +360,7 @@ try {
     // status: magic hits may burn; a Venom Flask makes melee/ranged hits poison the foe (DoT ticked in entities.js)
     if (w.style === 'magic' && Math.random() < 0.3) e.dot = { kind: 'burn', dmg: Math.max(2, Math.round(dmg * 0.25)), t: 6, tick: 1.5 };
     else if (bf && bf.venom && w.style !== 'magic') e.dot = { kind: 'poison', dmg: 4, t: 8, tick: 1.5 };
+    else if (w.poison && w.style !== 'magic') e.dot = { kind: 'poison', dmg: w.poison, t: 8, tick: 1.5 };   // venomous weapons (e.g. Hyphae Lash) poison on hit
     const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
     // special attack: a spec bar charges per hit and auto-unleashes when full (×2.4 + AoE splash)

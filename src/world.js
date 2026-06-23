@@ -83,6 +83,7 @@ const REGION_SIG = {
   skyreach:   { kind: 'skytemple',  dx: -16, dz: 10 },
   jungle:     { kind: 'totem',      dx: -18, dz: 12 },
   lagoon:     { kind: 'coralarch',  dx: 14,  dz: 10 },
+  sporevale:  { kind: 'mushrooms',  dx: 8,   dz: 4 },
 };
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
@@ -145,6 +146,7 @@ const DUNGEONS = [
   { key: 'grotto',    name: 'The Tide Grotto',     x: -100, z: -126, r: 12, style: 'crystal', spire: 0x2f8a8a, orb: 0x7ae6d6, chest: { label: 'Drowned Hoard', gold: 300, loot: { pearl: 3, coral_chunk: 3, sapphire: 2 } }, ore: [['copper', 2], ['iron', 2]] },
   { key: 'geode',     name: 'The Singing Geode',   x: -120, z: 116,  r: 12, flat: true, style: 'crystal', spire: 0x6a5fb0, orb: 0xd0a8ff, chest: { label: 'Geode-Heart Vault', gold: 400, loot: { shard_dust: 4, sapphire: 3, emerald: 2 } }, ore: [['gem_rock', 2], ['coal', 2]] },
   { key: 'stormcrowneyrie', name: 'Stormcrown Eyrie', x: 118, z: -150, r: 12, flat: true, style: 'spire', spire: 0xb9c6e0, orb: 0x8fd6ff, chest: { label: 'Windward Vault', gold: 400, loot: { skyfeather: 3, gale_core: 2, storm_shard: 2, sapphire: 2 } }, ore: [['iron', 3], ['coal', 3]] },
+  { key: 'mycelheart', name: 'The Mycelial Heart', x: -156, z: 66, r: 12, flat: true, style: 'fungal', spire: 0x7a4a8a, orb: 0x9aff7a, chest: { label: 'Spore Vault', gold: 340, loot: { creeping_ichor: 3, sporecap: 5, emerald: 1 } }, ore: [['copper', 3]] },
 ];
 const SHORTCUT_LINKS = [
   { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
