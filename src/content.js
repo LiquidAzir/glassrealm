@@ -196,6 +196,13 @@ export const ITEMS = {
   prism_carapace: { name: 'Prismglass Carapace', icon: '🛡️', type: 'armor', defense: 20, desc: 'Plate grown from cooled Bloom-crystal — light as glass, hard as grief. −20 damage.' },
   resonant_heart: { name: 'Resonant Heart', icon: '📿', type: 'amulet', bonus: { magic: 13, maxhp: 25 }, desc: "Rare drop. The First Note's stilled core. +13 magic, +25 max HP." },
   geode_charm:    { name: 'Geode Charm', icon: '📿', type: 'amulet', bonus: { magic: 9, def: 8 }, desc: 'Crafted. A pocket of silent crystal. +9 magic, +8 defence.' },
+  // --- Skyreach (Stormcrown Eyrie): storm/feather ranged gear ---
+  gale_core:    { name: 'Gale Core',  icon: '🌬️', type: 'material', desc: 'A coil of bound wind from a slain sky-warden — never still in the hand.' },
+  skyfeather:   { name: 'Skyfeather', icon: '🪶', type: 'material', desc: 'A pinion from a great roc; light as breath, strong as cord.' },
+  sky_arrow:    { name: 'Skyfeather Arrows', icon: '🏹', type: 'ammo', bonus: 15, desc: 'Fletched with roc-down. +15 ranged damage per shot.' },
+  skywarden_bow: { name: 'Skywarden Greatbow', icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 28, range: 18, speed: 0.6, desc: "The Stormcrown's bow. +28 ranged, vast reach." },
+  stormcrown_amulet: { name: 'Stormcrown Pinion', icon: '📿', type: 'amulet', bonus: { ranged: 14, magic: 6 }, desc: 'Rare drop. A roc-feather circlet. +14 ranged, +6 magic.' },
+  windborne_cloak:   { name: 'Windborne Cloak', icon: '🧥', type: 'amulet', bonus: { ranged: 10, def: 5, maxhp: 15 }, desc: 'Crafted. A cloak of woven skyfeathers. +10 ranged, +5 defence, +15 max HP.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -249,6 +256,7 @@ export const CRAFT = [
   { out: 'tideglass_ring',  cost: { coral_chunk: 3, sapphire: 2 }, xp: 190 },
   { out: 'coral_armor',     cost: { coral_chunk: 4, pearl: 2 }, xp: 200 },
   { out: 'geode_charm',     cost: { shard_dust: 3, sapphire: 2 }, xp: 205 },
+  { out: 'windborne_cloak', cost: { skyfeather: 3, gale_core: 2 }, xp: 230 },
 ];
 export const SETS = {
   guardian: { name: 'Guardian', def: 10, melee: 8, maxhp: 20 },
@@ -288,6 +296,7 @@ export const FLETCH = [
   { out: 'bronze_arrow',  cost: { arrow_shaft: 8, feather: 4, bronze_bar: 1 }, xp: 24, qty: 8, level: 1 },
   { out: 'iron_arrow',    cost: { arrow_shaft: 8, feather: 4, iron_bar: 1 },   xp: 42, qty: 8, level: 15 },
   { out: 'mithril_arrow', cost: { arrow_shaft: 8, feather: 4, mithril_bar: 1 }, xp: 80, qty: 8, level: 35 },
+  { out: 'sky_arrow',     cost: { arrow_shaft: 8, skyfeather: 4, mithril_bar: 1 }, xp: 110, qty: 8, level: 45 },
 ];
 
 // Runecrafting (rune altar): essence -> elemental runes. qty per essence; level gates the tier.
@@ -347,6 +356,7 @@ export const NPCS = [
   { key: 'tidecaptain',  name: 'Diver-Captain Yara', color: 0x4fd0c4, pos: { x: -96, z: -116 }, dialogue: 'saga_lagoon' },
   { key: 'veyra',        name: 'Lapidary Veyra',     color: 0xc0a8ff, pos: { x: -138, z: 100 }, dialogue: 'saga_veyra' },
   { key: 'quarryman',    name: 'Quarryman Toll',     color: 0x9ab0d0, pos: { x: -134, z: 110 }, dialogue: 'quarryman' },
+  { key: 'skyfalconer',  name: 'Stormcaller Maelis', color: 0x9bdcff, pos: { x: 138, z: -126 }, dialogue: 'saga_skyreach' },
 ];
 
 // Ambient mobile NPCs (not quest-givers): patrolling guard squads + lone wanderers
@@ -556,6 +566,11 @@ export const ENEMIES = {
   stoneward:     { name: 'Stoneward Thrall', hp: 150, dmg: 24, speed: 3.0, xp: 250, color: 0xa9b6d8, aggro: 12, shape: 'humanoid', scale: 1.3, loot: { shard_dust: 1, bones: 1, gold: 22 } },
   chime_warden:  { name: 'Chime Warden',   hp: 130, dmg: 26, speed: 3.4, xp: 270, color: 0xc6b0ff, aggro: 14, shape: 'humanoid', scale: 1.4, loot: { shard_dust: 2, emerald: 1 } },
   resona:        { name: 'Resona, the First Note', hp: 420, dmg: 36, speed: 3.6, xp: 1140, color: 0xd0a8ff, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 400, chord_staff: 1, shard_dust: 5, sapphire: 3 }, rare: { item: 'resonant_heart', chance: 0.3 } },
+  // --- Skyreach: windswept aeries, a failing storm-ward ---
+  roc_fledgling: { name: 'Roc Fledgling', hp: 150, dmg: 28, speed: 5.0, xp: 290, color: 0xcdb98a, aggro: 15, shape: 'beast',    loot: { skyfeather: 1, meat: 1, bones: 1 } },
+  sky_warden:    { name: 'Sky Warden',    hp: 180, dmg: 30, speed: 3.0, xp: 320, color: 0xb9c6e0, aggro: 13, shape: 'humanoid', scale: 1.2, loot: { gale_core: 1, storm_shard: 1, iron_ore: 1 } },
+  gale_harrier:  { name: 'Gale Harrier',  hp: 130, dmg: 26, speed: 4.6, xp: 270, color: 0x8fd6ff, aggro: 16, shape: 'beast',    scale: 0.9, loot: { storm_shard: 1, gale_core: 1 } },
+  stormcrown:    { name: 'The Stormcrown', hp: 440, dmg: 38, speed: 4.0, xp: 1180, color: 0xe6d8a0, aggro: 20, shape: 'beast', scale: 2.3, boss: true, loot: { gold: 420, skywarden_bow: 1, skyfeather: 5, storm_shard: 4 }, rare: { item: 'stormcrown_amulet', chance: 0.3 } },
 };
 
 // ---------- Combat triangle ----------
@@ -576,6 +591,7 @@ export const WEAKNESS = {
   frost_warden: 'melee', bonelord: 'melee', prism_tyrant: 'melee', thruun: 'melee', barrow_wight: 'melee',
   reef_reaver: 'ranged', coral_warden: 'magic', lure_siren: 'melee', sea_witch: 'melee',
   shard_skitter: 'ranged', stoneward: 'melee', chime_warden: 'magic', resona: 'magic',
+  roc_fledgling: 'melee', sky_warden: 'magic', gale_harrier: 'ranged', stormcrown: 'magic',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -584,6 +600,7 @@ export const ATK_STYLE = {
   storm_harpy: 'ranged', thruun: 'ranged', warchief: 'ranged',
   lure_siren: 'magic', sea_witch: 'magic',
   chime_warden: 'magic', resona: 'magic',
+  gale_harrier: 'ranged', stormcrown: 'ranged',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -669,6 +686,10 @@ export const ENEMY_SPAWNS = [
   { enemy: 'stoneward', x: -160, z: 118 }, { enemy: 'chime_warden', x: -128, z: 110 },
   { enemy: 'shard_skitter', x: -118, z: 112 }, { enemy: 'stoneward', x: -122, z: 120 }, { enemy: 'chime_warden', x: -116, z: 118 },
   { enemy: 'resona', x: -120, z: 116 },
+  // Skyreach (windward terraces) + Stormcrown Eyrie (118,-150)
+  { enemy: 'roc_fledgling', x: 132, z: -120 }, { enemy: 'roc_fledgling', x: 158, z: -152 }, { enemy: 'gale_harrier', x: 124, z: -110 },
+  { enemy: 'sky_warden', x: 114, z: -146 }, { enemy: 'gale_harrier', x: 122, z: -154 }, { enemy: 'sky_warden', x: 122, z: -146 }, { enemy: 'roc_fledgling', x: 116, z: -156 },
+  { enemy: 'stormcrown', x: 118, z: -150 },
 ];
 
 export const QUESTS = {
@@ -907,6 +928,10 @@ export const QUESTS = {
   q_saga_sh1: { name: 'The Singing Stone', saga: true, giver: 'veyra', startsAvailable: true, desc: 'Walk the crystal canyon, cull the shard-skitters the Bloom sheds, and bring Veyra raw shard-dust to read.', objectives: [{ id: 'visit', type: 'visit', x: -120, z: 116, r: 9, name: 'the Singing Geode' }, { id: 'skitter', type: 'kill', enemy: 'shard_skitter', count: 5 }, { id: 'dust', type: 'have', item: 'shard_dust', count: 4 }], rewards: { xp: { combat: 320, mining: 180 }, items: { gold: 200 } } },
   q_saga_sh2: { name: 'The Singing Stone — Those Who Hardened', saga: true, giver: 'veyra', requires: 'q_saga_sh1', desc: 'The Bloom petrifies Prismhold’s own. Free the stoneward thralls, silence chime wardens, and hear Quarryman Toll before he turns.', objectives: [{ id: 'thrall', type: 'kill', enemy: 'stoneward', count: 4 }, { id: 'warden', type: 'kill', enemy: 'chime_warden', count: 2 }, { id: 'toll', type: 'talk', npc: 'quarryman', name: 'Quarryman Toll' }], rewards: { xp: { combat: 380, crafting: 180 }, items: { gold: 280 } } },
   q_saga_sh3: { name: 'The Singing Stone — The First Note', saga: true, giver: 'veyra', requires: 'q_saga_sh2', reqSkills: { combat: 34 }, desc: 'Descend into the Singing Geode and silence Resona, the First Note, at the Bloom’s heart — then return to Veyra.', objectives: [{ id: 'boss', type: 'kill', enemy: 'resona', count: 1 }, { id: 'veyra', type: 'talk', npc: 'veyra', name: 'Lapidary Veyra' }], rewards: { xp: { combat: 1180, magic: 260 }, items: { gold: 480 } } },
+  // --- Skyreach: The Broken Ward saga (Stormcaller Maelis) ---
+  q_saga_sk1: { name: 'The Broken Ward', saga: true, giver: 'skyfalconer', startsAvailable: true, reqSkills: { combat: 38, ranged: 30 }, desc: 'The sky-ward over Aerie Watch is failing and the storms worsen. Climb the Aerie Spire, ground the rocs nesting in the broken stones, and bring gale cores so Maelis can read the damage.', objectives: [{ id: 'spire', type: 'visit', x: 152, z: -140, r: 12, name: 'the Aerie Spire' }, { id: 'roc', type: 'kill', enemy: 'roc_fledgling', count: 4 }, { id: 'core', type: 'have', item: 'gale_core', count: 4 }], rewards: { xp: { combat: 360, ranged: 220 }, items: { gold: 220 } } },
+  q_saga_sk2: { name: 'The Broken Ward — The Warden’s Watch', saga: true, giver: 'skyfalconer', requires: 'q_saga_sk1', reqSkills: { combat: 40 }, desc: 'The ward-stones still answer the wardens of the Stormcrown Eyrie. Ground the gale harriers screening the gate, break the sky wardens at its mouth, and bring storm shards to re-anchor the failing runes.', objectives: [{ id: 'eyrie', type: 'visit', x: 118, z: -150, r: 13, name: 'the Stormcrown Eyrie' }, { id: 'harrier', type: 'kill', enemy: 'gale_harrier', count: 4 }, { id: 'warden', type: 'kill', enemy: 'sky_warden', count: 3 }, { id: 'shard', type: 'have', item: 'storm_shard', count: 4 }], rewards: { xp: { combat: 420, ranged: 260, magic: 120 }, items: { gold: 300 } } },
+  q_saga_sk3: { name: 'The Broken Ward — The Stormcrown', saga: true, giver: 'skyfalconer', requires: 'q_saga_sk2', reqSkills: { combat: 44, ranged: 38 }, desc: 'No storm broke the ward — Maelis did, a lifetime ago, to free a dying roc-chick caged in its heart. That chick is the Stormcrown now. End it atop the Eyrie, then return to Maelis.', objectives: [{ id: 'boss', type: 'kill', enemy: 'stormcrown', count: 1 }, { id: 'maelis', type: 'talk', npc: 'skyfalconer', name: 'Stormcaller Maelis' }], rewards: { xp: { combat: 1180, ranged: 300 }, items: { gold: 500, windborne_cloak: 1 } } },
 };
 
 export function objectiveText(obj, n) {
@@ -1481,6 +1506,11 @@ export const DIALOGUE = {
       return node('Quarryman Toll', 'Pick’s down. Can’t grip it any more. The canyon does the singing now.', [end('Take care.')]);
     },
   },
+  saga_skyreach: sagaDialogue('Stormcaller Maelis', [
+    { id: 'q_saga_sk1', intro: 'Feel that wind? It bites wrong this year, and has since spring. The sky-ward that crowns the Spire is cracking, and the storms come through the gaps like wolves through a broken fence. Climb the Aerie Spire, ground the rocs nesting in the loose stones, and bring me their gale cores. I must read what the wind is doing up there.', accept: 'I’ll climb the Spire.', active: 'The rocs still nest in the broken crown, and I cannot read the ward without their cores.', done: 'These cores… the wind in them is frantic, unmoored. The ward isn’t just weathered — something at its very heart is straining the whole working. And I think I know where its heart is kept.' },
+    { id: 'q_saga_sk2', intro: 'The ward was never one stone — it was a ring, kept by the sky wardens out at the Stormcrown Eyrie, with the gale harriers wheeling guard. Get past the harriers, break the wardens at the mouth, and bring storm shards to anchor the runes while I work. Go armed; the wind out there will try to throw you off the ledges.', accept: 'I’ll reach the Eyrie.', active: 'The harriers still screen the gate, the wardens still hold the mouth, and I need storm shards to anchor the runes.', done: 'It’s anchored — barely. And now I have seen the heart of the ward with my own eyes, I can lie to you no longer. Sit. I owe you the truth before you take one more step.' },
+    { id: 'q_saga_sk3', intro: 'No storm broke the ward. I did. A lifetime ago, when the wardens caged a dying roc-chick in the ward’s very heart to feed it their bound winds. I could not bear its crying, so I cracked one stone — just one — to set it free. It lived. It grew. It is the Stormcrown now, and every gale that batters Aerie Watch is its grief, looking for me. End it — I am too old and too guilty to climb. Then come back, whatever you find up there.', accept: 'I’ll end it — and judge you after.', active: 'The Stormcrown rages atop the Eyrie. Until it falls, the sky has no mercy in it.', done: 'It’s done, then. The wind… listen — it’s only wind again. I gave that creature a freedom that broke a town, and you gave it the peace I could not. Take this cloak; the wardens wove it from skyfeathers in the old days, and it should sit on braver shoulders than mine.' },
+  ], 'The Broken Ward is mended and the truth is told. I keep the Spire now with a lighter heart — and the rocs, what few remain, no longer cry at night.'),
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.
