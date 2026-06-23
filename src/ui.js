@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ITEMS, SHOP, PRAYERS, ACHIEVEMENTS, ENEMIES } from './content.js';
 import { WORLD_SCALE } from './scale.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Bestiary', 'Log', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -134,7 +134,7 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
@@ -143,6 +143,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Skills') return G.skills.DEFS.length;
     if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
     if (TABS[tab] === 'Diary') return 5;
+    if (TABS[tab] === 'Tasks') return G.diaryRows().length;
     return 0;
   }
   function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); }
@@ -172,6 +173,8 @@ export function createUI(G) {
       else if (row === 2 && G.exportSave) G.exportSave();
       else if (row === 3 && G.importSave) G.importSave();
       else if (row === 4 && G.copySyncLink) G.copySyncLink();
+    } else if (TABS[tab] === 'Tasks') {
+      const r = G.diaryRows()[row]; if (r && r.ready) { G.diaryClaim(r.region, r.tierIdx); renderMenu(); }
     }
   }
   function gearRows() {
@@ -286,6 +289,17 @@ export function createUI(G) {
     const got = keys.filter((k) => have.has(k)).length;
     let html = `<div class="section-head">Collection Log — ${got}/${keys.length} gear</div>`;
     html += keys.map((k) => { const it = ITEMS[k], owned = have.has(k); return `<div class="row" style="${owned ? '' : 'opacity:.4'}"><span class="row-icon">${it.icon}</span><div class="row-main"><div class="row-title">${owned ? it.name : '???'}</div><div class="row-sub">${owned ? it.desc : 'Not yet collected'}</div></div>${owned ? '<div class="row-trail">✓</div>' : ''}</div>`; }).join('');
+    els.menuBody.innerHTML = html;
+  }
+  function renderTasks() {
+    const rows = G.diaryRows();
+    const claimed = rows.filter((r) => r.claimed).length;
+    let html = `<div class="section-head">Region Diaries — ${claimed}/${rows.length} tiers · +${G.diaryBonus()} max HP</div>`;
+    rows.forEach((r, i) => {
+      const tasks = r.tasks.map((t) => `<div class="obj ${t.done ? 'done' : ''}"><span class="box">${t.done ? '☑' : '☐'}</span>${t.desc}</div>`).join('');
+      const status = r.claimed ? '<span style="color:var(--gold)">✓ claimed</span>' : r.ready ? '<span style="color:var(--gold)">tap to claim!</span>' : `(${r.tasks.filter((t) => t.done).length}/${r.tasks.length})`;
+      html += `<div class="row ${i === row ? 'sel' : ''}" style="${r.claimed ? 'opacity:.55' : ''}"><div class="row-main"><div class="row-title">${r.regionName} — ${r.tierName} &nbsp; ${status}</div>${tasks}</div></div>`;
+    });
     els.menuBody.innerHTML = html;
   }
   function renderMap() {

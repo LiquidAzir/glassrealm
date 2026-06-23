@@ -374,6 +374,77 @@ export const LIVESTOCK = [
 // Farmstead economy constants. Workers run the farm passively (net gold/min); cap = offline hours.
 export const FARM = { cost: 1500, workerCost: 200, workerWage: 3, workerOutput: 9, maxWorkers: 5, capMin: 240 };
 
+// Region Achievement Diaries — tiered task lists per region. Tasks evaluate against existing
+// state (visited regions, skill levels, kills, bosses, quests, crafting). Claiming a finished
+// tier grants its reward + a permanent +3 max HP perk. Add a region/tier here to extend.
+export const DIARIES = [
+  { region: 'verdant', name: 'Verdant Isle', tiers: [
+    { name: 'Easy',   reward: { gold: 120, xp: { combat: 200 } }, tasks: [
+      { desc: 'Explore the Verdant Isle', type: 'visit', region: 'verdant' },
+      { desc: 'Reach Woodcutting 5', type: 'level', skill: 'woodcutting', level: 5 },
+      { desc: 'Defeat 5 Wild Boars', type: 'kill', enemy: 'boar', count: 5 } ] },
+    { name: 'Medium', reward: { gold: 300, xp: { combat: 400 } }, tasks: [
+      { desc: 'Reach Mining 15', type: 'level', skill: 'mining', level: 15 },
+      { desc: 'Defeat 12 Grey Wolves', type: 'kill', enemy: 'wolf', count: 12 },
+      { desc: 'Craft 5 items', type: 'crafted', count: 5 } ] },
+    { name: 'Hard',   reward: { gold: 600, xp: { combat: 800 }, item: 'ruby' }, tasks: [
+      { desc: 'Reach Combat 30', type: 'level', skill: 'combat', level: 30 },
+      { desc: 'Slay Emberfang', type: 'boss', boss: 'ember_boss' },
+      { desc: 'Reach 150 total kills', type: 'kills', count: 150 } ] } ] },
+  { region: 'ember', name: 'Emberhold', tiers: [
+    { name: 'Easy',   reward: { gold: 150, xp: { smithing: 250 } }, tasks: [
+      { desc: 'Visit Emberhold', type: 'visit', region: 'ember' },
+      { desc: 'Reach Smithing 10', type: 'level', skill: 'smithing', level: 10 },
+      { desc: 'Defeat 5 Bandits', type: 'kill', enemy: 'bandit', count: 5 } ] },
+    { name: 'Medium', reward: { gold: 350, xp: { smithing: 500 } }, tasks: [
+      { desc: 'Reach Smithing 25', type: 'level', skill: 'smithing', level: 25 },
+      { desc: 'Obtain a Mithril Sword', type: 'have', item: 'mithril_sword' },
+      { desc: 'Reach Mining 25', type: 'level', skill: 'mining', level: 25 } ] },
+    { name: 'Hard',   reward: { gold: 700, xp: { smithing: 900 }, item: 'mithril_bar' }, tasks: [
+      { desc: 'Slay Emberfang', type: 'boss', boss: 'ember_boss' },
+      { desc: 'Reach Smithing 40', type: 'level', skill: 'smithing', level: 40 },
+      { desc: 'Reach Mining 40', type: 'level', skill: 'mining', level: 40 } ] } ] },
+  { region: 'desert', name: 'Sunspire Oasis', tiers: [
+    { name: 'Easy',   reward: { gold: 150, xp: { mining: 250 } }, tasks: [
+      { desc: 'Visit the Sunspire Oasis', type: 'visit', region: 'desert' },
+      { desc: 'Defeat 5 Sand Scorpions', type: 'kill', enemy: 'scorpion', count: 5 },
+      { desc: 'Reach Mining 12', type: 'level', skill: 'mining', level: 12 } ] },
+    { name: 'Medium', reward: { gold: 350, xp: { mining: 500 } }, tasks: [
+      { desc: 'Defeat 12 Sand Scorpions', type: 'kill', enemy: 'scorpion', count: 12 },
+      { desc: 'Reach Thieving 15', type: 'level', skill: 'thieving', level: 15 },
+      { desc: 'Reach Mining 30', type: 'level', skill: 'mining', level: 30 } ] },
+    { name: 'Hard',   reward: { gold: 700, xp: { mining: 900 }, item: 'emerald' }, tasks: [
+      { desc: 'Slay the Sandwyrm', type: 'boss', boss: 'sandwyrm' },
+      { desc: 'Reach Combat 30', type: 'level', skill: 'combat', level: 30 },
+      { desc: 'Reach Mining 45', type: 'level', skill: 'mining', level: 45 } ] } ] },
+  { region: 'snow', name: 'The Snowfields', tiers: [
+    { name: 'Easy',   reward: { gold: 150, xp: { fishing: 250 } }, tasks: [
+      { desc: 'Visit the Snowfields', type: 'visit', region: 'snow' },
+      { desc: 'Reach Fishing 10', type: 'level', skill: 'fishing', level: 10 },
+      { desc: 'Defeat 5 Frost Wolves', type: 'kill', enemy: 'frost_wolf', count: 5 } ] },
+    { name: 'Medium', reward: { gold: 350, xp: { fishing: 500 } }, tasks: [
+      { desc: 'Reach Fishing 25', type: 'level', skill: 'fishing', level: 25 },
+      { desc: 'Defeat 12 Frost Wolves', type: 'kill', enemy: 'frost_wolf', count: 12 },
+      { desc: 'Reach Cooking 20', type: 'level', skill: 'cooking', level: 20 } ] },
+    { name: 'Hard',   reward: { gold: 700, xp: { fishing: 900 }, item: 'sapphire' }, tasks: [
+      { desc: 'Slay the Frost Warden', type: 'boss', boss: 'frost_warden' },
+      { desc: 'Reach Fishing 40', type: 'level', skill: 'fishing', level: 40 },
+      { desc: 'Reach Combat 35', type: 'level', skill: 'combat', level: 35 } ] } ] },
+  { region: 'jungle', name: 'Kytari Hollow', tiers: [
+    { name: 'Easy',   reward: { gold: 180, xp: { woodcutting: 280 } }, tasks: [
+      { desc: 'Visit Kytari Hollow', type: 'visit', region: 'jungle' },
+      { desc: 'Reach Woodcutting 20', type: 'level', skill: 'woodcutting', level: 20 },
+      { desc: 'Defeat 5 Coil Serpents', type: 'kill', enemy: 'serpent', count: 5 } ] },
+    { name: 'Medium', reward: { gold: 400, xp: { woodcutting: 550 } }, tasks: [
+      { desc: 'Defeat 8 Jungle Panthers', type: 'kill', enemy: 'jungle_panther', count: 8 },
+      { desc: 'Reach Fletching 20', type: 'level', skill: 'fletching', level: 20 },
+      { desc: 'Reach Combat 30', type: 'level', skill: 'combat', level: 30 } ] },
+    { name: 'Hard',   reward: { gold: 800, xp: { woodcutting: 950 }, item: 'serpent_eye' }, tasks: [
+      { desc: 'Slay Jorath the Coiled', type: 'boss', boss: 'jorath' },
+      { desc: 'Reach Woodcutting 45', type: 'level', skill: 'woodcutting', level: 45 },
+      { desc: 'Reach Ranged 35', type: 'level', skill: 'ranged', level: 35 } ] } ] },
+];
+
 export const ENEMIES = {
   boar:   { name: 'Wild Boar',    hp: 24,  dmg: 6,  speed: 3.4, xp: 55,  color: 0x9a5a38, aggro: 10, shape: 'beast',    loot: { meat: 1, pelt: 1, bones: 1 } },
   wolf:   { name: 'Grey Wolf',    hp: 36,  dmg: 9,  speed: 4.6, xp: 85,  color: 0x9aa0a8, aggro: 13, shape: 'beast',    loot: { pelt: 1, meat: 1, bones: 1 } },

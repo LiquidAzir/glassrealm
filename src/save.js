@@ -43,6 +43,7 @@ export function createSave(G) {
       worldScale: WORLD_SCALE,
       collection: G.collection ? [...G.collection] : [],
       clue: G.activeClue || undefined,
+      diaries: G.diaries ? [...G.diaries] : [],
       stats: G.stats ? { kills: G.stats.kills, crafted: G.stats.crafted, regions: [...G.stats.regions], bosses: [...G.stats.bosses], killsByType: { ...G.stats.killsByType } } : undefined,
       achievements: G.ach ? [...G.ach.unlocked] : undefined,
       world: {

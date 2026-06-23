@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -107,10 +107,11 @@ try {
     return b;
   }
   G.gearBonus = gearBonus;
-  function applyMaxHp() { const mh = 100 + gearBonus().maxhp; player.state.maxHp = mh; if (player.state.hp > mh) player.state.hp = mh; G.ui.setHealth(player.state.hp, mh); }
+  function applyMaxHp() { const mh = 100 + gearBonus().maxhp + (G.diaryBonus ? G.diaryBonus() : 0); player.state.maxHp = mh; if (player.state.hp > mh) player.state.hp = mh; G.ui.setHealth(player.state.hp, mh); }
 
   G.stats = { kills: 0, crafted: 0, regions: new Set(), bosses: new Set(), killsByType: {} };
   if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); Object.assign(G.stats.killsByType, saved.stats.killsByType || {}); }
+  G.diaries = new Set((saved && saved.diaries) || []);   // claimed region-diary tiers ("region:tierIdx")
   G.slayer = (saved && saved.slayer) ? { ...saved.slayer } : { active: false, enemy: null, count: 0, progress: 0 };
   G.trackedQuest = (saved && saved.tracked) || null;   // quest pinned in the Quests menu
   const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
@@ -821,6 +822,45 @@ try {
   };
   G.bankDeposit = (key) => { const n = G.inventory.count(key); if (n <= 0) return; G.inventory.remove(key, n); G.bankItems[key] = (G.bankItems[key] || 0) + n; G.save.save(); };
   G.bankWithdraw = (key) => { const n = G.bankItems[key] || 0; if (n <= 0) return; G.bankItems[key] = 0; G.inventory.add(key, n); G.save.save(); };
+
+  // ---------- region Achievement Diaries: tiered task lists evaluated from live state ----------
+  const diaryTaskDone = (t) => {
+    switch (t.type) {
+      case 'visit': return G.stats.regions.has(t.region);
+      case 'level': return G.skills.level(t.skill) >= t.level;
+      case 'kill': return (G.stats.killsByType[t.enemy] || 0) >= t.count;
+      case 'kills': return G.stats.kills >= t.count;
+      case 'boss': return G.stats.bosses.has(t.boss);
+      case 'quest': return G.quests.status(t.quest) === 'complete';
+      case 'crafted': return G.stats.crafted >= t.count;
+      case 'have': return (G.collection && G.collection.has(t.item)) || G.inventory.count(t.item) >= (t.count || 1);
+      default: return false;
+    }
+  };
+  G.diaryBonus = () => (G.diaries ? G.diaries.size * 3 : 0);
+  G.diaryRows = () => {
+    const rows = [];
+    DIARIES.forEach((dia) => dia.tiers.forEach((tier, ti) => {
+      const tasks = tier.tasks.map((t) => ({ desc: t.desc, done: diaryTaskDone(t) }));
+      const allDone = tasks.every((t) => t.done), claimed = G.diaries.has(`${dia.region}:${ti}`);
+      rows.push({ region: dia.region, regionName: dia.name, tierIdx: ti, tierName: tier.name, tasks, claimed, ready: allDone && !claimed, reward: tier.reward });
+    }));
+    return rows;
+  };
+  G.diaryClaim = (region, ti) => {
+    const dia = DIARIES.find((d) => d.region === region); if (!dia) return;
+    const tier = dia.tiers[ti], key = `${region}:${ti}`;
+    if (!tier || G.diaries.has(key)) return;
+    if (!tier.tasks.every(diaryTaskDone)) { G.ui.toast('Not all tasks done yet', '', 1600); return; }
+    G.diaries.add(key);
+    if (tier.reward.gold) G.inventory.add('gold', tier.reward.gold);
+    if (tier.reward.item) G.inventory.add(tier.reward.item, 1);
+    if (tier.reward.xp) for (const sk in tier.reward.xp) G.gainXp(sk, tier.reward.xp[sk]);
+    applyMaxHp();
+    G.ui.levelBanner(`✦ ${dia.name} ${tier.name} Diary!`);
+    G.ui.toast(`Diary reward: ${tier.reward.gold || 0}g${tier.reward.item ? ' + ' + ITEMS[tier.reward.item].name : ''} · +3 max HP`, 'gold', 3400);
+    G.audio.sfx('ach'); if (G.ach) G.ach.evaluate(); G.save.save();
+  };
 
   const craftCfg = {
     title: 'Crafting Bench', hint: '↑ ↓ select · tap craft · ↑↓↑↓ leave', empty: 'Mine gems first (sapphire/emerald/ruby).',
