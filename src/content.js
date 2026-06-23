@@ -216,6 +216,38 @@ export const ITEMS = {
   cinderveil_staff: { name: 'Cinderveil Staff', icon: '🪄', type: 'weapon', style: 'magic', skill: 'magic', bonus: 33, range: 16, speed: 0.6, desc: 'Carved from the monolith; channels the smothered fire-god. +33 magic.' },
   emberward_plate: { name: 'Emberward Plate', icon: '🛡️', type: 'armor', defense: 22, desc: 'Obsidian scale-plate, ash-quenched. −22 damage taken. Best-in-slot armour.' },
   ashen_signet:   { name: 'Ashen Signet', icon: '💍', type: 'ring', bonus: { melee: 10, magic: 10 }, desc: 'Rare drop. The cult-leader’s ring. +10 melee, +10 magic.' },
+  // ===== Big gear round — distinct weapons/armour/shields across tiers =====
+  // Low tier (shop)
+  bronze_mace:      { name: 'Bronze Mace',      icon: '🔨', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 5,  range: 2.6, speed: 0.54, desc: 'A blunt bronze mace. +5 melee.' },
+  bronze_scimitar:  { name: 'Bronze Scimitar',  icon: '🗡️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 5,  range: 2.8, speed: 0.44, desc: 'A curved bronze blade, quick on the draw. +5 melee.' },
+  oak_crossbow:     { name: 'Oak Crossbow',     icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 6,  range: 13, speed: 0.7,  desc: 'A simple stock crossbow. +6 ranged.' },
+  novice_wand:      { name: 'Novice Wand',      icon: '🪄', type: 'weapon', style: 'magic',  skill: 'magic',  bonus: 6,  range: 12, speed: 0.58, desc: 'A starter wand for fledgling mages. +6 magic.' },
+  studded_leather:  { name: 'Studded Leather',  icon: '🥋', type: 'armor', defense: 6,  desc: 'Hide reinforced with bronze studs. −6 damage.' },
+  bronze_platebody: { name: 'Bronze Platebody', icon: '🛡️', type: 'armor', defense: 8,  desc: 'Beaten bronze plate. −8 damage.' },
+  bronze_kiteshield:{ name: 'Bronze Kiteshield', icon: '🛡️', type: 'shield', defense: 7, desc: 'A bronze kite shield. Blocks 7.' },
+  // Mid tier (shop)
+  iron_warhammer:   { name: 'Iron Warhammer',   icon: '🔨', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 12, range: 2.8, speed: 0.7,  desc: 'A two-handed iron hammer. +12 melee, heavy.' },
+  iron_halberd:     { name: 'Iron Halberd',     icon: '🔱', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 11, range: 3.5, speed: 0.6,  desc: 'A long-reach polearm. +11 melee, great range.' },
+  steel_rapier:     { name: 'Steel Rapier',     icon: '🤺', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 13, range: 2.7, speed: 0.34, desc: 'A slender duelling blade. +13 melee, very fast.' },
+  hunters_crossbow: { name: "Hunter's Crossbow", icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 13, range: 14, speed: 0.62, desc: 'A keen hunting crossbow. +13 ranged.' },
+  acolyte_grimoire: { name: 'Acolyte Grimoire', icon: '📖', type: 'weapon', style: 'magic',  skill: 'magic',  bonus: 13, range: 14, speed: 0.7,  desc: 'A bound book of cantrips. +13 magic.' },
+  scout_leather:    { name: 'Scout Leathers',   icon: '🥋', type: 'armor', defense: 10, bonus: { ranged: 4 }, desc: 'Light hooded leathers. −10 damage, +4 ranged.' },
+  chain_hauberk:    { name: 'Chain Hauberk',    icon: '🛡️', type: 'armor', defense: 12, desc: 'Riveted chainmail. −12 damage.' },
+  tower_shield:     { name: 'Tower Shield',     icon: '🛡️', type: 'shield', defense: 14, desc: 'A heavy tower shield. Blocks 14.' },
+  // High tier (quest + discovery rewards)
+  gravewarden_scythe: { name: 'Gravewarden Scythe', icon: '⚰️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 26, range: 3.3, speed: 0.56, desc: 'A reaper’s scythe that hums near the dead. +26 melee, long reach.' },
+  warlord_flail:    { name: 'Warlord Flail',    icon: '⛓️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 25, range: 2.9, speed: 0.5,  desc: 'A spiked flail of a fallen warlord. +25 melee.' },
+  shadow_claws:     { name: 'Shadow Claws',     icon: '🐾', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 22, range: 2.4, speed: 0.28, poison: 5, desc: 'Twin venom claws. +22 melee, lightning-fast, poison on hit.' },
+  dragoon_halberd:  { name: 'Dragoon Halberd',  icon: '🔱', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 28, range: 3.6, speed: 0.6,  desc: 'An ember-forged dragoon polearm. +28 melee, vast reach.' },
+  seraph_blade:     { name: 'Seraph Blade',     icon: '⚔️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 31, range: 3.0, speed: 0.48, desc: 'A radiant greatsword wreathed in light. +31 melee.' },
+  moonscythe:       { name: 'Moonscythe',       icon: '🌙', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 27, range: 3.3, speed: 0.52, desc: 'A fae crescent that cuts with moonlight. +27 melee.' },
+  windpierce_crossbow: { name: 'Windpierce Crossbow', icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 27, range: 17, speed: 0.6, desc: 'Bolts that ride the wind. +27 ranged, vast reach.' },
+  archon_scepter:   { name: 'Archon Scepter',   icon: '🔱', type: 'weapon', style: 'magic',  skill: 'magic',  bonus: 30, range: 15, speed: 0.64, desc: 'A scepter crowned with bound starlight. +30 magic.' },
+  dread_plate:      { name: 'Dread Plate',      icon: '🛡️', type: 'armor', defense: 21, desc: 'Black spiked warplate. −21 damage.' },
+  warlord_plate:    { name: 'Warlord Plate',    icon: '🛡️', type: 'armor', defense: 23, bonus: { melee: 6 }, desc: 'Crimson plate of a war-host. −23 damage, +6 melee.' },
+  royal_cuirass:    { name: 'Royal Cuirass',    icon: '🛡️', type: 'armor', defense: 22, bonus: { maxhp: 30 }, desc: 'A caped, plumed royal cuirass. −22 damage, +30 max HP.' },
+  archmage_robes:   { name: 'Archmage Robes',   icon: '🧥', type: 'armor', defense: 15, bonus: { magic: 14 }, desc: 'Star-stitched robes of an archmage. −15 damage, +14 magic.' },
+  aegis_bulwark:    { name: 'Aegis Bulwark',    icon: '🛡️', type: 'shield', defense: 20, desc: 'A radiant golden bulwark. Blocks 20.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -417,6 +449,15 @@ export const DISCOVERIES = [
   { key: 'wishing_well',   name: 'Wishing Well',    kind: 'well',       x: 10,   z: -6,   prompt: 'Toss a coin',         repeat: 300, effect: { gold: 30, col: 0x6fb0e0, sfx: 'pickup' }, msg: 'You toss a coin… and fish out a few more.' },
   { key: 'war_shrine',     name: 'War Shrine',      kind: 'shrine',     x: 140,  z: 110,  prompt: 'Pray at the shrine',  repeat: 240, effect: { buff: 'strength', mult: 1.15, dur: 90, col: 0xff6a4a }, msg: 'The war shrine emboldens you. (+melee for a time)' },
   { key: 'mage_obelisk',   name: 'Arcane Obelisk',  kind: 'obelisk',    x: -16,  z: -102, prompt: 'Channel the obelisk', repeat: 240, effect: { buff: 'magic', mult: 1.15, dur: 90, col: 0xb98fff }, msg: 'Arcane power surges through you. (+magic for a time)' },
+  // --- Big gear round: unique weapons/armour hidden at locations ---
+  { key: 'reapers_cairn', name: "Reaper's Cairn",  kind: 'cairn',   x: 66,   z: -168, prompt: 'Open the cairn',     gold: 200, loot: { gravewarden_scythe: 1 }, msg: 'A grave-warden’s scythe, laid to rest with its keeper.' },
+  { key: 'warlord_camp',  name: 'Ruined War-Camp', kind: 'tower',   x: 162,  z: 108,  prompt: 'Loot the camp',     gold: 260, loot: { warlord_flail: 1, warlord_plate: 1 }, msg: 'A warlord’s spiked flail and crimson plate.' },
+  { key: 'thief_cache',   name: 'Thieves’ Cache',  kind: 'chest',   x: -60,  z: 90,   prompt: 'Pick the cache',    gold: 220, loot: { shadow_claws: 1 }, msg: 'A smuggler’s stash — twin venom claws within.' },
+  { key: 'hunters_perch', name: "Hunter's Perch",  kind: 'tower',   x: 128,  z: -116, prompt: 'Search the perch',  gold: 240, loot: { windpierce_crossbow: 1 }, msg: 'A windward perch and a peerless crossbow.' },
+  { key: 'fae_shrine',    name: 'Moonlit Shrine',  kind: 'ring',    x: -14,  z: -122, prompt: 'Touch the shrine',  loot: { moonscythe: 1 }, xp: { magic: 300 }, msg: 'The shrine gifts a crescent of moonlight. (+Magic XP)' },
+  { key: 'dread_seal',    name: 'Dread Obelisk',   kind: 'obelisk', x: 132,  z: 100,  prompt: 'Pry the seal',     gold: 280, loot: { dread_plate: 1 }, msg: 'Black spiked warplate, sealed in the stone.' },
+  { key: 'arcane_study',  name: 'Lost Arcane Study', kind: 'tower', x: -128, z: 84,   prompt: 'Read the study',   loot: { archmage_robes: 1 }, xp: { magic: 350 }, msg: 'An archmage’s robes, folded with care. (+Magic XP)' },
+  { key: 'knight_tomb',   name: "Fallen Knight's Tomb", kind: 'statue', x: -90, z: -6, prompt: 'Honour the knight', gold: 200, loot: { aegis_bulwark: 1 }, msg: 'A radiant bulwark, kept by a stone knight.' },
 ];
 
 // Treasure-trail dig spots for clue scrolls — cryptic hints point at a landmark; dig nearby for a casket.
@@ -892,13 +933,13 @@ export const QUESTS = {
   q_jorath: { name: 'Jorath the Coiled', giver: 'pathfinder', requires: 'q_zigg', reqSkills: { combat: 30 }, desc: 'Slay the great serpent Jorath atop the ziggurat.', objectives: [{ id: 'boss', type: 'kill', enemy: 'jorath', count: 1 }], rewards: { xp: { combat: 950, slayer: 240 }, items: { gold: 360 } } },
   // --- Scorched Wastes / The Ashpit ---
   q_ashpit: { name: 'Into the Ashes', giver: 'cinderwarden', startsAvailable: true, desc: 'Put down the ash hounds prowling the Scorched Wastes.', objectives: [{ id: 'k', type: 'kill', enemy: 'ash_hound', count: 3 }], rewards: { xp: { combat: 320 }, items: { gold: 130 } } },
-  q_vurak: { name: 'Ashlord Vurak', giver: 'cinderwarden', requires: 'q_ashpit', desc: 'Destroy Ashlord Vurak in the Ashpit.', objectives: [{ id: 'boss', type: 'kill', enemy: 'vurak', count: 1 }], rewards: { xp: { combat: 1050, slayer: 280 }, items: { gold: 400 } } },
+  q_vurak: { name: 'Ashlord Vurak', giver: 'cinderwarden', requires: 'q_ashpit', desc: 'Destroy Ashlord Vurak in the Ashpit.', objectives: [{ id: 'boss', type: 'kill', enemy: 'vurak', count: 1 }], rewards: { xp: { combat: 1050, slayer: 280 }, items: { gold: 400, dragoon_halberd: 1 } } },
   // --- Stormhold Highlands / Thunderpeak Hold ---
   q_thunder: { name: 'Storm Riders', giver: 'stormcaller', startsAvailable: true, desc: 'Drive the storm harpies from the Stormhold Highlands.', objectives: [{ id: 'k', type: 'kill', enemy: 'storm_harpy', count: 4 }], rewards: { xp: { combat: 340, defence: 120 }, items: { gold: 140 } } },
-  q_thruun: { name: 'Stormcaller Thruun', giver: 'stormcaller', requires: 'q_thunder', desc: 'Defeat the storm titan Thruun in Thunderpeak Hold.', objectives: [{ id: 'boss', type: 'kill', enemy: 'thruun', count: 1 }], rewards: { xp: { combat: 1100, ranged: 220 }, items: { gold: 420 } } },
+  q_thruun: { name: 'Stormcaller Thruun', giver: 'stormcaller', requires: 'q_thunder', desc: 'Defeat the storm titan Thruun in Thunderpeak Hold.', objectives: [{ id: 'boss', type: 'kill', enemy: 'thruun', count: 1 }], rewards: { xp: { combat: 1100, ranged: 220 }, items: { gold: 420, seraph_blade: 1 } } },
   // --- Moonlit Glade / Feywild Hollow ---
   q_fey: { name: 'Tangled Thorns', giver: 'faewarden', startsAvailable: true, desc: 'Clear the thornlings creeping out of the Feywild Hollow.', objectives: [{ id: 'k', type: 'kill', enemy: 'thornling', count: 3 }], rewards: { xp: { combat: 360, herblore: 150 }, items: { gold: 150 } } },
-  q_hollow: { name: 'The Hollow King', giver: 'faewarden', requires: 'q_fey', desc: 'Banish the Hollow King in the heart of the Feywild.', objectives: [{ id: 'boss', type: 'kill', enemy: 'hollow_king', count: 1 }], rewards: { xp: { combat: 1200, magic: 240 }, items: { gold: 460 } } },
+  q_hollow: { name: 'The Hollow King', giver: 'faewarden', requires: 'q_fey', desc: 'Banish the Hollow King in the heart of the Feywild.', objectives: [{ id: 'boss', type: 'kill', enemy: 'hollow_king', count: 1 }], rewards: { xp: { combat: 1200, magic: 240 }, items: { gold: 460, archon_scepter: 1 } } },
 
   // ===== Sagas — long, multi-stage story questlines (travel / investigate / speak / recover / confront) =====
   q_saga_v1: { name: 'The Verdant Pact', saga: true, giver: 'vael', startsAvailable: true, desc: 'Wake the Founders’ shrine on the North Peak and learn the old verse.', objectives: [{ id: 'shrine', type: 'visit', x: 0, z: -36, r: 13, name: 'the North Peak shrine' }, { id: 'wood', type: 'have', item: 'wood', count: 6 }, { id: 'elder', type: 'talk', npc: 'elder', name: 'Elder Maren' }], rewards: { xp: { woodcutting: 180, combat: 120 }, items: { gold: 120 } } },
@@ -923,7 +964,7 @@ export const QUESTS = {
 
   // ===== Expansion III — Saltcrest Harbor / The Drowned Galleon =====
   q_harbor:  { name: 'Crab Season', giver: 'harbormaster', startsAvailable: true, desc: 'Clear the marsh crabs swarming Saltcrest’s docks.', objectives: [{ id: 'k', type: 'kill', enemy: 'marsh_crab', count: 5 }], rewards: { xp: { combat: 360, fishing: 140 }, items: { gold: 140 } } },
-  q_galleon: { name: 'The Drowned Galleon', giver: 'harbormaster', requires: 'q_harbor', desc: 'Board the low-tide wreck and end Captain Mordrake.', objectives: [{ id: 'boss', type: 'kill', enemy: 'drowned_captain', count: 1 }], rewards: { xp: { combat: 1040, slayer: 240 }, items: { gold: 420 } } },
+  q_galleon: { name: 'The Drowned Galleon', giver: 'harbormaster', requires: 'q_harbor', desc: 'Board the low-tide wreck and end Captain Mordrake.', objectives: [{ id: 'boss', type: 'kill', enemy: 'drowned_captain', count: 1 }], rewards: { xp: { combat: 1040, slayer: 240 }, items: { gold: 420, royal_cuirass: 1 } } },
   // ===== Amberfell / The Hollow Barrow =====
   q_amberhunt: { name: 'Blighted Wood', giver: 'amberwarden', startsAvailable: true, desc: 'Put down the blight wolves stalking Amberfell’s groves.', objectives: [{ id: 'k', type: 'kill', enemy: 'blight_wolf', count: 5 }], rewards: { xp: { combat: 380, foraging: 150 }, items: { gold: 150 } } },
   q_barrow:    { name: 'The Hollow Barrow', giver: 'amberwarden', requires: 'q_amberhunt', reqSkills: { combat: 40, prayer: 15 }, desc: 'Descend the barrow and lay the Barrow Wight to rest.', objectives: [{ id: 'boss', type: 'kill', enemy: 'barrow_wight', count: 1 }], rewards: { xp: { combat: 1120, prayer: 260 }, items: { gold: 440 } } },
@@ -1586,6 +1627,11 @@ export const SHOP = {
     { key: 'herb', price: 9 },
     { key: 'bronze_bar', price: 16 },
     { key: 'iron_bar', price: 34 },
+    // big gear round — buyable progression with distinct looks
+    { key: 'bronze_mace', price: 80 }, { key: 'bronze_scimitar', price: 90 }, { key: 'oak_crossbow', price: 110 }, { key: 'novice_wand', price: 100 },
+    { key: 'studded_leather', price: 90 }, { key: 'bronze_platebody', price: 140 }, { key: 'bronze_kiteshield', price: 90 },
+    { key: 'iron_warhammer', price: 340 }, { key: 'iron_halberd', price: 320 }, { key: 'steel_rapier', price: 520 }, { key: 'hunters_crossbow', price: 480 }, { key: 'acolyte_grimoire', price: 480 },
+    { key: 'scout_leather', price: 280 }, { key: 'chain_hauberk', price: 360 }, { key: 'tower_shield', price: 380 },
   ],
   sell: {
     wood: 3, berry: 2, herb: 6, pelt: 8, meat: 5, copper_ore: 6, iron_ore: 11, coal: 5, mithril_ore: 30, mithril_bar: 70, mithril_sword: 130, mithril_armor: 150, mithril_shield: 120,

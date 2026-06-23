@@ -19,14 +19,28 @@ const WEAPON_MODEL = {
   corsair_cutlass: ['sword', 0xe0c060], barrow_blade: ['greatsword', 0x9bb0c0], mithril_sword: ['sword', 0x8fb8d8],
   oak_bow: ['bow', 0x8a5a2e], yew_bow: ['bow', 0x6e4a2b], stormstring_bow: ['longbow', 0x9bdcff], tempest_bow: ['longbow', 0xbfe6ff],
   apprentice_staff: ['staff', 0x9b6bff], ember_staff: ['staff', 0xff7a33], frost_staff: ['staff', 0x9bd0ff], prism_staff: ['staff', 0xc6a8ff], faewild_staff: ['staff', 0xff7af0],
+  // frontier-region weapons (were falling back to generic models)
+  brinecaller: ['trident', 0x35c8d6], reef_harpoon: ['spear', 0x2f9a8a], hyphae_lash: ['flail', 0x7ad06a], chord_staff: ['staff', 0xd0a8ff],
+  skywarden_bow: ['longbow', 0x9bdcff], cinderveil_staff: ['staff', 0xff5a2a], obsidian_maul: ['warhammer', 0x2a2230],
+  // big gear round
+  bronze_mace: ['mace', 0xb87333], bronze_scimitar: ['scimitar', 0xb87333], oak_crossbow: ['crossbow', 0x8a5a2e], novice_wand: ['wand', 0x7cc0ff],
+  iron_warhammer: ['warhammer', 0xc2ccd6], iron_halberd: ['halberd', 0xc2ccd6], steel_rapier: ['rapier', 0xeaf2ff], hunters_crossbow: ['crossbow', 0x9aa0a8], acolyte_grimoire: ['grimoire', 0x6a8aff],
+  gravewarden_scythe: ['scythe', 0x9bb0c0], warlord_flail: ['flail', 0xc04040], shadow_claws: ['claw', 0x6a4a9a], dragoon_halberd: ['halberd', 0xff7a3a], seraph_blade: ['greatsword', 0xfff0c0],
+  moonscythe: ['scythe', 0xc6a8ff], windpierce_crossbow: ['crossbow', 0x9bdcff], archon_scepter: ['scepter', 0xffe066],
 };
 // Per-armor body looks: chest colour + optional shoulders / helm / hood.
 const ARMOR_MODEL = {
   leather_armor: { color: 0x8a5a2e }, iron_armor: { color: 0x9aa0a8, shoulders: true }, steel_armor: { color: 0xeaf2ff, shoulders: true, helm: true },
   guardian_armor: { color: 0xd8c070, shoulders: true, helm: true }, ranger_armor: { color: 0x4f8f5a, hood: true }, sorcerer_robes: { color: 0x8a6abf, hood: true },
   mithril_armor: { color: 0x8fb8d8, shoulders: true, helm: true }, mariner_plate: { color: 0x8aa6b6, shoulders: true }, grave_plate: { color: 0x9a8a6a, shoulders: true, helm: true },
+  // frontier-region armour (were falling back to plain grey chest)
+  coral_armor: { color: 0x2f8a8a, shoulders: true }, prism_carapace: { color: 0x9bd0ff, shoulders: true, helm: true }, sporeweave_robes: { color: 0x7a4a8a, hood: true, robe: true }, emberward_plate: { color: 0x201826, shoulders: true, helm: true, spikes: true, trim: 0xff5a2a },
+  // big gear round
+  studded_leather: { color: 0x8a5a2e, trim: 0x6e4a2b }, bronze_platebody: { color: 0xb87333, shoulders: true }, scout_leather: { color: 0x4f8f5a, hood: true }, chain_hauberk: { color: 0x9aa0a8, shoulders: true, trim: 0x6a6f78 },
+  dread_plate: { color: 0x2a2230, shoulders: true, helm: true, spikes: true, trim: 0x9a2a2a }, warlord_plate: { color: 0x6a2a22, shoulders: true, helm: true, spikes: true },
+  royal_cuirass: { color: 0xdfe6ef, shoulders: true, helm: true, cape: true, plume: true, trim: 0xffd45f }, archmage_robes: { color: 0x3a2a6a, hood: true, robe: true, trim: 0x9b6bff },
 };
-const SHIELD_COL = { wooden_shield: 0x8a5a2e, iron_shield: 0x9aa0a8, steel_shield: 0xeaf2ff, barnacle_shield: 0x3a8a8a, mithril_shield: 0x8fb8d8 };
+const SHIELD_COL = { wooden_shield: 0x8a5a2e, iron_shield: 0x9aa0a8, steel_shield: 0xeaf2ff, barnacle_shield: 0x3a8a8a, mithril_shield: 0x8fb8d8, bronze_kiteshield: 0xb87333, tower_shield: 0x9aa0a8, aegis_bulwark: 0xffd45f };
 
 export function createPlayer(scene, world) {
   const group = new THREE.Group();
@@ -76,6 +90,17 @@ export function createPlayer(scene, world) {
     else if (model === 'bow' || model === 'longbow') { const r = model === 'longbow' ? 0.62 : 0.46; const bow = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 6, 10, Math.PI * 1.2), m); bow.rotation.z = Math.PI / 2; bow.position.set(0, -0.1, 0.1); weaponHolder.add(bow); }
     else if (model === 'staff') { weaponHolder.add(mkBox(0.07, 1.3, 0.07, woodMat, 0, -0.55, 0)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), glow); orb.position.set(0, -1.2, 0); weaponHolder.add(orb); }
     else if (model === 'wand') { weaponHolder.add(mkBox(0.06, 0.85, 0.06, woodMat, 0, -0.45, 0)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 0), glow); orb.position.set(0, -0.9, 0); weaponHolder.add(orb); }
+    else if (model === 'mace') { weaponHolder.add(mkBox(0.08, 0.95, 0.08, woodMat, 0, -0.5, 0)); weaponHolder.add(mkBox(0.3, 0.32, 0.3, m, 0, -1.02, 0)); for (const d of [[0.22, 0], [-0.22, 0], [0, 0.22], [0, -0.22]]) { const sp = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 4), m); sp.position.set(d[0], -1.02, d[1]); sp.rotation.z = d[0] ? (d[0] > 0 ? -Math.PI / 2 : Math.PI / 2) : 0; sp.rotation.x = d[1] ? (d[1] > 0 ? Math.PI / 2 : -Math.PI / 2) : 0; weaponHolder.add(sp); } }
+    else if (model === 'warhammer') { weaponHolder.add(mkBox(0.09, 1.2, 0.09, woodMat, 0, -0.62, 0)); weaponHolder.add(mkBox(0.5, 0.42, 0.42, m, 0, -1.12, 0)); weaponHolder.add(mkBox(0.16, 0.3, 0.3, dark, 0.33, -1.12, 0)); }
+    else if (model === 'scythe') { weaponHolder.add(mkBox(0.07, 1.7, 0.07, woodMat, 0, -0.85, 0)); const bl = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.06, 5, 8, Math.PI * 0.7), m); bl.position.set(-0.2, -1.6, 0); bl.rotation.z = 0.6; weaponHolder.add(bl); }
+    else if (model === 'halberd') { weaponHolder.add(mkBox(0.07, 1.85, 0.07, woodMat, 0, -0.9, 0)); weaponHolder.add(mkBox(0.42, 0.5, 0.1, m, 0.24, -1.5, 0)); const t = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.5, 5), m); t.position.set(0, -1.95, 0); t.rotation.x = Math.PI; weaponHolder.add(t); }
+    else if (model === 'scimitar') { const bl = mkBox(0.1, 1.0, 0.18, m, 0.12, -0.6, 0); bl.rotation.z = 0.32; weaponHolder.add(bl); const tip = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 4), m); tip.position.set(0.42, -1.05, 0); tip.rotation.z = -0.6; weaponHolder.add(tip); weaponHolder.add(mkBox(0.36, 0.1, 0.2, dark, 0, -0.04, 0)); }
+    else if (model === 'rapier') { weaponHolder.add(mkBox(0.045, 1.25, 0.045, m, 0, -0.68, 0)); const g = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 5, 10), dark); g.rotation.x = Math.PI / 2; g.position.set(0, -0.08, 0); weaponHolder.add(g); }
+    else if (model === 'flail') { weaponHolder.add(mkBox(0.07, 0.6, 0.07, woodMat, 0, -0.32, 0)); for (let i = 0; i < 3; i++) weaponHolder.add(mkBox(0.05, 0.05, 0.05, dark, 0, -0.66 - i * 0.12, 0)); const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), m); ball.position.set(0, -1.12, 0); weaponHolder.add(ball); }
+    else if (model === 'claw') { weaponHolder.add(mkBox(0.26, 0.18, 0.26, dark, 0, -0.05, 0)); for (const dx of [-0.1, 0, 0.1]) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.5, 4), m); c.position.set(dx, -0.45, 0.12); c.rotation.x = -0.2; weaponHolder.add(c); } }
+    else if (model === 'crossbow') { weaponHolder.add(mkBox(0.12, 0.7, 0.12, woodMat, 0, -0.3, 0.05)); const limb = mkBox(0.9, 0.06, 0.08, m, 0, -0.05, 0.18); weaponHolder.add(limb); weaponHolder.add(mkBox(0.06, 0.06, 0.4, dark, 0, -0.05, -0.05)); }
+    else if (model === 'grimoire') { weaponHolder.add(mkBox(0.5, 0.62, 0.12, m, 0, -0.3, 0.1)); weaponHolder.add(mkBox(0.44, 0.54, 0.13, new THREE.MeshLambertMaterial({ color: 0xf4ecd0, flatShading: true }), 0, -0.3, 0.11)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), glow); orb.position.set(0, -0.05, 0.2); weaponHolder.add(orb); }
+    else if (model === 'scepter') { weaponHolder.add(mkBox(0.06, 1.0, 0.06, m, 0, -0.5, 0)); const head = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), glow); head.position.set(0, -1.05, 0); weaponHolder.add(head); for (const a of [0, Math.PI * 2 / 3, Math.PI * 4 / 3]) { const p = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 4), glow); p.position.set(Math.cos(a) * 0.18, -1.05, Math.sin(a) * 0.18); p.rotation.z = -Math.PI / 2; p.rotation.y = a; weaponHolder.add(p); } }
   }
   function setWeaponMesh(key) {
     clearHolder();
@@ -93,6 +118,12 @@ export function createPlayer(scene, world) {
     if (a.shoulders) { armorGroup.add(mkBox(0.34, 0.26, 0.52, m, -0.52, 1.5, 0)); armorGroup.add(mkBox(0.34, 0.26, 0.52, m, 0.52, 1.5, 0)); }
     if (a.helm) armorGroup.add(mkBox(0.44, 0.34, 0.44, m, 0, 2.0, 0));
     if (a.hood) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.55, 6), m); h.position.set(0, 2.05, 0); armorGroup.add(h); }
+    const trimMat = a.trim ? new THREE.MeshLambertMaterial({ color: a.trim, flatShading: true }) : null;
+    if (a.robe) armorGroup.add(mkBox(0.82, 0.72, 0.52, m, 0, 0.5, 0));                                    // long skirt/robe
+    if (a.cape) { const cape = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.05, 0.07), trimMat || m); cape.position.set(0, 1.05, -0.34); cape.rotation.x = 0.1; armorGroup.add(cape); }
+    if (a.plume) { const pl = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.42, 5), trimMat || new THREE.MeshLambertMaterial({ color: 0xc04040, flatShading: true })); pl.position.set(0, 2.34, 0); armorGroup.add(pl); }   // crest on the helm
+    if (a.spikes) for (const sx of [-0.52, 0.52]) { const sp = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.34, 4), m); sp.position.set(sx, 1.74, 0); armorGroup.add(sp); }   // shoulder spikes
+    if (trimMat) armorGroup.add(mkBox(0.9, 0.13, 0.6, trimMat, 0, 0.78, 0));                              // belt/trim accent
   }
   function buildShield(key) {
     while (shieldGroup.children.length) shieldGroup.remove(shieldGroup.children[0]);
