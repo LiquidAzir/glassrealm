@@ -350,6 +350,25 @@ export const DISCOVERIES = [
   { key: 'fairy_ring',     name: 'Fairy Ring',     kind: 'ring',   x: -48,  z: -136, prompt: 'Step into the ring',  xp: { agility: 600 }, gold: 100, msg: 'The fairy ring hums and quickens your step. (+Agility XP)' },
   { key: 'sunken_idol',    name: 'Sunken Idol',    kind: 'idol',   x: 80,   z: 138,  prompt: 'Pry loose the idol',  gold: 420, msg: 'A golden idol, lost for an age!' },
   { key: 'frozen_pack',    name: 'Frozen Pack',    kind: 'cairn',  x: 84,   z: -106, prompt: 'Take the pack',       gold: 150, loot: { grave_plate: 1, potion: 3 }, msg: 'A lost traveler’s pack, frozen in the snow.' },
+  // --- Big-Map Upgrade: more one-time finds spread across every corner ---
+  { key: 'crystal_geode',  name: 'Crystal Geode',   kind: 'crystal',    x: -128, z: 90,   prompt: 'Crack the geode',     loot: { crystal_shard: 3, sapphire: 2 }, msg: 'A geode bristling with blue crystal!' },
+  { key: 'sky_relic',      name: 'Sky Relic',       kind: 'obelisk',    x: 134,  z: -122, prompt: 'Read the relic',      gold: 360, xp: { magic: 500 }, msg: 'A relic humming with high magic. (+Magic XP)' },
+  { key: 'coral_trove',    name: 'Coral Trove',     kind: 'idol',       x: -90,  z: -110, prompt: 'Open the trove',      gold: 280, loot: { pearl: 4 }, msg: 'A reef-buried trove of pearls.' },
+  { key: 'cinder_anvil',   name: 'Cinder Anvil',    kind: 'tower',      x: -48,  z: 168,  prompt: 'Loot the forge',      loot: { magma_core: 3, coal: 6 }, msg: 'An abandoned forge, still warm.' },
+  { key: 'spore_bloom',    name: 'Spore Bloom',     kind: 'mushroom',   x: -154, z: 50,   prompt: 'Harvest the bloom',   loot: { fae_dust: 3, herb: 4 }, xp: { herblore: 400 }, msg: 'A giant bloom thick with spores. (+Herblore XP)' },
+  { key: 'titan_arch',     name: 'Titan Arch',      kind: 'arch',       x: 70,   z: 10,   prompt: 'Search the arch',     gold: 250, loot: { emerald: 1 }, msg: 'Beneath the ancient arch, a cache.' },
+  { key: 'hero_statue',    name: "Hero's Statue",   kind: 'statue',     x: 16,   z: 10,   prompt: 'Honour the hero',     gold: 150, xp: { combat: 300 }, msg: 'You salute a forgotten hero. (+Combat XP)' },
+  { key: 'old_lighthouse', name: 'Old Lighthouse',  kind: 'lighthouse', x: 70,   z: 176,  prompt: 'Climb the lighthouse',gold: 300, loot: { sapphire: 2 }, msg: 'The keeper’s strongbox, long abandoned.' },
+  { key: 'watcher_stone',  name: "Watcher's Obelisk",kind: 'obelisk',   x: -146, z: -30,  prompt: 'Touch the obelisk',   xp: { magic: 450, prayer: 300 }, msg: 'The watch-stone fills you with power. (+Magic/Prayer XP)' },
+  { key: 'frost_obelisk',  name: 'Frost Obelisk',   kind: 'obelisk',    x: 88,   z: -80,  prompt: 'Touch the obelisk',   xp: { magic: 400 }, loot: { sapphire: 1 }, msg: 'Rime-crusted runes spark with cold magic. (+Magic XP)' },
+  { key: 'jungle_falls',   name: 'Hidden Falls',    kind: 'waterfall',  x: 184,  z: 44,   prompt: 'Search the falls',    gold: 220, xp: { agility: 400 }, msg: 'Behind the falls, a slick ledge and a cache. (+Agility XP)' },
+  { key: 'desert_tomb',    name: 'Sunken Tomb',     kind: 'tower',      x: 36,   z: 112,  prompt: 'Raid the tomb',       gold: 300, loot: { ruby: 1, emerald: 1 }, msg: 'A tomb half-swallowed by the sands.' },
+  // --- Repeatable POIs (recharge on a cooldown; no permanent 'found') ---
+  { key: 'campfire',       name: 'Campfire',        kind: 'campsite',   x: -86,  z: 20,   prompt: 'Rest by the fire',    repeat: 90,  effect: { heal: 9999, sfx: 'pickup', tone: 'good', col: 0xff8a3d }, msg: 'You rest by the fire and recover.' },
+  { key: 'healing_spring', name: 'Healing Spring',  kind: 'geyser',     x: 188,  z: 30,   prompt: 'Drink from the spring',repeat: 150, effect: { heal: 60, prayer: 30, col: 0x6fe0d0 }, msg: 'The warm spring restores you.' },
+  { key: 'wishing_well',   name: 'Wishing Well',    kind: 'well',       x: 10,   z: -6,   prompt: 'Toss a coin',         repeat: 300, effect: { gold: 30, col: 0x6fb0e0, sfx: 'pickup' }, msg: 'You toss a coin… and fish out a few more.' },
+  { key: 'war_shrine',     name: 'War Shrine',      kind: 'shrine',     x: 140,  z: 110,  prompt: 'Pray at the shrine',  repeat: 240, effect: { buff: 'strength', mult: 1.15, dur: 90, col: 0xff6a4a }, msg: 'The war shrine emboldens you. (+melee for a time)' },
+  { key: 'mage_obelisk',   name: 'Arcane Obelisk',  kind: 'obelisk',    x: -16,  z: -102, prompt: 'Channel the obelisk', repeat: 240, effect: { buff: 'magic', mult: 1.15, dur: 90, col: 0xb98fff }, msg: 'Arcane power surges through you. (+magic for a time)' },
 ];
 
 // Treasure-trail dig spots for clue scrolls — cryptic hints point at a landmark; dig nearby for a casket.

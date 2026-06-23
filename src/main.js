@@ -734,7 +734,9 @@ try {
 
   // ---------- hidden discoveries: one-time reward + headline banner when you stumble on one ----------
   G.findDiscovery = (d) => {
-    if (!d || d.found) return;
+    if (!d) return;
+    if (d.repeat) return G.useRepeatable(d);   // repeatable POIs (campfire/spring/well/shrine) recharge instead of being consumed
+    if (d.found) return;
     d.found = true;
     if (d.mesh) d.mesh.visible = false;
     if (G.fx) G.fx.burst(d.x, d.y + 1, d.z, 0xffe066, { n: 20, spread: 2.8, up: 3.6, life: 1.1 });
@@ -746,6 +748,21 @@ try {
     G.ui.toast(`${d.msg}${parts.length ? '  ' + parts.join(', ') : ''}`, 'gold', 4400);
     G.audio.sfx('ach');
     if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
+  };
+  G.useRepeatable = (d) => {
+    if (d.cooldown > 0) return;
+    d.cooldown = d.repeat;
+    const st = player.state, e = d.effect || {};
+    if (G.fx) G.fx.burst(d.x, d.y + 1.2, d.z, e.col || 0x7cffb0, { n: 14, spread: 2.2, up: 3.0, life: 1.0 });
+    if (e.heal) { st.hp = Math.min(st.maxHp, st.hp + e.heal); G.ui.setHealth(st.hp, st.maxHp); }
+    if (e.prayer) { st.prayer = Math.min(st.maxPrayer, st.prayer + e.prayer); G.ui.setPrayer(st.prayer, st.maxPrayer); }
+    if (e.buff) { (st.buffs || (st.buffs = {}))[e.buff] = { mult: e.mult, t: e.dur }; }
+    const parts = [];
+    if (e.gold) { G.inventory.add('gold', e.gold); parts.push(`+${e.gold}g`); }
+    for (const k in (e.loot || {})) { G.inventory.add(k, e.loot[k]); parts.push(`${ITEMS[k].name}×${e.loot[k]}`); }
+    for (const sk in (e.xp || {})) G.gainXp(sk, e.xp[sk]);
+    G.ui.toast(`${d.msg}${parts.length ? '  ' + parts.join(', ') : ''}`, e.tone || 'good', 3000);
+    G.audio.sfx(e.sfx || 'pickup'); G.save.save();
   };
 
   const tavernCfg = {

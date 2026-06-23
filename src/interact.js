@@ -41,7 +41,10 @@ export function createInteraction(G) {
     for (const sc of G.world.shortcuts) consider('shortcut', sc, sc.x, sc.z, `Shortcut: ${sc.name} (Agility ${sc.level})`);
     for (const f of G.world.ferries) consider('ferry', f, f.x, f.z, 'Take the ferry');
     for (const n of G.entities.npcs) consider('npc', n, n.pos.x, n.pos.z, 'Talk to ' + n.def.name);
-    for (const d of G.world.discoveries) if (!d.found) consider('discovery', d, d.x, d.z, d.prompt || 'Investigate');
+    for (const d of G.world.discoveries) {
+      if (d.repeat) { if (d.cooldown <= 0) consider('discovery', d, d.x, d.z, d.prompt || 'Use'); }
+      else if (!d.found) consider('discovery', d, d.x, d.z, d.prompt || 'Investigate');
+    }
     if (G.activeClue) consider('dig', G.activeClue, G.activeClue.x, G.activeClue.z, 'Dig here (clue)');
 
     // Enemy targeting: a bow/staff reaches out to weapon range. Attack when nothing

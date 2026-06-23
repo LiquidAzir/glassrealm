@@ -99,6 +99,17 @@ function buildDiscovery(g, kind) {
   else if (kind === 'cairn') { box(0.95, 0.42, 0.95, 0x8a8f96, 0, 0.21, 0); box(0.74, 0.42, 0.74, 0x9aa0a8, 0.05, 0.62, -0.03); box(0.52, 0.42, 0.52, 0x7a8088, -0.04, 1.0, 0.04); box(0.3, 0.3, 0.3, 0x9aa0a8, 0.02, 1.32, 0); }
   else if (kind === 'ring') { for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; box(0.3, 0.9 + (i % 2) * 0.35, 0.3, 0xb0a0c0, Math.cos(a) * 1.7, 0.5, Math.sin(a) * 1.7); } const c = orb(0.5, 0xb98fff, 0, 0.7, 0); c.material.transparent = true; c.material.opacity = 0.55; }
   else if (kind === 'idol') { box(0.5, 0.3, 0.5, 0x6a5436, 0, 0.15, 0); box(0.7, 1.3, 0.6, 0xe0c050, 0, 0.95, 0); orb(0.36, 0xf4d860, 0, 1.85, 0); }
+  else if (kind === 'obelisk') { box(1.0, 0.4, 1.0, 0x6a6f78, 0, 0.2, 0); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.5, 3.4, 4), mat(0x8a8f9a)); sh.position.y = 2.0; sh.rotation.y = Math.PI / 4; g.add(sh); orb(0.3, 0x8fd0ff, 0, 3.9, 0); }
+  else if (kind === 'statue') { box(1.4, 0.5, 1.4, 0x7a7068, 0, 0.25, 0); box(0.8, 2.0, 0.6, 0xb0a89a, 0, 1.5, 0); box(0.95, 0.55, 0.75, 0xb0a89a, 0, 2.75, 0); box(0.25, 0.7, 0.25, 0xb0a89a, -0.5, 2.0, 0, 0.3); box(0.25, 0.7, 0.25, 0xb0a89a, 0.5, 2.0, 0, -0.3); }
+  else if (kind === 'geyser') { box(1.6, 0.3, 1.6, 0x5a6a5a, 0, 0.15, 0); const pool = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.2, 12), glow(0x6fe0d0)); pool.position.y = 0.32; pool.material.transparent = true; pool.material.opacity = 0.7; g.add(pool); const jet = orb(0.32, 0xbff4ee, 0, 1.3, 0); jet.material.transparent = true; jet.material.opacity = 0.55; }
+  else if (kind === 'crystal') { box(1.2, 0.3, 1.2, 0x5a6273, 0, 0.15, 0); for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.5 + (i % 2) * 0.3, 0), glow(0x9bd0ff)); cr.position.set(Math.cos(a) * 0.6, 0.7 + (i % 2) * 0.45, Math.sin(a) * 0.6); cr.material.transparent = true; cr.material.opacity = 0.85; g.add(cr); } }
+  else if (kind === 'arch') { box(0.5, 3.0, 0.7, 0xb0a89a, -1.4, 1.5, 0); box(0.5, 3.0, 0.7, 0xb0a89a, 1.4, 1.5, 0); box(3.3, 0.6, 0.7, 0xc0b8a8, 0, 3.1, 0); orb(0.26, 0xffd47a, 0, 2.6, 0); }
+  else if (kind === 'waterfall') { box(2.4, 3.2, 0.6, 0x6a7a8a, 0, 1.6, -0.6); const fall = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 3.0), glow(0x8fd0ff)); fall.position.set(0, 1.6, -0.25); fall.material.transparent = true; fall.material.opacity = 0.5; fall.material.side = THREE.DoubleSide; g.add(fall); const pool = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.2, 12), glow(0x6fb0e0)); pool.position.y = 0.12; pool.material.transparent = true; pool.material.opacity = 0.55; g.add(pool); }
+  else if (kind === 'lighthouse') { box(1.6, 0.4, 1.6, 0x6a6f78, 0, 0.2, 0); const tw = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.0, 3.6, 10), mat(0xe8e0d0)); tw.position.y = 2.0; g.add(tw); box(1.1, 0.7, 1.1, 0x8a4a3a, 0, 4.1, 0); orb(0.42, 0xffe066, 0, 4.1, 0); }
+  else if (kind === 'mushroom') { box(0.4, 1.2, 0.4, 0xe0d0c0, 0, 0.6, 0); const cap = new THREE.Mesh(new THREE.SphereGeometry(0.95, 10, 6, 0, TAU, 0, Math.PI / 2), glow(0xc060c0)); cap.position.y = 1.2; cap.material.transparent = true; cap.material.opacity = 0.9; g.add(cap); orb(0.12, 0xe080d0, 0.5, 1.5, 0.3); orb(0.1, 0xe080d0, -0.4, 1.3, -0.4); }
+  else if (kind === 'tower') { box(1.8, 0.4, 1.8, 0x5a5550, 0, 0.2, 0); const t = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 3.0, 8), mat(0x7a6f64)); t.position.y = 1.7; g.add(t); for (let i = 0; i < 4; i++) { const a = i / 4 * TAU; box(0.3, 0.5, 0.3, 0x7a6f64, Math.cos(a) * 0.85, 3.35, Math.sin(a) * 0.85); } }
+  else if (kind === 'well') { box(1.4, 0.7, 1.4, 0x8a8076, 0, 0.35, 0); const wt = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 12), glow(0x6fb0e0)); wt.position.y = 0.6; wt.material.transparent = true; wt.material.opacity = 0.7; g.add(wt); box(0.15, 1.4, 0.15, 0x5a4326, -0.6, 1.4, 0); box(0.15, 1.4, 0.15, 0x5a4326, 0.6, 1.4, 0); box(1.7, 0.2, 0.5, 0x6a4a2a, 0, 2.12, 0); }
+  else if (kind === 'campsite') { box(0.95, 0.18, 0.95, 0x5a4326, 0, 0.09, 0); for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; box(0.12, 0.62, 0.12, 0x6a4a2a, Math.cos(a) * 0.35, 0.3, Math.sin(a) * 0.35, a); } orb(0.3, 0xff8a3d, 0, 0.5, 0); orb(0.18, 0xffd24a, 0, 0.72, 0); }
   else { box(0.8, 0.8, 0.8, 0x9a8f7a, 0, 0.4, 0); }
 }
 // Modular dungeons — themed spire rings (SW entrance gap) with a loot chest + a
@@ -278,7 +289,7 @@ export function createWorld(scene, seed = 1337) {
     const y = height(x, z);
     const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.y = rng() * TAU;
     buildDiscovery(grp, d.kind); group.add(grp);
-    return { ...d, x, z, y, found: false, mesh: grp };
+    return { ...d, x, z, y, found: false, cooldown: 0, mesh: grp };
   });
 
   // trees (instanced, per-instance colour)
@@ -823,6 +834,7 @@ export function createWorld(scene, seed = 1337) {
       for (const pl of plots) if (pl.state === 'growing') { pl.grow -= dt; if (pl.grow <= 0) { pl.state = 'grown'; plotVisual(pl); } }
       for (const s of stalls) if (s.cooldown > 0) s.cooldown -= dt;
       for (const s of shortcuts) if (s.cooldown > 0) s.cooldown -= dt;
+      for (const d of discoveries) if (d.cooldown > 0) d.cooldown -= dt;   // repeatable POIs recharge
     },
   };
 }
