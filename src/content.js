@@ -181,6 +181,15 @@ export const ITEMS = {
   spiced_mead:     { name: 'Spiced Mead',     icon: '🍯', type: 'consumable', heal: 26, desc: 'Warm and sweet. Restores 26 HP.' },
   hearty_stew:     { name: 'Hearty Stew',     icon: '🍲', type: 'consumable', heal: 42, desc: 'A hot bowl of stew. Restores 42 HP.' },
   traveler_coffee: { name: "Traveler's Brew", icon: '☕', type: 'consumable', heal: 14, desc: 'Bitter and bracing. Restores 14 HP.' },
+  // --- Lagoon (Coralside) coast: pearl/coral water gear + materials ---
+  coral_chunk:  { name: 'Living Coral', icon: '🪸', type: 'material', desc: 'A still-breathing branch of reef coral. Used in tidecraft.' },
+  siren_scale:  { name: 'Siren Scale',  icon: '🐚', type: 'material', desc: 'An iridescent scale, warm to the touch. It hums faintly when you sleep.' },
+  reef_harpoon: { name: 'Reef Harpoon',  icon: '🔱', type: 'weapon', style: 'melee', skill: 'combat', bonus: 14, range: 3.0, speed: 0.46, desc: 'A barbed diver’s harpoon. +14 melee, long reach.' },
+  brinecaller:  { name: 'Brinecaller',   icon: '🔱', type: 'weapon', style: 'melee', skill: 'combat', bonus: 28, range: 3.2, speed: 0.5, desc: "The Sea-Witch's trident. +28 melee." },
+  coral_armor:  { name: 'Coral Carapace', icon: '🛡️', type: 'armor', defense: 13, desc: 'Plate grown from living reef. −13 damage taken.' },
+  pearl_amulet:   { name: 'Pearl Amulet',   icon: '📿', type: 'amulet', bonus: { magic: 8, maxhp: 20 }, desc: 'A great pearl on a kelp cord. +8 magic, +20 max HP.' },
+  songpearl:      { name: 'Songpearl',      icon: '📿', type: 'amulet', bonus: { def: 9, maxhp: 35 }, desc: 'Rare drop. The pearl that was a voice. +9 defence, +35 max HP.' },
+  tideglass_ring: { name: 'Tideglass Ring', icon: '💍', type: 'ring', bonus: { magic: 7, def: 5 }, desc: 'Crafted. Sea-glass set in coral. +7 magic, +5 defence.' },
 };
 
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
@@ -231,6 +240,8 @@ export const CRAFT = [
   { out: 'barnacle_shield', cost: { barnacle_plate: 3, sapphire: 2 }, xp: 180 },
   { out: 'barrow_blade',    cost: { grave_iron: 2, ruby: 2 }, xp: 210 },
   { out: 'grave_plate',     cost: { grave_iron: 3, emerald: 2 }, xp: 220 },
+  { out: 'tideglass_ring',  cost: { coral_chunk: 3, sapphire: 2 }, xp: 190 },
+  { out: 'coral_armor',     cost: { coral_chunk: 4, pearl: 2 }, xp: 200 },
 ];
 export const SETS = {
   guardian: { name: 'Guardian', def: 10, melee: 8, maxhp: 20 },
@@ -326,6 +337,7 @@ export const NPCS = [
   { key: 'corsair',      name: 'Old Corsair Sabine', color: 0xe0c060, pos: { x: 74, z: 185 },  dialogue: 'saga_corsair' },
   { key: 'amberwarden',  name: 'Warden Rowan',       color: 0xe0852e, pos: { x: 56, z: -160 }, dialogue: 'amberwarden' },
   { key: 'loreseeker',   name: 'Loreseeker Wynn',    color: 0xc6a8ff, pos: { x: 44, z: -160 }, dialogue: 'saga_amber' },
+  { key: 'tidecaptain',  name: 'Diver-Captain Yara', color: 0x4fd0c4, pos: { x: -96, z: -116 }, dialogue: 'saga_lagoon' },
 ];
 
 // Ambient mobile NPCs (not quest-givers): patrolling guard squads + lone wanderers
@@ -525,6 +537,11 @@ export const ENEMIES = {
   blight_wolf: { name: 'Blight Wolf', hp: 84,  dmg: 18, speed: 4.8, xp: 200, color: 0x8a6a3a, aggro: 14, shape: 'beast',    loot: { pelt: 1, bones: 1 } },
   grave_husk:  { name: 'Grave Husk',  hp: 100, dmg: 21, speed: 3.2, xp: 245, color: 0x9a8a6a, aggro: 12, shape: 'humanoid', scale: 1.1, loot: { grave_iron: 1, bones: 2 } },
   barrow_wight: { name: 'The Barrow Wight', hp: 430, dmg: 35, speed: 3.4, xp: 1120, color: 0xe0a050, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 380, grave_iron: 4, ruby: 2, emerald: 1 }, rare: { item: 'wight_crown', chance: 0.3 } },
+  // --- Lagoon coast (Coralside) + The Tide Grotto (drowned/siren curse) ---
+  reef_reaver:  { name: 'Reef Reaver',  hp: 78,  dmg: 17, speed: 4.6, xp: 180, color: 0x2f9a8a, aggro: 13, shape: 'beast',    loot: { coral_chunk: 1, raw_trout: 1, bones: 1 } },
+  coral_warden: { name: 'Coral Warden', hp: 138, dmg: 21, speed: 2.8, xp: 255, color: 0xe07a8a, aggro: 11, shape: 'humanoid', scale: 1.4, loot: { coral_chunk: 2, pearl: 1, gold: 22 } },
+  lure_siren:   { name: 'Lure-Siren',   hp: 84,  dmg: 22, speed: 4.0, xp: 230, color: 0x7ae6d6, aggro: 16, shape: 'humanoid', loot: { siren_scale: 1, pearl: 1 } },
+  sea_witch:    { name: 'Maelys the Sea-Witch', hp: 370, dmg: 30, speed: 3.6, xp: 1000, color: 0x35c8d6, aggro: 19, shape: 'humanoid', scale: 2.1, boss: true, loot: { gold: 320, brinecaller: 1, siren_scale: 4, pearl: 5 }, rare: { item: 'songpearl', chance: 0.3 } },
 };
 
 // ---------- Combat triangle ----------
@@ -543,12 +560,14 @@ export const WEAKNESS = {
   ember_boss: 'ranged', cinder_colossus: 'ranged', drowned_king: 'ranged', jorath: 'ranged', hollow_king: 'ranged',
   sandwyrm: 'magic', warchief: 'magic', vurak: 'magic', drowned_captain: 'magic',
   frost_warden: 'melee', bonelord: 'melee', prism_tyrant: 'melee', thruun: 'melee', barrow_wight: 'melee',
+  reef_reaver: 'ranged', coral_warden: 'magic', lure_siren: 'melee', sea_witch: 'melee',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
   wraith: 'magic', tide_priest: 'magic', wisp: 'magic', frost_warden: 'magic', bonelord: 'magic',
   prism_tyrant: 'magic', hollow_king: 'magic', drowned_king: 'magic', drowned_captain: 'magic',
   storm_harpy: 'ranged', thruun: 'ranged', warchief: 'ranged',
+  lure_siren: 'magic', sea_witch: 'magic',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -624,6 +643,11 @@ export const ENEMY_SPAWNS = [
   { enemy: 'blight_wolf', x: 62, z: -150 }, { enemy: 'blight_wolf', x: 40, z: -148 }, { enemy: 'grave_husk', x: 60, z: -170 }, { enemy: 'blight_wolf', x: 38, z: -152 },
   { enemy: 'grave_husk', x: 32, z: -180 }, { enemy: 'grave_husk', x: 40, z: -180 }, { enemy: 'blight_wolf', x: 34, z: -185 }, { enemy: 'grave_husk', x: 38, z: -184 },
   { enemy: 'barrow_wight', x: 36, z: -182 },
+  // Lagoon coast (Coralside) + The Tide Grotto (-100,-126)
+  { enemy: 'reef_reaver', x: -118, z: -106 }, { enemy: 'reef_reaver', x: -84, z: -100 },
+  { enemy: 'coral_warden', x: -112, z: -130 }, { enemy: 'lure_siren', x: -90, z: -134 },
+  { enemy: 'reef_reaver', x: -104, z: -122 }, { enemy: 'lure_siren', x: -96, z: -120 },
+  { enemy: 'sea_witch', x: -100, z: -126 },
 ];
 
 export const QUESTS = {
@@ -854,6 +878,10 @@ export const QUESTS = {
     desc: 'Visit the Farmstead west of the village and grow crops: buy seeds from Trader Pell, plant them in a garden plot, and harvest 3.',
     objectives: [{ id: 'visit', type: 'visit', x: -20, z: -10, r: 14, name: 'the Farmstead' }, { id: 'crop', type: 'have', item: 'crop', count: 3 }],
     rewards: { xp: { farming: 240 }, items: { gold: 200, seeds: 5 } } },
+  // --- Lagoon: The Drowned Song saga (Diver-Captain Yara) ---
+  q_saga_l1: { name: 'The Drowned Song', saga: true, giver: 'tidecaptain', startsAvailable: true, desc: 'Coralside’s divers vanish into the reef, lured by a song. Drive the reef-things back and recover what the tide took.', objectives: [{ id: 'reef', type: 'kill', enemy: 'reef_reaver', count: 4 }, { id: 'pearls', type: 'have', item: 'pearl', count: 3 }, { id: 'arch', type: 'visit', x: -86, z: -108, r: 9, name: 'the Great Coral Arch' }], rewards: { xp: { combat: 220, fishing: 150 }, items: { gold: 150, reef_harpoon: 1 } } },
+  q_saga_l2: { name: 'The Drowned Song — Her Voice', saga: true, giver: 'tidecaptain', requires: 'q_saga_l1', reqSkills: { combat: 22 }, desc: 'A Lure-Siren sings in the captain’s own apprentice’s voice. Silence one, take its scale, and learn the truth.', objectives: [{ id: 'siren', type: 'kill', enemy: 'lure_siren', count: 2 }, { id: 'scale', type: 'have', item: 'siren_scale', count: 1 }, { id: 'yara', type: 'talk', npc: 'tidecaptain', name: 'Diver-Captain Yara' }], rewards: { xp: { combat: 320, magic: 140 }, items: { gold: 220 } } },
+  q_saga_l3: { name: 'The Drowned Song — Maelys', saga: true, giver: 'tidecaptain', requires: 'q_saga_l2', reqSkills: { combat: 28 }, desc: 'The Sea-Witch Maelys holds the grotto and the souls she sang under. End her and free them.', objectives: [{ id: 'boss', type: 'kill', enemy: 'sea_witch', count: 1 }, { id: 'yara', type: 'talk', npc: 'tidecaptain', name: 'Diver-Captain Yara' }], rewards: { xp: { combat: 980, defence: 200 }, items: { gold: 440, pearl_amulet: 1 } } },
 };
 
 export function objectiveText(obj, n) {
@@ -1410,6 +1438,11 @@ export const DIALOGUE = {
     { id: 'q_saga_a2', intro: 'The oldest wards against this rot lie frozen atop Frostpeak, far to the north — read them first. Then seek Oona of the Moonlit Glade, who owes the woods a debt. And bring coal — the wardfires must stay lit while you’re away.', accept: 'I’ll read the wards.', active: 'The frost-wards wait atop Frostpeak; Oona keeps to the glade; the wardfires hunger for coal.', done: 'A barrow-king, crowned by the blight to spread it root and branch. Of course. The dead make such willing gardeners.' },
     { id: 'q_saga_a3', intro: 'Cut the blight at its root — the Barrow Wight itself. End the crowned dead, and the amber rot withers with him.', accept: 'I’ll end the Wight.', active: 'The Wight holds the heart of the Hollow Barrow, west of here.', done: 'The leaves… look, they’re greening at the very tips. You’ve given Amberfell a spring it had forgotten. Take this charm — the woods wove it for you.' },
   ], 'The woods remember their healer. Rest beneath the amber leaves whenever the road wearies you.'),
+  saga_lagoon: sagaDialogue('Diver-Captain Yara', [
+    { id: 'q_saga_l1', intro: 'You hear it too, off the water? That’s no gull. Five of my divers walked into the reef smiling and never surfaced. Cull the reavers, bring me pearls to weight the dead, and lay eyes on the old coral arch — that’s where the song is loudest.', accept: 'I’ll quiet the reef.', active: 'Cull the reavers, gather pearls for the drowned, and stand beneath the Great Coral Arch where the song begins.', done: 'Pearls enough to sink a hundred dead… and you stood at the arch and lived. Good. Because the song called you by name out there, didn’t it. It does that.' },
+    { id: 'q_saga_l2', intro: 'I have to tell you what I couldn’t tell the others. The clearest voice in that song — it’s my apprentice, Mira. I sent her down for the deep beds three moons gone. She came back as a *voice*. Find the siren that sings in her tone, silence it, bring me its scale. I have to know if anything of her is left.', accept: 'I’ll find Mira.', active: 'Silence a Lure-Siren, take a Siren Scale, and return to Yara with it.', done: 'This scale… it’s warm. It still remembers being a girl. The song doesn’t kill them — it *keeps* them. Maelys, the Sea-Witch, drowned first of us all and turned her own drowning into a lure. The great pearl at her throat is a stolen voice. Cut it loose and they go free.' },
+    { id: 'q_saga_l3', intro: 'No more dirges. Take the grotto, take Maelys, and break the pearl at her throat. Free Mira and the rest — and if any part of the woman she was can hear me down there, tell her Yara’s sorry she ever sent the girl deep.', accept: 'The song ends today.', active: 'Maelys the Sea-Witch holds the Tide Grotto, north of Coralside. End her and shatter the songpearl.', done: 'The water’s gone quiet — truly quiet, for the first time in a season. I saw them surface at dawn, salt-skinned and *breathing*. Mira among them. You gave Coralside back its voices. This pearl’s yours now — let it only ever sing for you.' },
+  ], 'Calm seas and a full net, diver. Coralside owes you its voices.'),
 };
 
 // Trader Pell's shop: fixed stock to buy, and sell prices for materials.

@@ -82,6 +82,7 @@ const REGION_SIG = {
   shardspire: { kind: 'spires',     dx: 14,  dz: 10 },
   skyreach:   { kind: 'skytemple',  dx: -16, dz: 10 },
   jungle:     { kind: 'totem',      dx: -18, dz: 12 },
+  lagoon:     { kind: 'coralarch',  dx: 14,  dz: 10 },
 };
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
@@ -140,6 +141,8 @@ const DUNGEONS = [
   { key: 'feywild',   name: 'Feywild Hollow',      x: -8, z: -118, r: 12, style: 'fungal',  spire: 0xff7af0, orb: 0xb04acf, chest: { label: 'Fae Cache',       gold: 300, loot: { fae_dust: 3, sapphire: 2 } }, ore: [] },
   { key: 'galleon',   name: 'The Drowned Galleon', x: 100, z: 206, r: 11, flat: true, style: 'pillar',  spire: 0x35434c, orb: 0x2bd6cf, chest: { label: "Captain's Hold",  gold: 360, loot: { barnacle_plate: 2, pearl: 3, sapphire: 2 } }, ore: [['iron', 3]] },
   { key: 'barrow',    name: 'The Hollow Barrow',   x: 36, z: -182, r: 11, flat: true, style: 'spire',   spire: 0x6a5a44, orb: 0xe0852e, chest: { label: 'Barrow Hoard',    gold: 380, loot: { grave_iron: 2, ruby: 2, emerald: 1 } }, ore: [['coal', 3]] },
+  // --- Frontier dungeons (5 new regions) ---
+  { key: 'grotto',    name: 'The Tide Grotto',     x: -100, z: -126, r: 12, style: 'crystal', spire: 0x2f8a8a, orb: 0x7ae6d6, chest: { label: 'Drowned Hoard', gold: 300, loot: { pearl: 3, coral_chunk: 3, sapphire: 2 } }, ore: [['copper', 2], ['iron', 2]] },
 ];
 const SHORTCUT_LINKS = [
   { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
@@ -641,6 +644,17 @@ export function createWorld(scene, seed = 1337) {
     else if (sig.kind === 'skytemple') { bx(8, 0.6, 8, 0xcdd6e6, 0, 0.3, 0); for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.78; bx(0.7, 4, 0.7, 0xe8eef6, Math.cos(a) * 3, 2.3, Math.sin(a) * 3); solids.push({ x: x + Math.cos(a) * 3, z: z + Math.sin(a) * 3, r: 0.7 }); } bx(6, 0.5, 6, 0xe8eef6, 0, 4.5, 0); gl(new THREE.IcosahedronGeometry(0.8, 0), 0x8fd0ff).position.y = 5.4; }
     else if (sig.kind === 'totem') { bx(1.2, 5, 1.2, 0x6a4a2a, 0, 2.5, 0); bx(1.9, 1, 1.9, 0xc97a3a, 0, 1, 0); bx(1.7, 1, 1.7, 0x4f7a32, 0, 3, 0); gl(new THREE.IcosahedronGeometry(0.7, 0), 0xffd24a).position.y = 5.4; solids.push({ x, z, r: 1.2 }); }
     else if (sig.kind === 'henge') { for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; bx(0.8, 3, 0.8, 0x8a8f96, Math.cos(a) * 3.2, 1.5, Math.sin(a) * 3.2); solids.push({ x: x + Math.cos(a) * 3.2, z: z + Math.sin(a) * 3.2, r: 0.7 }); } gl(new THREE.IcosahedronGeometry(0.7, 0), 0x8fd0ff).position.y = 1.5; }
+    else if (sig.kind === 'coralarch') {
+      const pool = gl(new THREE.CylinderGeometry(7, 7, 0.2, 18), 0x3fd0c4); pool.position.y = 0.12; pool.material.transparent = true; pool.material.opacity = 0.4;
+      const legL = gl(new THREE.ConeGeometry(1.1, 5.2, 6), 0xe07a8a); legL.position.set(-2.6, 2.6, 0); legL.rotation.z = 0.22; legL.material.transparent = true; legL.material.opacity = 0.92;
+      const legR = gl(new THREE.ConeGeometry(1.1, 5.2, 6), 0xe07a8a); legR.position.set(2.6, 2.6, 0); legR.rotation.z = -0.22; legR.material.transparent = true; legR.material.opacity = 0.92;
+      bx(6.2, 0.8, 1.2, 0xff9ab0, 0, 5.0, 0);
+      gl(new THREE.IcosahedronGeometry(0.7, 0), 0xeaffff).position.set(0, 5.6, 0);
+      gl(new THREE.SphereGeometry(0.4, 8, 6), 0x7ae6d6).position.set(-1.8, 3.6, 0);
+      gl(new THREE.SphereGeometry(0.32, 8, 6), 0x7ae6d6).position.set(1.9, 3.2, 0);
+      solids.push({ x: x - 2.6, z, r: 1.1 }, { x: x + 2.6, z, r: 1.1 });
+      ambientEmitters.push({ x, y: y + 0.5, z, color: 0x9ff2e6, every: 0.9, opts: { n: 4, spread: 5, up: 3, life: 1.8 } });
+    }
   }
   for (const reg of REGIONS) buildSignature(reg);
 
