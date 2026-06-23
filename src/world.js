@@ -375,6 +375,7 @@ export function createWorld(scene, seed = 1337) {
   const fireMeshes = [], orbMeshes = [];   // ambient meshes animated in tick()
   const shimMeshes = [], ambientEmitters = [];   // region-signature shimmer meshes + particle emitter anchors
   const solids = [];                       // circular collision obstacles (buildings, wells)
+  const animalSpawns = [];                 // {kind,x,z,home,roam,penned} — farm livestock + wild creatures (entities.js builds them)
   const stations = [];
   const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });   // hoisted: used by builders below
   const waystones = [];   // fast-travel network nodes
@@ -732,15 +733,43 @@ export function createWorld(scene, seed = 1337) {
     }
     for (const [sx, sz] of [[-R, -R], [-R, R], [R, -R], [R, R]]) solids.push({ x: cx + sx, z: cz + sz, r: 1.3 });   // seal the corners
     { const bx = cx - 6.5, bz = cz - 7.5, by = height(bx, bz); const wall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 5), lmat(0x9a3a2e)); wall.position.set(bx, by + 2, bz); const roof = new THREE.Mesh(new THREE.ConeGeometry(4.8, 2.6, 4), lmat(0x6a2a22)); roof.position.set(bx, by + 5.2, bz); roof.rotation.y = Math.PI / 4; const door = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.6, 0.2), lmat(0x4a2018)); door.position.set(bx, by + 1.3, bz + 2.5); group.add(wall, roof, door); solids.push({ x: bx, z: bz, r: 3 }); }
-    const animal = (x, z, body, head, big) => { const s = big ? 1.4 : 0.8, y = height(x, z); const b = new THREE.Mesh(new THREE.BoxGeometry(1.0 * s, 0.7 * s, 0.6 * s), lmat(body)); b.position.set(x, y + 0.45 * s, z); const h = new THREE.Mesh(new THREE.BoxGeometry(0.5 * s, 0.5 * s, 0.5 * s), lmat(head)); h.position.set(x + 0.6 * s, y + 0.6 * s, z); group.add(b, h); };
-    animal(cx + 4, cz - 6, 0xf2efe6, 0xe0584a, false); animal(cx + 6, cz - 5, 0xf2efe6, 0xe0584a, false); animal(cx + 5, cz - 7.5, 0xf2efe6, 0xe0584a, false);   // chickens
-    animal(cx + 9, cz + 5, 0xe79ab0, 0xd07a92, false); animal(cx + 7, cz + 7, 0xe79ab0, 0xd07a92, false);   // pigs
-    animal(cx - 5, cz + 7, 0xf4f4f4, 0x3a2e2a, true); animal(cx - 2, cz + 8, 0xf4f4f4, 0x3a2e2a, true);   // cows
+    // Real, moving farm livestock (built + animated by entities.js). Penned = never flees + stays within roam of home → inside the fence.
+    const penned = (kind, x, z, roam) => animalSpawns.push({ kind, x, z, home: { x, z }, roam, penned: true });
+    penned('chicken', cx + 5, cz - 6, 3.0); penned('chicken', cx + 6.5, cz - 5, 3.0); penned('chicken', cx + 4, cz - 7.5, 3.0);
+    penned('pig', cx + 8, cz + 6, 3.4); penned('pig', cx + 6.5, cz + 7.5, 3.4);
+    penned('cow', cx - 5, cz + 7, 4.0); penned('cow', cx - 2.5, cz + 8, 4.0);
+    penned('sheep', cx - 9, cz - 3, 3.4); penned('sheep', cx - 7, cz - 2, 3.4); penned('sheep', cx - 9, cz + 1, 3.4);
+    penned('goat', cx + 1, cz - 8, 3.4);
     for (let i = 0; i < 6; i++) plot(cx - 1 + (i % 3) * 2.2, cz - 1 + Math.floor(i / 3) * 2.2);
     const dx = cx + R, dz = cz; signpost(dx, dz, 0x8ae06a); stations.push({ kind: 'farmdeed', label: 'Farm Deed', x: dx, z: dz, y: height(dx, dz) });
     const ox = cx - 4, oz = cz - 3; { const fp = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.0, 6), lmat(0x6e4a2b)); fp.position.set(ox, height(ox, oz) + 1.0, oz); const bd = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.12), lmat(0xc8a24a)); bd.position.set(ox, height(ox, oz) + 1.9, oz); group.add(fp, bd); }
     stations.push({ kind: 'foreman', label: 'Farm Foreman', x: ox, z: oz, y: height(ox, oz) });
   })();
+
+  // Wild creatures scattered across fitting biomes — they wander/graze; prey species flee the player.
+  // [regionKey, kind, count, offsetX, offsetZ] — placed near the (scaled) region centre + jitter, snapped to walkable land.
+  for (const [rk, kind, n, ox, oz] of [
+    ['verdant', 'deer', 2, 18, -20], ['verdant', 'rabbit', 2, -12, 8], ['verdant', 'fox', 1, 8, -10],
+    ['forest', 'deer', 2, -8, 12], ['forest', 'boar', 1, 12, -10], ['forest', 'rabbit', 2, -4, -16],
+    ['glade', 'deer', 2, 14, -8], ['glade', 'rabbit', 2, -10, 12], ['glade', 'squirrel', 1, 4, 6],
+    ['amberfell', 'squirrel', 2, 8, -6], ['amberfell', 'deer', 1, -10, 8], ['amberfell', 'fox', 1, 0, 10],
+    ['highland', 'goat', 2, -10, 16], ['highland', 'boar', 1, 12, -8],
+    ['jungle', 'boar', 2, 10, 8], ['jungle', 'fox', 1, -12, -14],
+    ['snow', 'goat', 2, -10, 16], ['snow', 'rabbit', 1, 12, -8],
+    ['sporevale', 'badger', 2, 4, -8], ['sporevale', 'squirrel', 1, -10, 12],
+    ['mistmoor', 'duck', 2, -10, 12], ['mistmoor', 'badger', 1, 4, -8],
+    ['lagoon', 'duck', 3, -6, 10],
+    ['saltcrest', 'duck', 2, -8, 12], ['saltcrest', 'rabbit', 1, 10, 8],
+    ['desert', 'rabbit', 2, -14, 10],
+    ['skyreach', 'goat', 2, -8, -12],
+  ]) {
+    const reg = byKey[rk]; if (!reg) continue;
+    for (let i = 0; i < n; i++) {
+      const p = snapLand(reg.x + ox + (rng() - 0.5) * 9, reg.z + oz + (rng() - 0.5) * 9);
+      if (!isWalkable(p.x, p.z)) continue;
+      animalSpawns.push({ kind, x: p.x, z: p.z, home: { x: p.x, z: p.z } });
+    }
+  }
 
   // Emberdeep cave: ring of rock spires with a SW entrance gap + a loot chest.
   (function cave() {
@@ -883,7 +912,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, animalSpawns, mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);

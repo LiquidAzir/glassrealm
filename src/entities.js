@@ -5,6 +5,7 @@ import { WORLD_SCALE as WS } from './scale.js';
 
 const DEATH_DUR = 0.55;   // topple/shrink/sink before the corpse vanishes
 const ATK_ANIM = 0.3;     // forward-lean bite when an enemy strikes
+const ANIMAL_FREEZE2 = (75 * WS) * (75 * WS);   // animals beyond this (squared) freeze + hide (perf)
 
 const SKIN = [0xf2c79a, 0xe0a878, 0xc98a5a, 0x8d5a3a];
 const HAIR = [0x2a2330, 0x5c4326, 0x8a8a92, 0x6e4a2b, 0xb5602a];
@@ -70,6 +71,135 @@ function makeHumanoid(def) {
 
 const makeEnemyMesh = (def) => (def.shape === 'humanoid' ? makeHumanoid(def) : makeBeast(def));
 
+// --- Animals: farm livestock + wild creatures. Distinct low-poly meshes; wander/graze; prey flee; hens & ducks lay eggs. ---
+const ANIMAL_DEF = {
+  chicken: { body: 0xf2efe6, accent: 0xe0584a, scale: 0.85, solidR: 0.30, speed: 1.8, roam: 3.0, graze: true,  skittish: false, lays: true,  hop: false },
+  pig:     { body: 0xe79ab0, accent: 0xd07a92, scale: 0.95, solidR: 0.42, speed: 1.5, roam: 3.5, graze: true,  skittish: false, lays: false, hop: false },
+  sheep:   { body: 0xf1f0ec, accent: 0x3a2e2a, scale: 1.00, solidR: 0.42, speed: 1.6, roam: 3.5, graze: true,  skittish: false, lays: false, hop: false },
+  cow:     { body: 0xf4f4f4, accent: 0x3a2e2a, scale: 1.30, solidR: 0.55, speed: 1.3, roam: 4.0, graze: true,  skittish: false, lays: false, hop: false },
+  goat:    { body: 0xd4c5b9, accent: 0x8a7a6a, scale: 0.90, solidR: 0.38, speed: 2.1, roam: 6.0, graze: true,  skittish: true,  lays: false, hop: false },
+  deer:    { body: 0xa0845a, accent: 0x5a4a3a, scale: 1.10, solidR: 0.40, speed: 2.9, roam: 12,  graze: true,  skittish: true,  lays: false, hop: false },
+  rabbit:  { body: 0xc8a074, accent: 0xf4ece0, scale: 0.70, solidR: 0.25, speed: 2.6, roam: 9,   graze: true,  skittish: true,  lays: false, hop: true  },
+  boar:    { body: 0x6a5a4a, accent: 0x241c16, scale: 1.15, solidR: 0.45, speed: 2.4, roam: 9,   graze: true,  skittish: false, lays: false, hop: false },
+  duck:    { body: 0x2f5560, accent: 0xe0a23a, scale: 0.70, solidR: 0.26, speed: 1.6, roam: 6,   graze: true,  skittish: true,  lays: true,  hop: false },
+  fox:     { body: 0xd07a2a, accent: 0xf4e0c0, scale: 0.85, solidR: 0.32, speed: 2.6, roam: 13,  graze: false, skittish: false, lays: false, hop: false },
+  badger:  { body: 0x4a4a4a, accent: 0xf2f2f2, scale: 0.80, solidR: 0.30, speed: 1.4, roam: 7,   graze: false, skittish: false, lays: false, hop: false },
+  squirrel:{ body: 0x8a6a3a, accent: 0xf4e0c0, scale: 0.55, solidR: 0.20, speed: 2.2, roam: 8,   graze: true,  skittish: true,  lays: false, hop: true  },
+};
+
+// Build one distinct animal. Head sits toward +x (forward) so a graze-dip reads as nose-to-ground.
+function makeAnimal(kind) {
+  const D = ANIMAL_DEF[kind];
+  const g = new THREE.Group();
+  const vis = new THREE.Group(); g.add(vis);                 // inner group: hop-bobs without breaking terrain follow
+  const bodyM = lmat(D.body), accM = lmat(D.accent), darkM = lmat(0x241c16), brownM = lmat(0x5c4326), whiteM = lmat(0xf4f4f4);
+  const legs = []; let head = null;
+  const B = (w, h, d, m, x, y, z) => { const me = mkBox(w, h, d, m, x, y, z); vis.add(me); return me; };
+  const Cone = (rb, h, m, x, y, z, rz) => { const me = new THREE.Mesh(new THREE.ConeGeometry(rb, h, 6), m); me.position.set(x, y, z); if (rz) me.rotation.z = rz; vis.add(me); return me; };
+  const Ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(x, y, z); vis.add(me); return me; };
+  const quadLegs = (lx, ly, lz, w, h, m) => { for (const [x, z] of [[-lx, lz], [lx, lz], [-lx, -lz], [lx, -lz]]) { const p = new THREE.Group(); p.position.set(x, ly, z); p.add(mkBox(w, h, w, m, 0, -h / 2, 0)); vis.add(p); legs.push(p); } };
+  const twoLegs = (lx, ly, lz, w, h, m) => { for (const x of [-lx, lx]) { const p = new THREE.Group(); p.position.set(x, ly, lz); p.add(mkBox(w, h, w, m, 0, -h / 2, 0)); vis.add(p); legs.push(p); } };
+  switch (kind) {
+    case 'chicken':
+      B(0.42, 0.36, 0.32, bodyM, 0, 0.46, 0);
+      head = B(0.2, 0.24, 0.2, bodyM, 0.24, 0.66, 0);
+      B(0.14, 0.07, 0.1, accM, 0.38, 0.62, 0);                 // beak
+      Cone(0.07, 0.18, accM, 0.22, 0.86, 0);                   // red comb
+      Ico(0.05, accM, 0.32, 0.5, 0);                           // wattle
+      twoLegs(0.09, 0.3, 0.04, 0.04, 0.3, lmat(0xe0a23a));
+      break;
+    case 'duck':
+      Ico(0.32, bodyM, 0, 0.4, 0);                             // round body
+      B(0.1, 0.18, 0.1, bodyM, 0.16, 0.6, 0);                  // neck
+      head = B(0.16, 0.16, 0.16, bodyM, 0.24, 0.74, 0);
+      Cone(0.08, 0.16, accM, 0.4, 0.72, 0, -Math.PI / 2);      // orange bill (+x)
+      twoLegs(0.1, 0.22, 0, 0.04, 0.22, lmat(0xe0a23a));
+      break;
+    case 'pig':
+      B(0.62, 0.44, 0.44, bodyM, 0, 0.56, 0);
+      head = B(0.32, 0.34, 0.36, bodyM, 0.44, 0.6, 0);
+      Cone(0.13, 0.16, accM, 0.64, 0.55, 0, -Math.PI / 2);     // snout
+      Cone(0.07, 0.1, bodyM, 0.36, 0.84, 0.12); Cone(0.07, 0.1, bodyM, 0.36, 0.84, -0.12);
+      quadLegs(0.2, 0.34, 0.16, 0.09, 0.34, brownM);
+      break;
+    case 'sheep':
+      Ico(0.5, whiteM, 0, 0.62, 0);                            // woolly body
+      head = B(0.2, 0.24, 0.2, accM, 0.42, 0.62, 0);           // dark face
+      B(0.05, 0.12, 0.05, whiteM, 0.36, 0.82, 0.12); B(0.05, 0.12, 0.05, whiteM, 0.36, 0.82, -0.12);
+      quadLegs(0.16, 0.36, 0.18, 0.06, 0.36, darkM);
+      break;
+    case 'cow':
+      B(0.78, 0.5, 0.5, bodyM, 0, 0.72, 0);
+      head = B(0.34, 0.34, 0.36, bodyM, 0.52, 0.78, 0);
+      B(0.18, 0.18, 0.24, accM, 0.74, 0.66, 0);                // snout
+      Cone(0.05, 0.2, darkM, 0.5, 1.04, 0.14); Cone(0.05, 0.2, darkM, 0.5, 1.04, -0.14);   // horns
+      Ico(0.12, accM, 0.1, 0.92, 0.24); Ico(0.09, accM, -0.24, 0.78, -0.2);                // spots
+      quadLegs(0.26, 0.46, 0.2, 0.1, 0.46, darkM);
+      break;
+    case 'goat':
+      B(0.46, 0.36, 0.32, bodyM, 0, 0.5, 0);
+      head = B(0.22, 0.24, 0.22, bodyM, 0.32, 0.58, 0);
+      B(0.12, 0.1, 0.14, accM, 0.46, 0.52, 0);                 // snout
+      Cone(0.04, 0.2, accM, 0.24, 0.82, 0.1); Cone(0.04, 0.2, accM, 0.24, 0.82, -0.1);     // horns
+      Cone(0.06, 0.14, accM, 0.4, 0.42, 0, Math.PI);          // beard (tip hangs down)
+      quadLegs(0.14, 0.34, 0.12, 0.05, 0.34, accM);
+      break;
+    case 'deer':
+      B(0.56, 0.4, 0.3, bodyM, 0, 0.82, 0);
+      B(0.12, 0.3, 0.12, bodyM, 0.26, 1.02, 0);                // neck
+      head = B(0.18, 0.2, 0.18, bodyM, 0.36, 1.2, 0);
+      B(0.12, 0.1, 0.12, accM, 0.48, 1.16, 0);                 // muzzle
+      Cone(0.03, 0.3, accM, 0.3, 1.42, 0.1); Cone(0.03, 0.3, accM, 0.3, 1.42, -0.1);       // antlers
+      Ico(0.07, whiteM, -0.3, 0.78, 0);                        // white tail
+      quadLegs(0.18, 0.6, 0.12, 0.05, 0.6, accM);
+      break;
+    case 'boar':
+      B(0.6, 0.42, 0.36, bodyM, 0, 0.56, 0);
+      B(0.16, 0.2, 0.46, darkM, 0, 0.82, 0);                   // bristly mane ridge
+      head = B(0.32, 0.32, 0.32, bodyM, 0.42, 0.58, 0);
+      Cone(0.13, 0.16, darkM, 0.64, 0.52, 0, -Math.PI / 2);    // snout
+      Cone(0.03, 0.14, whiteM, 0.56, 0.42, 0.1); Cone(0.03, 0.14, whiteM, 0.56, 0.42, -0.1);  // tusks
+      quadLegs(0.18, 0.36, 0.16, 0.08, 0.36, darkM);
+      break;
+    case 'fox':
+      B(0.44, 0.32, 0.28, bodyM, 0, 0.46, 0);
+      B(0.26, 0.2, 0.2, accM, 0, 0.34, 0);                     // white belly/chest
+      head = B(0.2, 0.22, 0.2, bodyM, 0.26, 0.54, 0);
+      Cone(0.1, 0.14, bodyM, 0.4, 0.5, 0, -Math.PI / 2);       // pointed snout
+      Cone(0.06, 0.14, bodyM, 0.18, 0.74, 0.1); Cone(0.06, 0.14, bodyM, 0.18, 0.74, -0.1);   // ears
+      Cone(0.12, 0.4, accM, -0.36, 0.42, 0, Math.PI / 2);      // bushy tail toward -x
+      quadLegs(0.14, 0.32, 0.12, 0.05, 0.32, darkM);
+      break;
+    case 'badger':
+      B(0.5, 0.3, 0.34, bodyM, 0, 0.36, 0);
+      head = B(0.2, 0.2, 0.24, bodyM, 0.28, 0.4, 0);
+      B(0.1, 0.22, 0.1, accM, 0.32, 0.42, 0);                  // white face stripe
+      B(0.14, 0.07, 0.34, accM, 0, 0.52, 0);                   // white back stripe
+      Cone(0.1, 0.12, darkM, 0.44, 0.36, 0, -Math.PI / 2);     // snout
+      quadLegs(0.18, 0.24, 0.14, 0.07, 0.24, darkM);
+      break;
+    case 'rabbit':
+      Ico(0.26, bodyM, 0, 0.3, 0);                             // round body
+      head = B(0.16, 0.18, 0.16, bodyM, 0.16, 0.42, 0);
+      Cone(0.045, 0.26, bodyM, 0.1, 0.66, 0.07); Cone(0.045, 0.26, bodyM, 0.1, 0.66, -0.07);  // tall ears
+      Ico(0.09, accM, -0.2, 0.22, 0);                          // puff tail
+      quadLegs(0.1, 0.16, 0.1, 0.04, 0.16, bodyM);
+      break;
+    case 'squirrel':
+      Ico(0.22, bodyM, 0, 0.28, 0);
+      head = B(0.13, 0.14, 0.13, bodyM, 0.13, 0.38, 0);
+      Cone(0.04, 0.1, bodyM, 0.06, 0.5, 0.07); Cone(0.04, 0.1, bodyM, 0.06, 0.5, -0.07);    // tufted ears
+      Cone(0.16, 0.36, bodyM, -0.16, 0.4, 0, Math.PI / 2);     // big fluffy tail (-x, curls up)
+      quadLegs(0.08, 0.14, 0.08, 0.035, 0.14, bodyM);
+      break;
+    default:
+      B(0.5, 0.4, 0.4, bodyM, 0, 0.5, 0); head = B(0.3, 0.3, 0.3, bodyM, 0.4, 0.55, 0); quadLegs(0.18, 0.34, 0.16, 0.08, 0.34, brownM);
+  }
+  g.userData.anim = { legs, head, vis, hop: D.hop, biped: legs.length === 2 };
+  g.scale.setScalar(D.scale);
+  return g;
+}
+
 export function createEntities(scene, world, G) {
   let T = 0;
   const npcs = NPCS.map((def) => {
@@ -94,6 +224,32 @@ export function createEntities(scene, world, G) {
       g.position.set(def.home.x, world.height(def.home.x, def.home.z), def.home.z); scene.add(g);
       mobs.push({ def, group: g, heading: Math.random() * TAU, walkPhase: Math.random() * TAU, speed: def.speed, home: def.home, radius: def.radius, target: null, pauseT: 0, get pos() { return g.position; } });
     }
+  });
+
+  // ambient animals — built from world.animalSpawns; not saved (rebuilt each load). Hens/ducks drop collectible eggs.
+  const animals = [];
+  const eggs = [];
+  function spawnEgg(x, z) {
+    const y = world.height(x, z) + 0.14;
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshLambertMaterial({ color: 0xf6e9a8, flatShading: true }));
+    m.scale.y = 1.35; m.position.set(x, y, z); scene.add(m);
+    eggs.push({ mesh: m, x, z, y, t: 90 });
+  }
+  (world.animalSpawns || []).forEach((sp) => {
+    const D = ANIMAL_DEF[sp.kind]; if (!D) return;
+    const g = makeAnimal(sp.kind);
+    g.position.set(sp.x, world.height(sp.x, sp.z), sp.z);
+    g.rotation.y = Math.random() * TAU;
+    scene.add(g);
+    const hd = g.userData.anim.head;
+    animals.push({
+      kind: sp.kind, def: D, group: g,
+      home: { x: sp.home ? sp.home.x : sp.x, z: sp.home ? sp.home.z : sp.z },
+      roam: sp.roam || D.roam, penned: !!sp.penned, solidR: D.solidR,
+      heading: g.rotation.y, walkPhase: Math.random() * TAU, state: 'pause', pauseT: Math.random() * 3, target: null,
+      eggCD: 18 + Math.random() * 35, headBaseY: hd ? hd.position.y : 0,
+      get pos() { return g.position; },
+    });
   });
 
   const enemies = [];
@@ -283,6 +439,59 @@ export function createEntities(scene, world, G) {
         a.armL.rotation.x += (-gait - a.armL.rotation.x) * k; a.armR.rotation.x += (gait - a.armR.rotation.x) * k;
       }
     }
+    // ambient animals — wander then pause to graze; wild prey bolt from the player; hens/ducks lay eggs
+    for (const a of animals) {
+      const D = a.def, anim = a.group.userData.anim;
+      const pdx = a.pos.x - player.position.x, pdz = a.pos.z - player.position.z, pd2 = pdx * pdx + pdz * pdz;
+      const far = pd2 > ANIMAL_FREEZE2; a.group.visible = !far; if (far) continue;   // freeze + hide far away (perf)
+      let moving = false, grazing = false;
+      const flee = D.skittish && !a.penned && pd2 < 18;   // wild prey bolt when the player gets within ~4.2
+      if (flee) {
+        a.heading = Math.atan2(pdx, pdz);   // directly away from the player
+        const nx = a.pos.x + Math.sin(a.heading) * D.speed * 1.7 * dt, nz = a.pos.z + Math.cos(a.heading) * D.speed * 1.7 * dt;
+        if (world.isWalkable(nx, nz)) { a.group.position.x = nx; a.group.position.z = nz; moving = true; }
+        a.state = 'pause'; a.pauseT = 0.6; a.target = null;
+      } else if (a.state === 'wander' && a.target) {
+        const dx = a.target.x - a.pos.x, dz = a.target.z - a.pos.z, dd = Math.hypot(dx, dz);
+        if (dd < 0.7) { a.state = 'pause'; a.pauseT = 1.6 + Math.random() * 4; a.target = null; }
+        else {
+          a.heading = Math.atan2(dx, dz);
+          const nx = a.pos.x + Math.sin(a.heading) * D.speed * dt, nz = a.pos.z + Math.cos(a.heading) * D.speed * dt;
+          const inPen = !a.penned || dist2D(nx, nz, a.home.x, a.home.z) <= a.roam + 0.4;
+          const clearOfPlayer = ((nx - player.position.x) ** 2 + (nz - player.position.z) ** 2) > (a.solidR + 0.55) * (a.solidR + 0.55);   // don't walk onto the player
+          if (world.isWalkable(nx, nz) && inPen && clearOfPlayer) { a.group.position.x = nx; a.group.position.z = nz; moving = true; }
+          else { a.state = 'pause'; a.pauseT = 0.5 + Math.random(); a.target = null; }
+        }
+      } else {   // pause + graze, then pick a fresh roam target near home
+        grazing = D.graze;
+        a.pauseT -= dt;
+        if (a.pauseT <= 0) { const ang = Math.random() * TAU, r = (0.4 + Math.random() * 0.6) * a.roam; a.target = { x: a.home.x + Math.cos(ang) * r, z: a.home.z + Math.sin(ang) * r }; a.state = 'wander'; }
+      }
+      a.group.position.y = world.height(a.pos.x, a.pos.z);
+      a.group.rotation.y = a.heading;
+      if (moving) a.walkPhase += dt * (D.hop ? 7 : 9);
+      if (anim) {
+        if (anim.hop) anim.vis.position.y = moving ? Math.abs(Math.sin(a.walkPhase)) * 0.22 : 0;
+        const gait = moving ? Math.sin(a.walkPhase) * 0.5 : 0, k = Math.min(1, dt * 10), L = anim.legs;
+        if (anim.biped) { if (L[0]) L[0].rotation.x += (gait - L[0].rotation.x) * k; if (L[1]) L[1].rotation.x += (-gait - L[1].rotation.x) * k; }
+        else if (L.length >= 4) { L[0].rotation.x = gait; L[3].rotation.x = gait; L[1].rotation.x = -gait; L[2].rotation.x = -gait; }
+        if (anim.head) { const dip = (grazing && !moving) ? -0.18 + Math.sin(T * 2.4) * 0.03 : 0; anim.head.position.y += ((a.headBaseY + dip) - anim.head.position.y) * Math.min(1, dt * 6); }
+      }
+      if (D.lays && !flee && eggs.length < 8) { a.eggCD -= dt; if (a.eggCD <= 0) { a.eggCD = 28 + Math.random() * 32; spawnEgg(a.pos.x, a.pos.z); } }
+    }
+    // egg pickups (walk within ~1.6) + despawn after their lifespan
+    for (let i = eggs.length - 1; i >= 0; i--) {
+      const eg = eggs[i]; eg.t -= dt;
+      const ex = player.position.x - eg.x, ez = player.position.z - eg.z;
+      if (ex * ex + ez * ez < 2.56) {
+        if (G.inventory) G.inventory.add('egg', 1);
+        if (G.fx) G.fx.burst(eg.x, eg.y + 0.3, eg.z, 0xf4ecc0, { n: 6, up: 1.4 });
+        if (G.ui) G.ui.toast('Collected an egg', 'good', 1100);
+        if (G.audio) G.audio.sfx('pickup');
+        scene.remove(eg.mesh); eggs.splice(i, 1); continue;
+      }
+      if (eg.t <= 0) { scene.remove(eg.mesh); eggs.splice(i, 1); }
+    }
     // grow each boss slam-warning ring, then deal AoE if the player didn't step out in time
     for (let i = telegraphs.length - 1; i >= 0; i--) {
       const tg = telegraphs[i]; tg.t -= dt;
@@ -312,8 +521,10 @@ export function createEntities(scene, world, G) {
   function setHidden(flag) {
     for (const n of npcs) n.group.visible = !flag;
     for (const m of mobs) m.group.visible = !flag;
+    for (const a of animals) a.group.visible = !flag;
+    for (const eg of eggs) eg.mesh.visible = !flag;
     for (const e of enemies) e.group.visible = flag ? false : e.alive;
   }
 
-  return { npcs, mobs, enemies, update, damageEnemy, spawnEnemy, setHidden };
+  return { npcs, mobs, animals, eggs, enemies, update, damageEnemy, spawnEnemy, setHidden };
 }

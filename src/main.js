@@ -62,6 +62,11 @@ try {
   G.interiors = createInteriors(engine.scene);
   G.inInterior = false; G.interiorStations = [];
   player.setSolids(world.solids);   // collide with buildings/wells outdoors
+  // also collide with the living world: NPCs, ambient mobs, and animals (dynamic solids track their live positions; radii < interaction range so you can still talk/use)
+  { const dynSolid = (ent, r) => world.solids.push({ get x() { return ent.group.position.x; }, get z() { return ent.group.position.z; }, r });
+    G.entities.npcs.forEach((n) => dynSolid(n, 0.55));
+    G.entities.mobs.forEach((m) => dynSolid(m, 0.5));
+    G.entities.animals.forEach((a) => dynSolid(a, a.solidR)); }
   G.bankItems = (saved && saved.bank) || {};
   G.audio = createAudio(saved && saved.audioMuted);
   G.save = createSave(G);
