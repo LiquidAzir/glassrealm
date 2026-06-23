@@ -88,6 +88,10 @@ try {
       if (saved.player.equipment) { const e = saved.player.equipment; player.state.equipment = { weapon: e.weapon || null, armor: e.armor || null, amulet: e.amulet || null, ring: e.ring || null, shield: e.shield || null }; }
       player.refreshEquipment();
     }
+    if (saved.grave && saved.grave.items) {   // re-raise the gravestone where you fell last session
+      const gr = WORLD_SCALE / (saved.worldScale || 1), gx = saved.grave.x * gr, gz = saved.grave.z * gr;
+      G.grave = { x: gx, z: gz, items: saved.grave.items, t: saved.grave.t || 240, mesh: makeGraveMesh(gx, gz) };
+    }
   }
 
   const skillName = (key) => (G.skills.DEFS.find((d) => d.key === key) || { name: key }).name;
@@ -111,8 +115,10 @@ try {
   function applyMaxHp() { const mh = 100 + gearBonus().maxhp + (G.diaryBonus ? G.diaryBonus() : 0); player.state.maxHp = mh; if (player.state.hp > mh) player.state.hp = mh; G.ui.setHealth(player.state.hp, mh); }
 
   G.stats = { kills: 0, crafted: 0, regions: new Set(), bosses: new Set(), killsByType: {} };
-  if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); Object.assign(G.stats.killsByType, saved.stats.killsByType || {}); }
+  if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; G.stats.deaths = saved.stats.deaths || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); Object.assign(G.stats.killsByType, saved.stats.killsByType || {}); }
   G.diaries = new Set((saved && saved.diaries) || []);   // claimed region-diary tiers ("region:tierIdx")
+  G.deathMode = (saved && saved.deathMode) || 'standard'; // 'standard' = gravestone, 'safe' = no loss
+  G.grave = null;                                          // active gravestone {x,z,items,t,mesh}
   G.slayer = (saved && saved.slayer) ? { ...saved.slayer } : { active: false, enemy: null, count: 0, progress: 0 };
   G.trackedQuest = (saved && saved.tracked) || null;   // quest pinned in the Quests menu
   const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
@@ -898,6 +904,49 @@ try {
   };
 
   let hurtFlash = 0;
+  // ---------- Death stakes: a gravestone holds your dropped goods; run back to reclaim them ----------
+  const GRAVE_TIME = 240;   // seconds of play to return before the grave crumbles
+  function makeGraveMesh(x, z) {
+    const g = new THREE.Group();
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.0, 0.16), new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 1 }));
+    slab.position.y = 0.55; g.add(slab);
+    const mound = new THREE.Mesh(new THREE.SphereGeometry(0.72, 10, 5, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 1 }));
+    g.add(mound);
+    g.position.set(x, world.height(x, z), z);
+    world.group.add(g);
+    return g;
+  }
+  function clearGrave() { if (G.grave && G.grave.mesh) world.group.remove(G.grave.mesh); G.grave = null; }
+  function onDeath() {
+    G.stats.deaths = (G.stats.deaths || 0) + 1;
+    player.state.activePrayer = null; player.state.poison = null;
+    if (G.deathMode === 'safe') { G.ui.toast('You fell — and woke safely by the village hearth.', 'bad', 3000); return; }
+    player.state.buffs = {};   // standard mode: lose your prayer & potion buffs
+    if (G.grave) { clearGrave(); G.ui.toast('Your older grave crumbles to dust.', 'bad', 2200); }
+    const dx = player.position.x, dz = player.position.z;
+    const drop = {};
+    for (const it of G.inventory.list()) drop[it.key] = it.count;   // carried items...
+    const g = G.inventory.count('gold'); if (g > 0) drop.gold = g;  // ...plus gold (tracked separately)
+    if (!Object.keys(drop).length) { G.ui.toast('You fell — and woke by the village hearth.', 'bad', 3000); return; }
+    for (const k in drop) G.inventory.remove(k, drop[k]);
+    G.grave = { x: dx, z: dz, items: drop, t: GRAVE_TIME, mesh: makeGraveMesh(dx, dz) };
+    G.audio.sfx('hurt');
+    G.ui.toast(`⚰️ You fell! Your belongings rest at your grave — return within ${GRAVE_TIME}s to reclaim them.`, 'bad', 4200);
+  }
+  function updateGrave(dt) {
+    if (!G.grave) return;
+    G.grave.t -= dt;
+    const dx = player.position.x - G.grave.x, dz = player.position.z - G.grave.z;
+    if (dx * dx + dz * dz < 12.25) {   // within ~3.5: reclaim everything
+      for (const k in G.grave.items) G.inventory.add(k, G.grave.items[k]);
+      clearGrave(); G.audio.sfx('ach'); G.ui.toast('⚰️ You reclaim your belongings from the grave.', 'good', 2600); G.save.save();
+    } else if (G.grave.t <= 0) {
+      clearGrave(); G.ui.toast('⚰️ Your grave has crumbled — its contents are lost to the earth.', 'bad', 3400); G.save.save();
+    }
+  }
+  G.updateGrave = updateGrave;
+  G.cycleDeathMode = () => { G.deathMode = G.deathMode === 'safe' ? 'standard' : 'safe'; G.ui.toast(`Death: ${G.deathMode === 'safe' ? 'Safe (no loss)' : 'Standard (gravestone)'}`, 'good', 1800); G.save.save(); };
+
   G.damagePlayer = (amount, src) => {
     if (player.state.hp <= 0) return;
     const stanceDef = (ATTACK_STYLES[player.state.combatStance] || {}).defBonus || 0;
@@ -922,12 +971,12 @@ try {
     G.ui.setHealth(player.state.hp, player.state.maxHp);
     if (player.state.hp <= 0) {
       cancelChannel(); clearCombat();
+      onDeath();   // drop goods to a gravestone at the death spot (unless Safe mode)
       player.state.hp = player.state.maxHp;
       const sx = world.village.x, sz = world.village.z + 12;
       player.group.position.set(sx, world.height(sx, sz), sz);
       player.state.heading = Math.PI;
       G.ui.setHealth(player.state.hp, player.state.maxHp);
-      G.ui.toast('You fell — and woke by the village hearth.', 'bad', 3200);
       G.save.save();
     }
   };
@@ -1202,6 +1251,7 @@ try {
       updateChannel(dt);
       updateCombat();
       updateStatus(dt);
+      updateGrave(dt);
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -1273,7 +1323,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

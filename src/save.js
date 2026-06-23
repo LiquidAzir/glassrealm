@@ -44,7 +44,9 @@ export function createSave(G) {
       collection: G.collection ? [...G.collection] : [],
       clue: G.activeClue || undefined,
       diaries: G.diaries ? [...G.diaries] : [],
-      stats: G.stats ? { kills: G.stats.kills, crafted: G.stats.crafted, regions: [...G.stats.regions], bosses: [...G.stats.bosses], killsByType: { ...G.stats.killsByType } } : undefined,
+      deathMode: G.deathMode || 'standard',
+      grave: G.grave ? { x: G.grave.x, z: G.grave.z, items: G.grave.items, t: G.grave.t } : undefined,
+      stats: G.stats ? { kills: G.stats.kills, crafted: G.stats.crafted, deaths: G.stats.deaths || 0, regions: [...G.stats.regions], bosses: [...G.stats.bosses], killsByType: { ...G.stats.killsByType } } : undefined,
       achievements: G.ach ? [...G.ach.unlocked] : undefined,
       world: {
         choppedTrees: G.world.trees.filter((t) => !t.alive).map((t) => t.idx),
