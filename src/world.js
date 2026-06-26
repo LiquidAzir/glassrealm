@@ -321,11 +321,22 @@ export function createWorld(scene, seed = 1337) {
     return { ...d, x, z, y, found: false, cooldown: 0, mesh: grp };
   });
 
-  // trees (instanced, per-instance colour)
+  // trees (instanced, per-instance colour); canopies sway in the wind on the GPU — a vertex-shader
+  // offset that grows toward the treetop, phased per-instance, so all ~900 trees breathe for free
+  const windUniform = { value: 0 };
+  const applyWindSway = (mat) => {
+    mat.onBeforeCompile = (sh) => {
+      sh.uniforms.uWind = windUniform;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float uWind;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_INSTANCING\nfloat wph = uWind + instanceMatrix[3].x * 0.18 + instanceMatrix[3].z * 0.18;\nfloat wsw = 0.16 * (0.5 + position.y * 0.3);\ntransformed.x += sin(wph) * wsw;\ntransformed.z += cos(wph * 0.8) * wsw * 0.7;\n#endif');
+    };
+  };
   const N = Math.max(trees.length, 1);
   const trunkIM = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.3, 1.7, 5), new THREE.MeshLambertMaterial({ flatShading: true }), N);
   const folLowIM = new THREE.InstancedMesh(new THREE.ConeGeometry(1.5, 2.3, 6), new THREE.MeshLambertMaterial({ flatShading: true }), N);
   const folHiIM = new THREE.InstancedMesh(new THREE.ConeGeometry(1.05, 1.9, 6), new THREE.MeshLambertMaterial({ flatShading: true }), N);
+  applyWindSway(folLowIM.material); applyWindSway(folHiIM.material);
   trees.forEach((t, i) => {
     const s = t.s; dummy.rotation.set(0, rng() * TAU, 0); dummy.scale.setScalar(s);
     dummy.position.set(t.x, t.y + 0.85 * s, t.z); dummy.updateMatrix(); trunkIM.setMatrixAt(i, dummy.matrix);
@@ -1022,6 +1033,7 @@ export function createWorld(scene, seed = 1337) {
     showTrophy(key) { const m = trophyMeshes[key]; if (m) m.forEach((x) => (x.visible = true)); },
     tick(dt) {
       animT += dt;
+      windUniform.value = animT * 1.1;   // drives the GPU canopy sway
       for (const f of fireMeshes) { f.m.scale.setScalar(0.82 + Math.sin(animT * 9 + f.seed) * 0.18); f.m.position.y = f.baseY + Math.sin(animT * 13 + f.seed) * 0.05; }
       for (const o of orbMeshes) { o.m.rotation.y = animT * 0.8; o.m.position.y = o.baseY + Math.sin(animT * 1.4 + o.seed) * 0.4; }
       for (const s of shimMeshes) { if (s.kind === 'spin') s.m.rotation.y = animT * 0.6 + s.seed; else if (s.kind === 'pulse') s.m.scale.setScalar(0.9 + Math.sin(animT * 2 + s.seed) * 0.12); s.m.position.y = s.baseY + Math.sin(animT * 1.1 + s.seed) * 0.25; }
