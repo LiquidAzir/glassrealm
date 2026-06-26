@@ -488,6 +488,15 @@ export const PERK_DEFS = [
   { key: 'tracker',         name: 'Tracker',         icon: '☠️', cost: 4, reqSkill: 'slayer',      req: 12, desc: '+30% Slayer XP.' },
 ];
 
+// Skill-cape colours (worn cosmetically on the back once a skill hits level 99). 'max' = all-99.
+export const CAPE_COLORS = {
+  combat: 0xc04040, ranged: 0x6a9a4a, magic: 0x9b6bff, defence: 0x9bd0ff, slayer: 0x3a2230,
+  woodcutting: 0x8a5a2e, mining: 0xc2ccd6, fishing: 0x2bd6cf, foraging: 0x4f9a40, cooking: 0xff7a3a,
+  smithing: 0xcdd6e0, farming: 0x6e9a3a, herblore: 0x7a4a8a, thieving: 0x6a4a9a, crafting: 0xffd45f,
+  fletching: 0xb98f4a, runecraft: 0xc6a8ff, construction: 0x9aa0a8, agility: 0xbfe6ff, prayer: 0xe8e0ff,
+  beastmastery: 0xffe066, max: 0xffd45f,
+};
+
 // Hidden things to stumble on while exploring — deliberately NOT shown on the map or quest
 // arrow. Walk near and investigate for a one-time reward. Persisted once found (save.js).
 export const DISCOVERIES = [

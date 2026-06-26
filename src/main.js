@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -188,6 +188,31 @@ try {
     G.perksOwned.add(key); G.ui.toast(`✓ ${p.name} unlocked`, 'gold', 1900); if (G.audio) G.audio.sfx('ach'); applyMaxHp(); G.save.save();
   };
 
+  // ---- skill capes, mastery & titles: a cape per skill at level 99, a total-level title, a wearable cosmetic ----
+  G.capesEarned = new Set((saved && saved.capesEarned) || []);
+  G.wornCape = (saved && saved.wornCape) || null;
+  const TITLES = [[1800, '🏆 Legend'], [1600, '👑 Grandmaster'], [1200, '⭐ Master'], [800, '🗡️ Veteran'], [400, '🧭 Adventurer'], [0, '🌱 Novice']];
+  G.titleFor = (total) => { for (const [th, name] of TITLES) if (total >= th) return name; return '🌱 Novice'; };
+  G.masteryRows = () => G.skills.DEFS.map((d) => ({ key: d.key, name: d.name, icon: d.icon, level: G.skills.level(d.key), hasCape: G.capesEarned.has(d.key), worn: G.wornCape === d.key }));
+  G.earnCape = (skillKey) => {
+    if (G.capesEarned.has(skillKey)) return;
+    G.capesEarned.add(skillKey);
+    const nm = (G.skills.DEFS.find((d) => d.key === skillKey) || { name: skillKey }).name;
+    G.ui.levelBanner(`⭐ ${nm} Cape earned!`); if (G.audio) G.audio.sfx('ach');
+    if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, CAPE_COLORS[skillKey] || 0xffd45f, { n: 20, spread: 4, up: 5, life: 1.2 });
+    G.ui.toast(`🎖️ ${nm} Cape unlocked — wear it from the Mastery tab`, 'gold', 3400);
+    if (G.skills.DEFS.every((d) => G.capesEarned.has(d.key)) && !G.capesEarned.has('max')) { G.capesEarned.add('max'); G.ui.levelBanner('🏆 Max Cape achieved!'); }
+    G.save.save();
+  };
+  G.wearCape = (skillKey) => {
+    if (!G.capesEarned.has(skillKey)) return;
+    G.wornCape = (G.wornCape === skillKey) ? null : skillKey;
+    if (player.setCape) player.setCape(G.wornCape ? (CAPE_COLORS[G.wornCape] || 0xffd45f) : null);
+    G.ui.toast(G.wornCape ? `Wearing the ${(G.skills.DEFS.find((d) => d.key === G.wornCape) || {}).name || ''} Cape` : 'Cape removed', 'good', 1600);
+    G.save.save();
+  };
+  if (G.wornCape && G.capesEarned.has(G.wornCape) && player.setCape) player.setCape(CAPE_COLORS[G.wornCape] || 0xffd45f);
+
   G.stats = { kills: 0, crafted: 0, regions: new Set(), bosses: new Set(), killsByType: {} };
   if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; G.stats.deaths = saved.stats.deaths || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); Object.assign(G.stats.killsByType, saved.stats.killsByType || {}); }
   G.diaries = new Set((saved && saved.diaries) || []);   // claimed region-diary tiers ("region:tierIdx")
@@ -251,7 +276,7 @@ try {
     if (G.xpMult) amt = Math.round(amt * G.xpMult());   // perks (Scholar) + weather XP modifiers
     const r = G.skills.addXp(key, amt);
     G.ui.xpDrop(`+${r.amount} ${skillName(key)}`);   // show the prestige-boosted amount actually granted
-    if (r.leveled) { G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`); if (G.audio) G.audio.sfx('level'); if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, 0xffd45f, { n: 14, spread: 3.2, up: 4.2, life: 0.8 }); if (G.ach) G.ach.evaluate(); }
+    if (r.leveled) { G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`); if (G.audio) G.audio.sfx('level'); if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, 0xffd45f, { n: 14, spread: 3.2, up: 4.2, life: 0.8 }); if (r.level === 99 && G.earnCape) G.earnCape(key); if (G.ach) G.ach.evaluate(); }
   };
 
   const readyToasted = new Set();

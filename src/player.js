@@ -72,6 +72,15 @@ export function createPlayer(scene, world) {
   // armor overlay group — rebuilt to match the equipped armor (chest/shoulders/helm/hood)
   const armorGroup = new THREE.Group(); body.add(armorGroup);
   const shieldGroup = new THREE.Group(); body.add(shieldGroup);   // shield on the left arm
+  const capeGroup = new THREE.Group(); body.add(capeGroup);       // cosmetic skill cape on the back (independent of armor)
+  function setCape(colorHex) {
+    while (capeGroup.children.length) capeGroup.remove(capeGroup.children[0]);
+    if (colorHex == null) return;
+    const cape = new THREE.Mesh(new THREE.BoxGeometry(0.76, 1.25, 0.07), new THREE.MeshLambertMaterial({ color: colorHex, flatShading: true }));
+    cape.position.set(0, 1.0, -0.36); cape.rotation.x = 0.16; capeGroup.add(cape);
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.16, 0.08), new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true }));
+    trim.position.set(0, 1.6, -0.34); capeGroup.add(trim);   // gold collar trim
+  }
 
   // right arm: pivots at the shoulder so it can swing; holds the weapon
   const rightArm = new THREE.Group(); rightArm.position.set(0.5, 1.5, 0); body.add(rightArm);
@@ -333,7 +342,7 @@ export function createPlayer(scene, world) {
   return {
     group, state, update, updateCamera, impulseForward, impulseBack, impulseTurn, forwardVec,
     playAttack, playGather, refreshEquipment, weapon, handPosition,
-    setBounds(b) { state.bounds = b; }, setSolids(s) { state.solids = s; }, snapCamera() { camReady = false; },
+    setBounds(b) { state.bounds = b; }, setSolids(s) { state.solids = s; }, snapCamera() { camReady = false; }, setCape,
     get position() { return group.position; },
   };
 }
