@@ -438,6 +438,7 @@ try {
     const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
     if (sk === 'melee' && G.hasPerk && G.hasPerk('berserker') && player.state.hp <= player.state.maxHp * 0.4) dmg = Math.round(dmg * 1.18);   // Berserker: harder hits when wounded
+    if (G.weatherDmg) dmg = Math.max(1, Math.round(dmg * G.weatherDmg(sk)));   // weather nudges magic/ranged damage
     // special attack: a spec bar charges per hit and auto-unleashes when full (×2.4 + AoE splash)
     let special = false;
     if ((player.state.spec || 0) >= 100) { special = true; player.state.spec = 0; dmg = Math.round(dmg * 2.4); }
@@ -1377,7 +1378,7 @@ try {
     if (t.kind !== 'enemy') clearCombat();   // tapping anything else breaks off the fight
     const lvl = (k) => G.skills.level(k);
     // best gathering tool you own for a skill auto-speeds the channel (Toolsmithing payoff)
-    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f * (G.petGather ? G.petGather() : 1) * (G.perkGather ? G.perkGather(skill) : 1); };
+    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f * (G.petGather ? G.petGather() : 1) * (G.perkGather ? G.perkGather(skill) : 1) * (G.weatherGather ? G.weatherGather(skill) : 1); };
     if (t.kind === 'tree') startChannel(Math.max(1.8, (4 - lvl('woodcutting') * 0.03) * toolSpeed('woodcutting')), 'chop', 'Chopping…', () => G.chopTree(t.ref));
     else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
     else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(3, (7 - lvl('mining') * 0.04) * toolSpeed('mining')), 'mine', 'Mining…', () => G.mineOre(t.ref)); }
@@ -1540,6 +1541,42 @@ try {
   }
 
   // ---------- loop ----------
+  // ---------- weather & seasons: cycling, biome-appropriate weather with subtle visuals + gameplay nudges ----------
+  const WEATHER = {
+    clear:     { name: 'Clear Skies', icon: '☀️', biomes: '*', weight: 2.2, xp: 1.02, gather: 1,    fish: 1,    magic: 1,    ranged: 1,    dim: 0,    fog: 0,    part: null,   tint: 0x000000 },
+    rain:      { name: 'Rain',        icon: '🌧️', biomes: ['grass', 'forest', 'swamp', 'coast', 'jungle', 'fae', 'autumn', 'lagoon'], weight: 1.5, xp: 1, gather: 1, fish: 0.87, magic: 1, ranged: 0.95, dim: 0.12, fog: 0.30, part: 'rain', tint: 0x9bbdd8 },
+    snow:      { name: 'Snowfall',    icon: '❄️', biomes: ['snow', 'highland', 'sky'], weight: 1.3, xp: 1, gather: 1.05, fish: 1, magic: 1.05, ranged: 1, dim: 0.06, fog: 0.25, part: 'snow', tint: 0xeaf4ff },
+    fog:       { name: 'Fog',         icon: '🌫️', biomes: ['grass', 'forest', 'swamp', 'coast', 'lagoon', 'highland', 'autumn'], weight: 1.1, xp: 1, gather: 1, fish: 1, magic: 1, ranged: 0.9, dim: 0.18, fog: 0.70, part: null, tint: 0xaeb8c0 },
+    storm:     { name: 'Storm',       icon: '⛈️', biomes: ['highland', 'sky', 'coast', 'badlands'], weight: 0.7, xp: 1, gather: 1.08, fish: 0.95, magic: 1.1, ranged: 0.85, dim: 0.28, fog: 0.45, part: 'rain', tint: 0x5a6a80 },
+    sandstorm: { name: 'Sandstorm',   icon: '🌪️', biomes: ['desert', 'badlands', 'cinder'], weight: 0.8, xp: 1, gather: 1.12, fish: 1, magic: 0.9, ranged: 0.85, dim: 0.16, fog: 0.60, part: null, tint: 0xd4b483 },
+  };
+  let weather = { kind: 'clear', t: 0, dur: 100, intensity: 1, fade: 1 };
+  G.weather = weather;
+  G.weatherXpMult = () => { const w = WEATHER[weather.kind]; return w ? w.xp : 1; };
+  G.weatherGather = (skill) => { const w = WEATHER[weather.kind]; if (!w) return 1; return skill === 'fishing' ? w.fish : w.gather; };
+  G.weatherDmg = (style) => { const w = WEATHER[weather.kind]; if (!w) return 1; return style === 'magic' ? w.magic : style === 'ranged' ? w.ranged : 1; };
+  const RAIN_N = 36, SNOW_N = 54, weatherGroup = new THREE.Group(); engine.scene.add(weatherGroup);
+  const rainPool = [], snowPool = [];
+  for (let i = 0; i < RAIN_N; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.1, 0.05), new THREE.MeshBasicMaterial({ color: 0x9bbdd8, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.frustumCulled = false; m._o = { x: (Math.random() - 0.5) * 16, z: (Math.random() - 0.5) * 16, y: Math.random() * 12, sp: 14 + Math.random() * 5 }; weatherGroup.add(m); rainPool.push(m); }
+  for (let i = 0; i < SNOW_N; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.frustumCulled = false; m._o = { x: (Math.random() - 0.5) * 18, z: (Math.random() - 0.5) * 18, y: Math.random() * 11, sp: 2 + Math.random() * 2.5, w: Math.random() * 6.28 }; weatherGroup.add(m); snowPool.push(m); }
+  function nearestBiome() { let best = null, bd = Infinity; for (const r of world.regions) { const dx = r.x - player.position.x, dz = r.z - player.position.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = r; } } return best ? best.biome : 'grass'; }   // regions are already WORLD_SCALE'd — don't re-scale
+  function pickWeather(biome) { const c = []; for (const k in WEATHER) { const w = WEATHER[k]; if (w.biomes === '*' || w.biomes.includes(biome)) c.push([k, w.weight]); } let tot = c.reduce((s, x) => s + x[1], 0), r = Math.random() * tot; for (const [k, wt] of c) { r -= wt; if (r <= 0) return k; } return 'clear'; }
+  function updateWeather(dt) {
+    weather.t += dt;
+    if (weather.t >= weather.dur) { weather.t = 0; const nk = pickWeather(nearestBiome()); if (nk !== weather.kind) { weather.kind = nk; weather.fade = 0; if (nk !== 'clear') G.ui.toast(`${WEATHER[nk].icon} ${WEATHER[nk].name}`, '', 2200); } weather.dur = 70 + Math.random() * 80; }
+    weather.fade = Math.min(1, weather.fade + dt / 2.5); weather.intensity = weather.fade;
+  }
+  function updateWeatherParticles() {
+    const w = WEATHER[weather.kind], part = w ? w.part : null, op = weather.intensity;
+    for (const m of rainPool) { if (part !== 'rain') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 10 + Math.random() * 4; m.position.set(player.position.x + o.x, player.position.y + o.y, player.position.z + o.z); m.material.opacity = 0.5 * op; m.material.color.setHex(w.tint); }
+    for (const m of snowPool) { if (part !== 'snow') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.w += 0.026; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 11 + Math.random() * 3; m.position.set(player.position.x + o.x + Math.sin(o.w) * 1.5, player.position.y + o.y, player.position.z + o.z); m.material.opacity = 0.8 * op; }
+  }
+  function applyWeatherLight() {   // called each frame after the day/night lights are set; recomputed from the fresh base so it self-resets
+    const w = WEATHER[weather.kind], it = weather.intensity, f = engine.scene.fog;
+    if (w) { engine.sun.intensity *= (1 - (w.dim || 0) * it); engine.hemi.intensity *= (1 - (w.dim || 0) * 0.5 * it); }
+    if (f) f.far = 110 - (110 - 34) * ((w ? w.fog : 0) || 0) * it;
+  }
+
   let running = true, tod = 0.32, mmTick = 0, econTick = 0;
   function frame() {
     if (!running) return;
@@ -1554,6 +1591,7 @@ try {
     const ang = tod * Math.PI * 2;
     engine.sun.position.set(Math.cos(ang) * 60, 25 + 75 * day, Math.sin(ang) * 40);
     engine.sun.color.setHSL(0.09, 0.55, 0.38 + 0.18 * day);
+    updateWeather(dt); applyWeatherLight();
     if (mode === 'world') {
       player.update(dt, input);
       G.entities.update(dt, player);
@@ -1570,7 +1608,7 @@ try {
       updateCombat();
       updateStatus(dt);
       updateGrave(dt);
-      updateMarket(dt); updateColosseum();
+      updateMarket(dt); updateColosseum(); updateWeatherParticles();
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -1642,7 +1680,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);
