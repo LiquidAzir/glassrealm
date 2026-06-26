@@ -261,6 +261,18 @@ export function createEntities(scene, world, G) {
     return true;
   }
 
+  // companion pet — one tamed animal (or a rare boss pet) that trails a step behind the player
+  let pet = null;
+  function setPet(kind) {
+    if (pet) { scene.remove(pet.group); pet = null; }
+    if (!kind) return;
+    let g;
+    if (kind.indexOf('pet_') === 0) { const def = ENEMIES[kind.slice(4)]; if (!def) return; g = makeEnemyMesh(def); g.scale.setScalar((def.scale || 1) * 0.42); }
+    else { if (!ANIMAL_DEF[kind]) return; g = makeAnimal(kind); g.scale.multiplyScalar(0.85); }
+    scene.add(g);
+    pet = { group: g, kind, walkPhase: 0, snap: true };
+  }
+
   const enemies = [];
   function spawnEnemy(key, x, z) {
     if (!world.isWalkable(x, z)) { outer: for (let r = 4; r <= 40; r += 4) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (world.isWalkable(nx, nz)) { x = nx; z = nz; break outer; } } }   // keep spawns out of the sea
@@ -502,6 +514,20 @@ export function createEntities(scene, world, G) {
       }
       if (eg.t <= 0) { scene.remove(eg.mesh); eggs.splice(i, 1); }
     }
+    // companion pet trails a step behind the player + walk-cycles its legs
+    if (pet) {
+      const ph = player.state.heading;
+      const bx = player.position.x - Math.sin(ph) * 2.4 + Math.cos(ph) * 1.0;
+      const bz = player.position.z - Math.cos(ph) * 2.4 - Math.sin(ph) * 1.0;
+      const dx = bx - pet.group.position.x, dz = bz - pet.group.position.z, moving = Math.hypot(dx, dz) > 0.4;
+      if (moving) pet.group.rotation.y = Math.atan2(dx, dz);
+      const k = pet.snap ? 1 : Math.min(1, dt * 4); pet.snap = false;
+      pet.group.position.x += dx * k; pet.group.position.z += dz * k;
+      pet.group.position.y = world.height(pet.group.position.x, pet.group.position.z);
+      if (moving) pet.walkPhase += dt * 9;
+      const pa = pet.group.userData.anim;
+      if (pa && pa.legs) { const gait = moving ? Math.sin(pet.walkPhase) * 0.5 : 0, L = pa.legs; if (pa.biped) { if (L[0]) L[0].rotation.x = gait; if (L[1]) L[1].rotation.x = -gait; } else for (let i = 0; i < L.length; i++) L[i].rotation.x = (i === 0 || i === 3) ? gait : -gait; }
+    }
     // grow each boss slam-warning ring, then deal AoE if the player didn't step out in time
     for (let i = telegraphs.length - 1; i >= 0; i--) {
       const tg = telegraphs[i]; tg.t -= dt;
@@ -533,8 +559,9 @@ export function createEntities(scene, world, G) {
     for (const m of mobs) m.group.visible = !flag;
     for (const a of animals) a.group.visible = !flag;
     for (const eg of eggs) eg.mesh.visible = !flag;
+    if (pet) pet.group.visible = !flag;
     for (const e of enemies) e.group.visible = flag ? false : e.alive;
   }
 
-  return { npcs, mobs, animals, eggs, enemies, update, damageEnemy, spawnEnemy, setHidden };
+  return { npcs, mobs, animals, eggs, enemies, update, damageEnemy, spawnEnemy, setHidden, setPet, getPet: () => (pet ? pet.kind : null) };
 }

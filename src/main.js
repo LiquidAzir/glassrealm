@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -128,10 +128,40 @@ try {
       if (S.full && w.count >= w.size) for (const k in S.full) b[k] += S.full[k];
       if (!S.per && !S.full && w.count >= w.size) for (const k in S) if (k !== 'name' && k !== 'size') b[k] += S[k];
     }
+    const pb = G.petBonus && G.petBonus();   // active companion pet's perk
+    if (pb) for (const k in pb) if (k in b) b[k] += pb[k];
     return b;
   }
   G.gearBonus = gearBonus;
   function applyMaxHp() { const mh = 100 + gearBonus().maxhp + (G.diaryBonus ? G.diaryBonus() : 0); player.state.maxHp = mh; if (player.state.hp > mh) player.state.hp = mh; G.ui.setHealth(player.state.hp, mh); }
+
+  // ---- companion pets (Beastmastery): tame wild animals → one follows you & grants its perk ----
+  G.pets = new Set((saved && saved.pets) || []);
+  G.activePet = (saved && saved.activePet) || null;
+  const BOSS_PET_PERK = { maxhp: 8 };
+  G.petBonus = () => { const k = G.activePet; if (!k) return null; if (k.indexOf('pet_') === 0) return BOSS_PET_PERK; const d = PET_DEF[k]; return (d && d.perk) || null; };
+  G.petGather = () => { const k = G.activePet; const d = (k && k.indexOf('pet_') !== 0) ? PET_DEF[k] : null; return (d && d.gather) || 1; };
+  function petName(k) { if (k.indexOf('pet_') === 0) { const e = ENEMIES[k.slice(4)]; return 'Mini ' + (e ? e.name : 'Boss'); } return (PET_DEF[k] && PET_DEF[k].name) || k; }
+  function petPerkText(k) { if (k.indexOf('pet_') === 0) return '+8 Max HP'; const d = PET_DEF[k]; if (!d) return ''; if (d.gather) return `${Math.round((1 - d.gather) * 100)}% faster gathering`; const p = d.perk || {}, LBL = { def: 'Defence', melee: 'Melee', ranged: 'Ranged', magic: 'Magic', maxhp: 'Max HP' }; return Object.keys(p).map((s) => `+${p[s]} ${LBL[s] || s}`).join(', '); }
+  G.petRows = () => [...G.pets].map((k) => ({ kind: k, name: petName(k), icon: k.indexOf('pet_') === 0 ? '🏆' : '🐾', perk: petPerkText(k), active: G.activePet === k }));
+  G.setActivePet = (kind) => { G.activePet = (G.activePet === kind) ? null : kind; G.entities.setPet(G.activePet); applyMaxHp(); G.ui.toast(G.activePet ? `${petName(G.activePet)} follows you` : 'Pet dismissed', 'good', 1600); G.save.save(); };
+  G.tameAnimal = (a) => {
+    if (G.channel) return;
+    const def = PET_DEF[a.kind]; if (!def) { G.ui.toast("That can't be tamed", 'bad', 1600); return; }
+    if (G.pets.has(a.kind)) { G.ui.toast(`You already have a ${def.name}`, '', 1600); return; }
+    const lvl = G.skills.level('beastmastery');
+    if (lvl < def.tameLevel) { G.ui.toast(`Needs Beastmastery ${def.tameLevel} to tame a ${def.name}`, 'bad', 2400); return; }
+    const baseXp = 28 + def.tameLevel * 14, chance = Math.min(0.92, 0.45 + (lvl - def.tameLevel) * 0.05);
+    if (Math.random() > chance) { G.ui.toast(`The ${a.kind} slipped away — try again`, 'bad', 1800); G.gainXp('beastmastery', Math.round(baseXp * 0.25)); if (G.fx) G.fx.burst(a.pos.x, a.pos.y + 1, a.pos.z, 0xbfa6ff, { n: 5, up: 1.6 }); return; }
+    G.pets.add(a.kind);
+    G.gainXp('beastmastery', baseXp);
+    if (G.fx) G.fx.burst(a.pos.x, a.pos.y + 1, a.pos.z, 0xffe066, { n: 14, spread: 2.4, up: 3, life: 1 });
+    if (G.audio) G.audio.sfx('ach');
+    G.ui.toast(`🐾 Tamed a ${def.name}! Summon it from the Pets tab`, 'gold', 3200);
+    if (G.ach) G.ach.evaluate();
+    G.save.save();
+  };
+  if (G.activePet) G.entities.setPet(G.activePet);
 
   G.stats = { kills: 0, crafted: 0, regions: new Set(), bosses: new Set(), killsByType: {} };
   if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; G.stats.deaths = saved.stats.deaths || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); Object.assign(G.stats.killsByType, saved.stats.killsByType || {}); }
@@ -1117,7 +1147,11 @@ try {
     if (kstance.defShare) { G.gainXp('defence', Math.round(def.xp * kstance.defShare)); G.gainXp(ksk, Math.round(def.xp * (1 - kstance.defShare))); }
     else G.gainXp(ksk, def.xp);
     G.stats.kills++; G.stats.killsByType[e.enemyKey] = (G.stats.killsByType[e.enemyKey] || 0) + 1;
-    if (def.boss) { G.stats.bosses.add(e.enemyKey); world.showTrophy(e.enemyKey); }
+    if (def.boss) {
+      G.stats.bosses.add(e.enemyKey); world.showTrophy(e.enemyKey);
+      const pk = 'pet_' + e.enemyKey;   // ~2.5% (×1.5 with the Slayer luck perk) rare cosmetic boss pet for the Pets tab
+      if (!G.pets.has(pk) && Math.random() < 0.025 * (G.slayerPerks.has('luck') ? 1.5 : 1)) { G.pets.add(pk); G.ui.toast(`🏆 Boss pet! A Mini ${def.name} now follows you — summon it from Pets`, 'gold', 4200); if (G.audio) G.audio.sfx('ach'); }
+    }
     if (G.slayer.active && G.slayer.enemy === e.enemyKey && G.slayer.progress < G.slayer.count) { G.slayer.progress++; if (G.slayer.progress >= G.slayer.count) G.ui.toast('Slayer task complete — see the Slayer Master', 'good', 2600); }
     G.audio.sfx('kill');
     G.ui.toast(`Defeated ${def.name} · +${names.join(', ')}`, 'gold', 2200);
@@ -1194,7 +1228,7 @@ try {
     if (t.kind !== 'enemy') clearCombat();   // tapping anything else breaks off the fight
     const lvl = (k) => G.skills.level(k);
     // best gathering tool you own for a skill auto-speeds the channel (Toolsmithing payoff)
-    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f; };
+    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f * (G.petGather ? G.petGather() : 1); };
     if (t.kind === 'tree') startChannel(Math.max(1.8, (4 - lvl('woodcutting') * 0.03) * toolSpeed('woodcutting')), 'chop', 'Chopping…', () => G.chopTree(t.ref));
     else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
     else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(3, (7 - lvl('mining') * 0.04) * toolSpeed('mining')), 'mine', 'Mining…', () => G.mineOre(t.ref)); }
@@ -1205,6 +1239,7 @@ try {
     else if (t.kind === 'shortcut') G.useShortcut(t.ref);
     else if (t.kind === 'ferry') G.useFerry(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
+    else if (t.kind === 'tame') G.tameAnimal(t.ref);
     else if (t.kind === 'discovery') G.findDiscovery(t.ref);
     else if (t.kind === 'dig') G.digClue();
     else if (t.kind === 'enemy') { G.combatTarget = t.ref; G.attackEnemy(t.ref); }   // lock on + auto-attack

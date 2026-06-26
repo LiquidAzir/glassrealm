@@ -440,6 +440,25 @@ export const WANDERERS = [
   { kind: 'wander', name: 'Dockhand',  color: 0x4a8f7a, home: { x: 88, z: 180 }, radius: 9,  speed: 1.5 },
 ];
 
+// Tameable animals → companion pets. One pet follows you at a time and grants its perk
+// (combat bonus folded into gearBonus, or a `gather` multiplier on gathering speed).
+// tameLevel gates which beasts your Beastmastery can charm. Boss pets ('pet_<key>') are
+// rare cosmetic drops with a small all-round perk.
+export const PET_DEF = {
+  chicken: { name: 'Chick',      tameLevel: 1,  perk: { maxhp: 4 } },
+  rabbit:  { name: 'Bunny',      tameLevel: 1,  gather: 0.92 },
+  squirrel:{ name: 'Squirrel',   tameLevel: 3,  gather: 0.90 },
+  duck:    { name: 'Duckling',   tameLevel: 3,  perk: { magic: 3 } },
+  sheep:   { name: 'Lamb',       tameLevel: 5,  perk: { def: 3 } },
+  pig:     { name: 'Piglet',     tameLevel: 5,  perk: { maxhp: 10 } },
+  goat:    { name: 'Kid Goat',   tameLevel: 8,  perk: { melee: 3 } },
+  cow:     { name: 'Calf',       tameLevel: 10, perk: { maxhp: 14 } },
+  fox:     { name: 'Fox Kit',    tameLevel: 12, perk: { ranged: 4 } },
+  badger:  { name: 'Badger Cub', tameLevel: 14, perk: { def: 3, melee: 2 } },
+  deer:    { name: 'Fawn',       tameLevel: 15, perk: { def: 4 } },
+  boar:    { name: 'Boarling',   tameLevel: 18, perk: { melee: 5 } },
+};
+
 // Hidden things to stumble on while exploring — deliberately NOT shown on the map or quest
 // arrow. Walk near and investigate for a one-time reward. Persisted once found (save.js).
 export const DISCOVERIES = [

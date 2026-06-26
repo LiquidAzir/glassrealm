@@ -44,6 +44,8 @@ export function createSave(G) {
       audioMuted: G.audio ? G.audio.muted : false,
       worldScale: WORLD_SCALE,
       collection: G.collection ? [...G.collection] : [],
+      pets: G.pets ? [...G.pets] : [],
+      activePet: G.activePet || undefined,
       clue: G.activeClue || undefined,
       diaries: G.diaries ? [...G.diaries] : [],
       deathMode: G.deathMode || 'standard',

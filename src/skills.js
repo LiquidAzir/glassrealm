@@ -21,6 +21,7 @@ const DEFS = [
   { key: 'construction', name: 'Construction', icon: '🔨' },
   { key: 'agility',     name: 'Agility',     icon: '🤸' },
   { key: 'prayer',      name: 'Prayer',      icon: '✨' },
+  { key: 'beastmastery', name: 'Beastmastery', icon: '🐾' },
 ];
 
 const DEFAULTS = {};

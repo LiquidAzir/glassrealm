@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ITEMS, SHOP, PRAYERS, ACHIEVEMENTS, ENEMIES, WEAKNESS, ATK_STYLE } from './content.js';
 import { WORLD_SCALE } from './scale.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Pets', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -134,7 +134,7 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Pets: renderPets, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
@@ -142,6 +142,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Prayer') return PRAYERS.length;
     if (TABS[tab] === 'Skills') return 4 + G.skills.DEFS.length;
     if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
+    if (TABS[tab] === 'Pets') return G.petRows().length;
     if (TABS[tab] === 'Diary') return 6;
     if (TABS[tab] === 'Tasks') return G.diaryRows().length;
     return 0;
@@ -168,6 +169,8 @@ export function createUI(G) {
     } else if (TABS[tab] === 'Quests') {
       const act = G.quests.all().filter((q) => q.status === 'active'); const q = act[row];
       if (q) { G.trackQuest(q.id); renderMenu(); }
+    } else if (TABS[tab] === 'Pets') {
+      const r = G.petRows()[row]; if (r) { G.setActivePet(r.kind); renderMenu(); }
     } else if (TABS[tab] === 'Diary') {
       if (row === 0 && G.audio) { G.audio.toggleMuted(); G.save.save(); renderMenu(); }
       else if (row === 1 && G.requestRestart) G.requestRestart();
@@ -303,6 +306,15 @@ export function createUI(G) {
     const got = keys.filter((k) => have.has(k)).length;
     let html = `<div class="section-head">Collection Log — ${got}/${keys.length} gear</div>`;
     html += keys.map((k) => { const it = ITEMS[k], owned = have.has(k); return `<div class="row" style="${owned ? '' : 'opacity:.4'}"><span class="row-icon">${it.icon}</span><div class="row-main"><div class="row-title">${owned ? it.name : '???'}</div><div class="row-sub">${owned ? it.desc : 'Not yet collected'}</div></div>${owned ? '<div class="row-trail">✓</div>' : ''}</div>`; }).join('');
+    els.menuBody.innerHTML = html;
+  }
+  function renderPets() {
+    const rows = G.petRows();
+    let html = `<div class="section-head">Pets — ${rows.length} tamed · Beastmastery ${G.skills.level('beastmastery')}</div>`;
+    if (!rows.length) html += '<div class="row"><div class="row-main"><div class="row-title">No pets yet</div><div class="row-sub">Walk up to a wild animal and tap “Tame”. Higher Beastmastery charms rarer beasts; bosses rarely drop a trophy pet.</div></div></div>';
+    rows.forEach((r, i) => {
+      html += `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${r.icon}</span><div class="row-main"><div class="row-title">${r.name}${r.active ? ' <span style="color:var(--gold)">· following</span>' : ''}</div><div class="row-sub">${r.perk || 'companion'} · tap to ${r.active ? 'dismiss' : 'summon'}</div></div></div>`;
+    });
     els.menuBody.innerHTML = html;
   }
   function renderTasks() {
