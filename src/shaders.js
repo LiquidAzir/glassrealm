@@ -4,7 +4,7 @@
 // On the additive waveguide this makes characters read crisply against the see-through background
 // instead of dissolving into it. Applied only to LIT (Lambert) materials — they carry the `normal`
 // and `vViewPosition` the rim needs. Kept subtle; tune `strength` to taste.
-export function rimLight(material, strength = 0.6, tint = [0.05, 0.09, 0.12], power = 3.0) {
+export function rimLight(material, strength = 0.5, tint = [0.04, 0.07, 0.10], power = 3.0) {
   const prev = material.onBeforeCompile;
   material.onBeforeCompile = (sh) => {
     if (prev) prev(sh);

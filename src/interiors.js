@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { rimLight } from './shaders.js';
 
 // Building interiors. Rooms are built on a far-away "interior plot" (IX,IZ); the
 // overworld fogs to black around it, so we just teleport the player in/out and
@@ -9,7 +10,7 @@ import * as THREE from 'three';
 const IX = 1500, IZ = 1500, FY = 0;
 const RW = 16, RD = 14, HW = RW / 2, HD = RD / 2, WALL_H = 5;
 
-const mat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+const mat = (c) => rimLight(new THREE.MeshLambertMaterial({ color: c, flatShading: true }));   // indoor keepers/patrons + furniture get the same silhouette rim as the outdoor world
 const glow = (c) => new THREE.MeshBasicMaterial({ color: c });
 const M = {
   floor: mat(0x7a5a38), wall: mat(0xc2ad86), beam: mat(0x5a4026), wood: mat(0x6e4a2b),

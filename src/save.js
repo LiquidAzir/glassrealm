@@ -43,6 +43,7 @@ export function createSave(G) {
       tracked: G.trackedQuest || undefined,
       audioMuted: G.audio ? G.audio.muted : false,
       worldScale: WORLD_SCALE,
+      tod: (typeof G.tod === 'number') ? G.tod : undefined,   // time-of-day continuity across reloads
       collection: G.collection ? [...G.collection] : [],
       pets: G.pets ? [...G.pets] : [],
       activePet: G.activePet || undefined,
