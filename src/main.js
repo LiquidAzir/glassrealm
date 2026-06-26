@@ -1485,6 +1485,7 @@ try {
     else G.gainXp(ksk, def.xp);
     G.stats.kills++; G.stats.killsByType[e.enemyKey] = (G.stats.killsByType[e.enemyKey] || 0) + 1;
     if (def.boss) {
+      G.bossFresh = 80; G.bossName = def.name;   // NPCs bark about your fresh kill for ~80s of play
       G.stats.bosses.add(e.enemyKey); world.showTrophy(e.enemyKey);
       const pk = 'pet_' + e.enemyKey;   // ~2.5% (×1.5 with the Slayer luck perk) rare cosmetic boss pet for the Pets tab
       if (!G.pets.has(pk) && Math.random() < 0.025 * (G.slayerPerks.has('luck') ? 1.5 : 1)) { G.pets.add(pk); G.ui.toast(`🏆 Boss pet! A Mini ${def.name} now follows you — summon it from Pets`, 'gold', 4200); if (G.audio) G.audio.sfx('ach'); }
@@ -1751,6 +1752,8 @@ try {
   function pickWeather(biome) { const c = []; for (const k in WEATHER) { const w = WEATHER[k]; if (w.biomes === '*' || w.biomes.includes(biome)) c.push([k, w.weight]); } let tot = c.reduce((s, x) => s + x[1], 0), r = Math.random() * tot; for (const [k, wt] of c) { r -= wt; if (r <= 0) return k; } return 'clear'; }
   function updateWeather(dt) {
     weather.t += dt;
+    G.weatherKind = weather.kind;   // expose for NPC reactive barks
+    if (G.bossFresh > 0) G.bossFresh -= dt;
     if (weather.t >= weather.dur) { weather.t = 0; const nk = pickWeather(nearestBiome()); if (nk !== weather.kind) { weather.kind = nk; weather.fade = 0; if (nk !== 'clear') G.ui.toast(`${WEATHER[nk].icon} ${WEATHER[nk].name}`, '', 2200); } weather.dur = 70 + Math.random() * 80; }
     weather.fade = Math.min(1, weather.fade + dt / 2.5); weather.intensity = weather.fade;
   }

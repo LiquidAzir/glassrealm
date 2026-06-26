@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { NPCS, ENEMIES, ENEMY_SPAWNS, WANDERERS, NPC_VOICE, WANDER_VOICE, NPC_CHATS } from './content.js';
+import { NPCS, ENEMIES, ENEMY_SPAWNS, WANDERERS, NPC_VOICE, WANDER_VOICE, NPC_CHATS, REACT_LINES } from './content.js';
 import { TAU, dist2D } from './util.js';
 import { WORLD_SCALE as WS } from './scale.js';
 import { rimLight } from './shaders.js';
@@ -235,6 +235,23 @@ export function createEntities(scene, world, G) {
       if (dist2D(c.A.pos.x, c.A.pos.z, c.B.pos.x, c.B.pos.z) >= 22) { console.warn('NPC_CHATS: pair too far to converse', c.a, c.b); return false; }
       return true;
     });
+  const pickOne = (a) => a[(Math.random() * a.length) | 0];
+  function reactiveLine() {   // NPCs notice the PLAYER — boss kills, weather, wounds, weapon (returns null to fall through to flavour barks)
+    const R = REACT_LINES; if (!R) return null;
+    if (G.bossFresh > 0 && G.bossName && R.boss && Math.random() < 0.65) return pickOne(R.boss).replace('{boss}', G.bossName);
+    const ps = G.player && G.player.state;
+    if (ps && ps.maxHp && ps.hp / ps.maxHp < 0.3 && R.hurt && Math.random() < 0.6) return pickOne(R.hurt);
+    const wk = G.weatherKind; if (wk && R[wk] && Math.random() < 0.5) return pickOne(R[wk]);
+    const st = G.player && G.player.weapon && G.player.weapon() && G.player.weapon().style;
+    if (st && R[st] && Math.random() < 0.3) return pickOne(R[st]);
+    return null;
+  }
+  function emitBark(ent, v, prefix) {
+    if (!G.ui || !G.ui.sayAt) return;
+    const rx = reactiveLine();
+    if (rx) { G.ui.sayAt(ent.group.position, rx, 3.6, { owner: (prefix || 'npc_') + (ent.def.key || ent.def.name) }); return; }
+    sayVoice(ent, v, prefix);
+  }
   function sayVoice(ent, v, prefix) {
     if (!v || !G.ui || !G.ui.sayAt) return;
     const night = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);   // wearier lines after dusk
@@ -268,13 +285,13 @@ export function createEntities(scene, world, G) {
     for (const n of npcs) {   // solo ambient barks (skip anyone mid-conversation)
       if (n.busy) continue;
       n.barkT -= dt;
-      if (n.barkT <= 0) { n.barkT = 9 + Math.random() * 11; if (near2(n) < EAR2) sayVoice(n, NPC_VOICE[n.def.key]); }
+      if (n.barkT <= 0) { n.barkT = 9 + Math.random() * 11; if (near2(n) < EAR2) emitBark(n, NPC_VOICE[n.def.key]); }
     }
     for (const m of mobs) {   // lone wanderers mutter too (their bubble follows them)
       if (m.squad || !m.def || m.def.kind !== 'wander') continue;
       if (m.barkT == null) m.barkT = 8 + Math.random() * 14;
       m.barkT -= dt;
-      if (m.barkT <= 0) { m.barkT = 12 + Math.random() * 12; if (near2(m) < EAR2) sayVoice(m, WANDER_VOICE[m.def.name], 'wm_'); }
+      if (m.barkT <= 0) { m.barkT = 12 + Math.random() * 12; if (near2(m) < EAR2) emitBark(m, WANDER_VOICE[m.def.name], 'wm_'); }
     }
   }
 
