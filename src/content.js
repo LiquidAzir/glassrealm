@@ -504,6 +504,28 @@ export const DYE_PALETTE = {
   ivory: 0xf0ead0, shadow: 0x4a3a6a,
 };
 
+// Factions & reputation — favour earned passively through play. Each tier grants standing rewards:
+//   b: combat bonuses summed across all factions' current tiers (fold into gearBonus)
+//   shop: buy-price multiplier (best/lowest wins) · sell: sell-price multiplier (best/highest wins)
+//   gather: gathering-time multiplier (best/lowest wins). Rep caps at the final tier's threshold.
+export const FACTIONS = {
+  hearth_watch: { name: 'Hearth Watch', icon: '🔥', earn: 'completing quests for the realm', tiers: [
+    { rep: 0, name: 'Stranger' }, { rep: 600, name: 'Ally', shop: 0.96 }, { rep: 1800, name: 'Guardian', shop: 0.92, b: { def: 2 } },
+    { rep: 4000, name: 'Warden', shop: 0.88, b: { def: 4, maxhp: 8 } }, { rep: 7000, name: 'First Keeper', shop: 0.82, b: { def: 6, maxhp: 15, melee: 2, ranged: 2, magic: 2 } } ] },
+  slayer_order: { name: 'Slayer Order', icon: '⚔️', earn: 'slaying foes and bosses', tiers: [
+    { rep: 0, name: 'Recruit' }, { rep: 600, name: 'Slayer', b: { melee: 2 } }, { rep: 1800, name: 'Vanguard', b: { melee: 5, ranged: 2 } },
+    { rep: 4000, name: 'Drakeslayer', b: { melee: 9, ranged: 4 } }, { rep: 7000, name: 'Grandmaster', b: { melee: 14, ranged: 7, def: 3 } } ] },
+  wardens_wild: { name: 'Wardens of the Wild', icon: '🌿', earn: 'gathering — chopping, mining, fishing, foraging', tiers: [
+    { rep: 0, name: 'Visitor' }, { rep: 600, name: 'Friend', gather: 0.97 }, { rep: 1800, name: 'Warden', gather: 0.93, b: { ranged: 3 } },
+    { rep: 4000, name: 'Naturalist', gather: 0.88, b: { ranged: 6, maxhp: 8 } }, { rep: 7000, name: 'Keeper of the Wilds', gather: 0.82, b: { ranged: 10, maxhp: 14, magic: 2 } } ] },
+  mages_circle: { name: "Mages' Circle", icon: '🔮', earn: 'casting spells', tiers: [
+    { rep: 0, name: 'Novice' }, { rep: 600, name: 'Apprentice', b: { magic: 3 } }, { rep: 1800, name: 'Arcanist', shop: 0.94, b: { magic: 7 } },
+    { rep: 4000, name: 'Sage', b: { magic: 12, def: 2 } }, { rep: 7000, name: 'Archmage', b: { magic: 18, def: 4, maxhp: 10 } } ] },
+  merchants_guild: { name: "Merchants' Guild", icon: '🪙', earn: 'trading at shops and donating gold', tiers: [
+    { rep: 0, name: 'Peddler' }, { rep: 600, name: 'Trader', sell: 1.05 }, { rep: 1800, name: 'Merchant', sell: 1.10, shop: 0.95 },
+    { rep: 4000, name: 'Factor', sell: 1.15, shop: 0.90 }, { rep: 7000, name: 'Venture Master', sell: 1.22, shop: 0.85, b: { maxhp: 10 } } ] },
+};
+
 // Hidden things to stumble on while exploring — deliberately NOT shown on the map or quest
 // arrow. Walk near and investigate for a one-time reward. Persisted once found (save.js).
 export const DISCOVERIES = [

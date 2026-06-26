@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE, FACTIONS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -108,6 +108,24 @@ try {
     player.setCosmetic(G.cosmetic);
   }
 
+  // ---------- Factions & reputation: favour earned through play → passive bonuses + shop discounts ----------
+  G.factionRep = {};
+  Object.keys(FACTIONS).forEach((k) => { G.factionRep[k] = (saved && saved.factionRep && saved.factionRep[k]) || 0; });
+  const factionMax = (k) => FACTIONS[k].tiers[FACTIONS[k].tiers.length - 1].rep;
+  G.factionTierIdx = (k) => { const t = FACTIONS[k].tiers, rep = G.factionRep[k] || 0; let i = 0; for (let j = 0; j < t.length; j++) if (rep >= t[j].rep) i = j; return i; };
+  G.factionTier = (k) => FACTIONS[k].tiers[G.factionTierIdx(k)];
+  G.gainFactionRep = (k, amt) => {
+    if (!FACTIONS[k] || !amt) return;
+    const before = G.factionTierIdx(k);
+    G.factionRep[k] = Math.max(0, Math.min(factionMax(k), (G.factionRep[k] || 0) + amt));
+    if (G.factionTierIdx(k) > before) { const t = G.factionTier(k); G.ui.toast(`${FACTIONS[k].icon} ${FACTIONS[k].name} — ${t.name}!`, 'gold', 3200); if (G.audio) G.audio.sfx('ach'); applyMaxHp(); }
+  };
+  // aggregate the standing rewards of every faction's current tier
+  G.factionBonus = () => { const b = { def: 0, melee: 0, ranged: 0, magic: 0, maxhp: 0 }; for (const k in FACTIONS) { const r = G.factionTier(k).b; if (r) for (const s in r) if (s in b) b[s] += r[s]; } return b; };
+  G.factionShopMult = () => { let m = 1; for (const k in FACTIONS) { const s = G.factionTier(k).shop; if (s && s < m) m = s; } return m; };
+  G.factionSellMult = () => { let m = 1; for (const k in FACTIONS) { const s = G.factionTier(k).sell; if (s && s > m) m = s; } return m; };
+  G.factionGatherMult = () => { let m = 1; for (const k in FACTIONS) { const s = G.factionTier(k).gather; if (s && s < m) m = s; } return m; };
+
   { const d = world.findClear(player.group.position.x, player.group.position.z); player.group.position.set(d.x, world.height(d.x, d.z), d.z); }   // never load stuck inside a (new) solid
 
   const skillName = (key) => (G.skills.DEFS.find((d) => d.key === key) || { name: key }).name;
@@ -137,6 +155,8 @@ try {
     }
     const pb = G.petBonus && G.petBonus();   // active companion pet's perk
     if (pb) for (const k in pb) if (k in b) b[k] += pb[k];
+    const fb = G.factionBonus && G.factionBonus();   // standing with the realm's factions
+    if (fb) for (const k in fb) if (k in b) b[k] += fb[k];
     return b;
   }
   G.gearBonus = gearBonus;
@@ -285,6 +305,10 @@ try {
     const r = G.skills.addXp(key, amt);
     G.ui.xpDrop(`+${r.amount} ${skillName(key)}`);   // show the prestige-boosted amount actually granted
     if (r.leveled) { G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`); if (G.audio) G.audio.sfx('level'); if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, 0xffd45f, { n: 14, spread: 3.2, up: 4.2, life: 0.8 }); if (r.level === 99 && G.earnCape) G.earnCape(key); if (G.ach) G.ach.evaluate(); }
+    if (G.gainFactionRep) {   // gathering pleases the Wardens; spellcasting the Mages' Circle
+      if (key === 'woodcutting' || key === 'mining' || key === 'fishing' || key === 'foraging') G.gainFactionRep('wardens_wild', 6);
+      else if (key === 'magic') G.gainFactionRep('mages_circle', 7);
+    }
   };
 
   const readyToasted = new Set();
@@ -393,6 +417,7 @@ try {
     } else if (s.kind === 'colosseum') { G.startColosseum(s); return;
     } else if (s.kind === 'trawler') { G.trawlerTap(); return;
     } else if (s.kind === 'wardrobe') { G.openWardrobe(); return;
+    } else if (s.kind === 'faction') { G.openFactions(); return;
     } else if (s.kind === 'cook') { G.openCook(); return;
     } else if (s.kind === 'furnace') {
       G.openSmelt(); return;
@@ -557,19 +582,19 @@ try {
 
   // Dynamic market: a per-item price multiplier drifts over time; buy & sell share it (no same-item
   // arbitrage), plus a transient event modifier (caravan = cheap buys, shortage = rich sells).
-  G.buyPrice = (key, base) => Math.max(1, Math.round(base * (G.market.mult[key] || 1) * (G.market.event && G.market.event.kind === 'caravan' ? 0.75 : 1)));
-  G.sellPrice = (key, base) => Math.max(1, Math.round(base * (G.market.mult[key] || 1) * (G.market.event && G.market.event.kind === 'shortage' ? 1.3 : 1)));
+  G.buyPrice = (key, base) => Math.max(1, Math.round(base * (G.market.mult[key] || 1) * (G.market.event && G.market.event.kind === 'caravan' ? 0.75 : 1) * (G.factionShopMult ? G.factionShopMult() : 1)));
+  G.sellPrice = (key, base) => Math.max(1, Math.round(base * (G.market.mult[key] || 1) * (G.market.event && G.market.event.kind === 'shortage' ? 1.3 : 1) * (G.factionSellMult ? G.factionSellMult() : 1)));
   G.buyItem = (key) => {
     const s = SHOP.stock.find((x) => x.key === key); if (!s) return;
     const price = G.buyPrice(key, s.price);
-    if (G.inventory.count('gold') >= price) { G.inventory.remove('gold', price); G.inventory.add(key, 1); G.ui.toast(`Bought ${ITEMS[key].name} (${price}g)`, 'gold', 1300); G.save.save(); }
+    if (G.inventory.count('gold') >= price) { G.inventory.remove('gold', price); G.inventory.add(key, 1); G.ui.toast(`Bought ${ITEMS[key].name} (${price}g)`, 'gold', 1300); if (G.gainFactionRep) G.gainFactionRep('merchants_guild', 3); G.save.save(); }
     else G.ui.toast('Not enough gold', 'bad', 1400);
   };
   G.sellItem = (key) => {
     const base = SHOP.sell[key]; if (!base || !G.inventory.has(key, 1)) return;
     const p = G.sellPrice(key, base);
     G.inventory.remove(key, 1); G.inventory.add('gold', p);
-    G.ui.toast(`Sold ${ITEMS[key].name}  +${p}g`, 'gold', 1300); G.save.save();
+    G.ui.toast(`Sold ${ITEMS[key].name}  +${p}g`, 'gold', 1300); if (G.gainFactionRep) G.gainFactionRep('merchants_guild', 3); G.save.save();
   };
   const priceArrow = (p, base) => (p > base ? ' ↑' : p < base ? ' ↓' : '');
   const shopCfg = {
@@ -930,6 +955,32 @@ try {
     },
   };
   G.openWardrobe = () => { setMode('picker'); G.ui.openPicker(wardrobeCfg); };
+
+  // ---------- Faction Hall: review your standings + donate gold for favour ----------
+  G.donateToFaction = (k, gold) => {
+    if (!FACTIONS[k]) return;
+    if (G.inventory.count('gold') < gold) { G.ui.toast('Not enough gold', 'bad', 1400); return; }
+    G.inventory.remove('gold', gold);
+    const rep = Math.round(gold / 4);   // 4g = 1 favour
+    G.gainFactionRep(k, rep);
+    G.ui.toast(`Donated ${gold}g to ${FACTIONS[k].name} · +${rep} favour`, 'gold', 2400);
+    if (G.audio) G.audio.sfx('pickup'); G.save.save();
+  };
+  const factionDonateCfg = (k) => ({
+    title: FACTIONS[k].name + ' — Donate', hint: '↑ ↓ select · tap donate · ↑↓↑↓ back',
+    rows: () => [100, 500, 2000].map((g) => ({ section: 'Donate gold for favour (4g = 1)', icon: '🪙', title: `Donate ${g}g`, sub: `+${Math.round(g / 4)} favour`, right: G.inventory.count('gold') >= g ? '' : '🔒', data: { gold: g } })),
+    onSelect: (r) => { G.donateToFaction(k, r.data.gold); G.ui.openPicker(factionDonateCfg(k)); },
+  });
+  const factionsCfg = {
+    title: 'Faction Hall — your standings', hint: '↑ ↓ select · tap to donate · ↑↓↑↓ leave',
+    rows: () => Object.keys(FACTIONS).map((k) => {
+      const f = FACTIONS[k], rep = G.factionRep[k] || 0, ti = G.factionTierIdx(k), t = f.tiers[ti], nx = f.tiers[ti + 1];
+      const prog = nx ? ` · ${rep}/${nx.rep} → ${nx.name}` : ' · MAX rank';
+      return { section: 'Tap a faction to donate gold', icon: f.icon, title: `${f.name} — ${t.name}`, sub: `Favour from ${f.earn}${prog}`, right: `${rep}`, data: { k } };
+    }),
+    onSelect: (r) => G.ui.openPicker(factionDonateCfg(r.data.k)),
+  };
+  G.openFactions = () => { setMode('picker'); G.ui.openPicker(factionsCfg); };
 
   // ---------- interactive herblore: brew potions at a cauldron (level-gated, herb + secondary) ----------
   const maxBrew = (r) => { let m = Infinity; for (const k in r.in) m = Math.min(m, Math.floor(G.inventory.count(k) / r.in[k])); return m; };
@@ -1438,10 +1489,11 @@ try {
     G.ui.toast(`Defeated ${def.name} · +${names.join(', ')}`, 'gold', 2200);
     G.quests.notifyKill(e.enemyKey);
     if (!G.activeClue && Math.random() < 0.04) { G.inventory.add('clue_scroll', 1); G.ui.toast('📜 A clue scroll dropped!', 'gold', 2800); }
+    if (G.gainFactionRep) G.gainFactionRep('slayer_order', def.boss ? 100 : 8);   // the Slayer Order prizes the hunt
     G.ach.evaluate(); checkQuestReady(); G.save.save();
   };
   G.onQuestAccepted = (id, def) => { G.trackedQuest = id; G.ui.toast(`Quest accepted: ${def.name}`, 'good', 2600); G.save.save(); };   // auto-select the quest you just took so the arrow guides it
-  G.onQuestComplete = (id, def) => { if (G.trackedQuest === id) G.trackedQuest = null; G.ui.toast(`Quest complete: ${def.name}!`, 'good', 3400); readyToasted.delete(id); G.save.save(); };
+  G.onQuestComplete = (id, def) => { if (G.trackedQuest === id) G.trackedQuest = null; G.ui.toast(`Quest complete: ${def.name}!`, 'good', 3400); if (G.gainFactionRep) G.gainFactionRep('hearth_watch', def.saga ? 220 : 120); readyToasted.delete(id); G.save.save(); };
 
   // ---------- mode state machine ----------
   let mode = 'world';
@@ -1509,7 +1561,7 @@ try {
     if (t.kind !== 'enemy') clearCombat();   // tapping anything else breaks off the fight
     const lvl = (k) => G.skills.level(k);
     // best gathering tool you own for a skill auto-speeds the channel (Toolsmithing payoff)
-    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f * (G.petGather ? G.petGather() : 1) * (G.perkGather ? G.perkGather(skill) : 1) * (G.weatherGather ? G.weatherGather(skill) : 1); };
+    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f * (G.petGather ? G.petGather() : 1) * (G.perkGather ? G.perkGather(skill) : 1) * (G.weatherGather ? G.weatherGather(skill) : 1) * (G.factionGatherMult ? G.factionGatherMult() : 1); };
     if (t.kind === 'tree') startChannel(Math.max(1.8, (4 - lvl('woodcutting') * 0.03) * toolSpeed('woodcutting')), 'chop', 'Chopping…', () => G.chopTree(t.ref));
     else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
     else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(3, (7 - lvl('mining') * 0.04) * toolSpeed('mining')), 'mine', 'Mining…', () => G.mineOre(t.ref)); }

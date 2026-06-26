@@ -956,6 +956,20 @@ export function createWorld(scene, seed = 1337) {
     stations.push({ kind: 'wardrobe', label: 'Wardrobe — transmog & dyes', x: wx, z: wz, y: wy });
     locations.push({ name: 'The Wardrobe', x: wx, z: wz });
   })();
+
+  // The Faction Hall — a banner stone in Hearth Village to review standings + donate for favour
+  (function factionHall() {
+    const reg = byKey.verdant; if (!reg) return;
+    const p = snapLand(reg.x - 13, reg.z + 9), fx = p.x, fz = p.z, fy = height(fx, fz);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.85, 0.5, 8), lmat(0x8a8270)); base.position.set(fx, fy + 0.25, fz); group.add(base);
+    const stone = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.7, 0.3), lmat(0xb6ad95)); stone.position.set(fx, fy + 1.35, fz); group.add(stone);
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.06), lmat(0xc04040)); banner.position.set(fx, fy + 1.5, fz + 0.18); group.add(banner);
+    const finial = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), new THREE.MeshBasicMaterial({ color: 0xffd24a })); finial.position.set(fx, fy + 2.35, fz); group.add(finial);
+    shimMeshes.push({ m: finial, baseY: fy + 2.35, seed: 5, kind: 'spin' });
+    solids.push({ x: fx, z: fz, r: 0.85 });
+    stations.push({ kind: 'faction', label: 'Faction Hall — standings & favour', x: fx, z: fz, y: fy });
+    locations.push({ name: 'The Faction Hall', x: fx, z: fz });
+  })();
   for (const dg of DUNGEONS) locations.push({ name: dg.name, x: dg.x, z: dg.z });
   locations.push({ name: 'The Mistmoor', x: byKey.mistmoor.x, z: byKey.mistmoor.z });
   locations.push({ name: 'Tide Isle', x: byKey.tideisle.x, z: byKey.tideisle.z });

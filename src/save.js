@@ -51,6 +51,7 @@ export function createSave(G) {
       wornCape: G.wornCape || undefined,
       colBest: G.colBest || 0,
       trawlerBest: G.trawlerBest || 0,
+      factionRep: G.factionRep ? { ...G.factionRep } : undefined,
       clue: G.activeClue || undefined,
       diaries: G.diaries ? [...G.diaries] : [],
       deathMode: G.deathMode || 'standard',
