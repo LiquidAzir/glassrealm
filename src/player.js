@@ -122,7 +122,10 @@ export function createPlayer(scene, world) {
   }
   function setWeaponMesh(key) {
     clearHolder();
-    const dispKey = key ? ((cosmetic && cosmetic.weapon) || key) : null;   // transmog only reskins a weapon you actually wield
+    let cw = (key && cosmetic && cosmetic.weapon) ? cosmetic.weapon : null;   // transmog only reskins a weapon you actually wield
+    // only reskin to a REAL weapon of the SAME combat style — keeps the attack animation matching the silhouette + a stale/invalid key can't crash the model lookup
+    if (cw && (!weaponOf(cw) || !weaponOf(key) || weaponOf(cw).style !== weaponOf(key).style)) cw = null;
+    const dispKey = cw || key;
     if (!dispKey) { weaponTint = 0xdfe6ef; return; }   // unarmed → just fists; a soft pale swoosh for punches (not stale colour / pure white)
     const it = weaponOf(dispKey);
     const md = WEAPON_MODEL[dispKey] || [it.style === 'ranged' ? 'bow' : it.style === 'magic' ? 'staff' : 'sword', 0xcdd6e0];

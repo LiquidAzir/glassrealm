@@ -105,6 +105,7 @@ try {
   {
     const sc = saved && saved.player && saved.player.cosmetic;
     G.cosmetic = sc ? { weapon: sc.weapon || null, armor: sc.armor || null, shield: sc.shield || null, dyes: { weapon: (sc.dyes && sc.dyes.weapon) || null, armor: (sc.dyes && sc.dyes.armor) || null, shield: (sc.dyes && sc.dyes.shield) || null } } : freshCosmetic();
+    ['weapon', 'armor', 'shield'].forEach((s) => { if (G.cosmetic[s] && !ITEMS[G.cosmetic[s]]) G.cosmetic[s] = null; });   // drop stale skins (item no longer exists) so the renderer can't choke
     player.setCosmetic(G.cosmetic);
   }
 
@@ -862,6 +863,7 @@ try {
 
   // ---------- Fishing Trawler: bail the rising water while the net fills (Saltcrest Harbor dock) ----------
   const TRAWLER_DUR = 55, TR_WATER_RISE = 16, TR_BAIL = 26, TR_NET = 12, TR_FLOOD = 100, TR_NET_WIN = 100, TR_BAIL_DUR = 0.7;
+  const trawlerDock = world.stations.find((s) => s.kind === 'trawler');   // for the leave-the-dock guard
   G.trawlerBest = (saved && saved.trawlerBest) || 0;
   function trawlerEnd(tr, outcome) {
     G.trawler = null;
@@ -910,6 +912,7 @@ try {
   };
   function updateTrawler(dt) {
     const tr = G.trawler; if (!tr) return;
+    if (trawlerDock && dist2D(player.position.x, player.position.z, trawlerDock.x, trawlerDock.z) > 14) { G.trawler = null; G.ui.toast('You step away from the trawler — the run ends', '', 2200); return; }   // no ghost session ticking away in another region
     tr.timer -= dt; tr.water = Math.min(100, tr.water + TR_WATER_RISE * dt);
     if (tr.water >= TR_FLOOD) { trawlerEnd(tr, 'flood'); return; }
     if (tr.timer <= 0) trawlerEnd(tr, 'time');
@@ -921,10 +924,12 @@ try {
   G.setTransmog = (slot, key) => { const v = (key && ITEMS[key]) ? key : null; G.cosmetic[slot] = v; player.setCosmetic(G.cosmetic); G.ui.toast(v ? `${slot} skin → ${ITEMS[v].name}` : `${slot} skin cleared`, 'gold', 1800); G.save.save(); };
   G.setDye = (slot, color) => { G.cosmetic.dyes[slot] = (color != null) ? color : null; player.setCosmetic(G.cosmetic); G.ui.toast(color != null ? `${slot} dyed ${hex6(color)}` : `${slot} dye cleared`, 'gold', 1600); G.save.save(); };
   G.openTransmogPicker = (slot) => {
-    const have = [...(G.collection || [])].filter((k) => ITEMS[k] && ITEMS[k].type === slot).sort();
+    const eqW = G.player.state.equipment.weapon;
+    const eqStyle = (slot === 'weapon' && eqW && ITEMS[eqW]) ? ITEMS[eqW].style : null;   // weapon skins limited to the SAME style so attack anims stay matched
+    const have = [...(G.collection || [])].filter((k) => ITEMS[k] && ITEMS[k].type === slot && (!eqStyle || ITEMS[k].style === eqStyle)).sort();
     G.ui.openPicker({
       title: slot[0].toUpperCase() + slot.slice(1) + ' skin', hint: '↑ ↓ select · tap apply · ↑↓↑↓ leave',
-      empty: `No ${slot} gear in your Collection yet — obtain some first.`,
+      empty: slot === 'weapon' ? 'No same-style weapon skins in your Collection yet.' : `No ${slot} gear in your Collection yet — obtain some first.`,
       rows: () => [{ section: 'Transmog', icon: '🚫', title: 'Default (equipped look)', sub: 'clear the skin', data: { key: null } }].concat(have.map((k) => ({ section: 'Transmog', icon: ITEMS[k].icon, title: ITEMS[k].name, sub: ITEMS[k].desc || '', right: G.cosmetic[slot] === k ? '✓' : '', data: { key: k } }))),
       onSelect: (r) => { G.setTransmog(slot, r.data.key); G.ui.openPicker(wardrobeCfg); },
     });
