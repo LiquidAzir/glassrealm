@@ -470,8 +470,10 @@ export function createEntities(scene, world, G) {
       if (a) { const s = Math.sin(T * 1.3 + n.phase) * 0.09; a.armL.rotation.x = s; a.armR.rotation.x = -s; }
     }
     // ambient mobs — squads patrol a loop in formation, wanderers stroll near home; all walk-cycle
+    const isNight = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);   // routine: the town winds down after dusk
     for (const m of mobs) {
       if (dist2D(m.pos.x, m.pos.z, player.position.x, player.position.z) > 75 * WS) continue;   // freeze when far (perf)
+      const spd = isNight ? m.speed * (m.squad ? 0.78 : 0.55) : m.speed;   // slower at night (wanderers also keep close to home, below)
       let tx, tz, stop = 1.2;
       if (m.squad) {
         if (m.idx === 0) {
@@ -486,7 +488,7 @@ export function createEntities(scene, world, G) {
       } else {
         if (!m.target || dist2D(m.pos.x, m.pos.z, m.target.x, m.target.z) < 1.4) {
           m.pauseT -= dt;
-          if (m.pauseT <= 0) { const ang = Math.random() * TAU, r = Math.random() * m.radius; m.target = { x: m.home.x + Math.cos(ang) * r, z: m.home.z + Math.sin(ang) * r }; m.pauseT = 1.5 + Math.random() * 3; }
+          if (m.pauseT <= 0) { const ang = Math.random() * TAU, r = Math.random() * (isNight ? m.radius * 0.32 : m.radius); m.target = { x: m.home.x + Math.cos(ang) * r, z: m.home.z + Math.sin(ang) * r }; m.pauseT = (isNight ? 3.5 : 1.5) + Math.random() * 3; }   // hug home + dawdle at night
         }
         tx = m.target ? m.target.x : m.pos.x; tz = m.target ? m.target.z : m.pos.z;
       }
@@ -494,7 +496,7 @@ export function createEntities(scene, world, G) {
       let moving = false;
       if (dd > stop) {
         m.heading = Math.atan2(dx, dz);
-        const nx = m.pos.x + Math.sin(m.heading) * m.speed * dt, nz = m.pos.z + Math.cos(m.heading) * m.speed * dt;
+        const nx = m.pos.x + Math.sin(m.heading) * spd * dt, nz = m.pos.z + Math.cos(m.heading) * spd * dt;
         if (world.isWalkable(nx, nz)) { m.group.position.x = nx; m.group.position.z = nz; moving = true; }
       }
       m.group.position.y = world.height(m.pos.x, m.pos.z);
