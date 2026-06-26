@@ -75,6 +75,7 @@ try {
   G.farm = createFarm(saved && saved.farm);
   G.farm.tick();      // offline catch-up: grow livestock + accrue produce/earnings
   G.market = { mult: (saved && saved.market && saved.market.mult) || {}, event: null, nextIn: 80, _d: 0 };   // dynamic prices + world events
+  G.bossFresh = 0; G.bossName = null;   // recent-boss-kill flag for NPC reactive barks (defined before any frame reads it)
   const EVENT_NAME = { caravan: 'Merchant Caravan', shortage: 'Goods Shortage', invasion: 'Town Invasion' };
 
   // restore saved world edits + player
