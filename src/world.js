@@ -263,8 +263,17 @@ export function createWorld(scene, seed = 1337) {
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
 
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600).rotateX(-Math.PI / 2),
-    new THREE.MeshLambertMaterial({ color: 0x2bd6cf, transparent: true, opacity: 0.5, depthWrite: false }));
+  // Sea: a faintly self-lit surface (reads as luminous water on the additive display) that ripples on
+  // the GPU — a subdivided plane displaced by crossed sine waves in the vertex shader.
+  const waveUniform = { value: 0 };
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 96, 96).rotateX(-Math.PI / 2),
+    new THREE.MeshLambertMaterial({ color: 0x2bd6cf, emissive: 0x0a3a44, transparent: true, opacity: 0.52, depthWrite: false }));
+  water.material.onBeforeCompile = (sh) => {
+    sh.uniforms.uWave = waveUniform;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uWave;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y += sin(transformed.x * 0.12 + uWave) * 0.22 + cos(transformed.z * 0.1 + uWave * 0.8) * 0.16;');
+  };
   water.position.set(CX, WATER_Y, CZ); group.add(water);
 
   // --- prop scatter (per region, by biome config) ------------------------
@@ -1034,6 +1043,7 @@ export function createWorld(scene, seed = 1337) {
     tick(dt) {
       animT += dt;
       windUniform.value = animT * 1.1;   // drives the GPU canopy sway
+      waveUniform.value = animT * 1.4;   // drives the GPU sea ripples
       for (const f of fireMeshes) { f.m.scale.setScalar(0.82 + Math.sin(animT * 9 + f.seed) * 0.18); f.m.position.y = f.baseY + Math.sin(animT * 13 + f.seed) * 0.05; }
       for (const o of orbMeshes) { o.m.rotation.y = animT * 0.8; o.m.position.y = o.baseY + Math.sin(animT * 1.4 + o.seed) * 0.4; }
       for (const s of shimMeshes) { if (s.kind === 'spin') s.m.rotation.y = animT * 0.6 + s.seed; else if (s.kind === 'pulse') s.m.scale.setScalar(0.9 + Math.sin(animT * 2 + s.seed) * 0.12); s.m.position.y = s.baseY + Math.sin(animT * 1.1 + s.seed) * 0.25; }
