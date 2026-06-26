@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TAU, damp } from './util.js';
 import { weaponOf } from './content.js';
+import { rimLight } from './shaders.js';
 
 const SPEED = 8.0;          // units/sec
 const TURN = 2.4;           // rad/sec
@@ -51,11 +52,11 @@ export function createPlayer(scene, world) {
   const body = new THREE.Group();      // bobs while walking; keeps ground calc clean
   group.add(body);
 
-  const tunic = new THREE.MeshLambertMaterial({ color: 0x36d1c4, flatShading: true });
-  const skin = new THREE.MeshLambertMaterial({ color: 0xf2c79a, flatShading: true });
-  const dark = new THREE.MeshLambertMaterial({ color: 0x2a3340, flatShading: true });
-  const steel = new THREE.MeshLambertMaterial({ color: 0xcdd6e0, flatShading: true });
-  const woodMat = new THREE.MeshLambertMaterial({ color: 0x6e4a2b, flatShading: true });
+  const tunic = rimLight(new THREE.MeshLambertMaterial({ color: 0x36d1c4, flatShading: true }));
+  const skin = rimLight(new THREE.MeshLambertMaterial({ color: 0xf2c79a, flatShading: true }));
+  const dark = rimLight(new THREE.MeshLambertMaterial({ color: 0x2a3340, flatShading: true }));
+  const steel = rimLight(new THREE.MeshLambertMaterial({ color: 0xcdd6e0, flatShading: true }));
+  const woodMat = rimLight(new THREE.MeshLambertMaterial({ color: 0x6e4a2b, flatShading: true }));
   const orbMat = new THREE.MeshBasicMaterial({ color: 0x9b6bff });
   const visorMat = new THREE.MeshBasicMaterial({ color: 0x9bf2ff });
 
@@ -97,7 +98,7 @@ export function createPlayer(scene, world) {
   function clearHolder() { for (let i = weaponHolder.children.length - 1; i >= 0; i--) { if (weaponHolder.children[i] !== bladeTip) weaponHolder.remove(weaponHolder.children[i]); } weaponGlows.length = 0; }
   let cosmetic = null;   // { weapon, armor, shield, dyes:{...} } transmog/dye overrides, set by main via setCosmetic()
   function buildWeaponModel(model, tint) {
-    const m = new THREE.MeshLambertMaterial({ color: tint, flatShading: true });
+    const m = rimLight(new THREE.MeshLambertMaterial({ color: tint, flatShading: true }));
     const glow = new THREE.MeshBasicMaterial({ color: tint });
     if (model === 'sword') { weaponHolder.add(mkBox(0.08, 1.0, 0.16, m, 0, -0.55, 0)); weaponHolder.add(mkBox(0.34, 0.1, 0.2, dark, 0, -0.04, 0)); }
     else if (model === 'dagger') { weaponHolder.add(mkBox(0.07, 0.55, 0.14, m, 0, -0.35, 0)); weaponHolder.add(mkBox(0.22, 0.08, 0.16, dark, 0, -0.05, 0)); }
@@ -140,7 +141,7 @@ export function createPlayer(scene, world) {
     if (!dispKey) return;
     const a = ARMOR_MODEL[dispKey] || { color: 0xb9c2cc };
     const dye = cosmetic && cosmetic.dyes ? cosmetic.dyes.armor : null;
-    const m = new THREE.MeshLambertMaterial({ color: (dye != null) ? dye : a.color, flatShading: true });
+    const m = rimLight(new THREE.MeshLambertMaterial({ color: (dye != null) ? dye : a.color, flatShading: true }));
     armorGroup.add(mkBox(0.86, 0.92, 0.58, m, 0, 1.15, 0));                         // chest plate over the tunic
     if (a.shoulders) { armorGroup.add(mkBox(0.34, 0.26, 0.52, m, -0.52, 1.5, 0)); armorGroup.add(mkBox(0.34, 0.26, 0.52, m, 0.52, 1.5, 0)); }
     if (a.helm) armorGroup.add(mkBox(0.44, 0.34, 0.44, m, 0, 2.0, 0));

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { NPCS, ENEMIES, ENEMY_SPAWNS, WANDERERS } from './content.js';
 import { TAU, dist2D } from './util.js';
 import { WORLD_SCALE as WS } from './scale.js';
+import { rimLight } from './shaders.js';
 
 const DEATH_DUR = 0.55;   // topple/shrink/sink before the corpse vanishes
 const ATK_ANIM = 0.3;     // forward-lean bite when an enemy strikes
@@ -9,7 +10,7 @@ const ANIMAL_FREEZE2 = (75 * WS) * (75 * WS);   // animals beyond this (squared)
 
 const SKIN = [0xf2c79a, 0xe0a878, 0xc98a5a, 0x8d5a3a];
 const HAIR = [0x2a2330, 0x5c4326, 0x8a8a92, 0x6e4a2b, 0xb5602a];
-const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+const lmat = (c) => rimLight(new THREE.MeshLambertMaterial({ color: c, flatShading: true }));   // every NPC/enemy/animal gets a soft rim so it reads against the see-through background
 const mkBox = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); return me; };
 
 // A proper bipedal person: hip-pivoted legs + shoulder-pivoted arms (with skin hands),
