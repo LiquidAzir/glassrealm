@@ -1503,7 +1503,7 @@ try {
   // ---------- mode state machine ----------
   let mode = 'world';
   let backSeq = [];                                    // ↑↓↑↓ open/close gesture buffer
-  function setMode(m) { mode = m; backSeq = []; if (m !== 'world') G.ui.hidePrompt(); }   // reset gesture history across overlays
+  function setMode(m) { mode = m; backSeq = []; if (m !== 'world') { G.ui.hidePrompt(); if (G.ui.clearBubbles) G.ui.clearBubbles(); } }   // reset gesture history + clear NPC speech bubbles across overlays
   function openMenu() { cancelChannel(); clearCombat(); setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
   function closeMenu() { G.ui.closeMenu(); setMode(G.inInterior ? 'interior' : 'world'); }
 
@@ -1802,6 +1802,7 @@ try {
     if (mode === 'world') {
       player.update(dt, input);
       G.entities.update(dt, player);
+      G.ui.updateBubbles(dt);   // advance + fade NPC speech bubbles
       world.tick(dt);
       for (const em of world.ambientEmitters) {   // region ambience (embers, fae motes) near the player only
         const dx = player.position.x - em.x, dz = player.position.z - em.z;
@@ -1889,7 +1890,7 @@ try {
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
     setTod(t) { tod = ((t % 1) + 1) % 1; applyTimeOfDay(tod); return tod; },   // jump the clock (dev/preview)
     get tod() { return tod; },
-    step(n = 1) { for (let i = 0; i < n; i++) { updateLighting(); applyWeatherLight(); if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateTrawler(0.016); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { updateLighting(); applyWeatherLight(); if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); G.ui.updateBubbles(0.016); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateTrawler(0.016); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

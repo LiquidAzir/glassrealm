@@ -130,6 +130,45 @@ export function createUI(G) {
     clearTimeout(bannerT); bannerT = setTimeout(() => banner.classList.add('hidden'), 2800);
   }
 
+  // ---- NPC speech bubbles: ambient barks + overheard conversations, projected above heads ----
+  const bubbleLayer = document.createElement('div'); bubbleLayer.id = 'bubbles'; app.appendChild(bubbleLayer);
+  if (!document.getElementById('bubbleCSS')) {
+    const st = document.createElement('style'); st.id = 'bubbleCSS';
+    st.textContent = '#bubbles{position:absolute;inset:0;pointer-events:none;z-index:6}'
+      + '.bubble{position:absolute;transform:translate(-50%,-100%);max-width:190px;padding:3px 8px;'
+      + 'font:600 12px/1.25 system-ui,sans-serif;color:#eafaff;background:rgba(8,16,24,.62);'
+      + 'border:1px solid rgba(155,242,255,.45);border-radius:9px;text-align:center;'
+      + 'text-shadow:0 1px 2px #000;box-shadow:0 0 10px rgba(0,0,0,.5)}'
+      + '.bubble.chat{border-color:rgba(255,212,95,.55);color:#fff3d6}'
+      + '.bubble::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);'
+      + 'border:5px solid transparent;border-top-color:rgba(8,16,24,.62)}';
+    document.head.appendChild(st);
+  }
+  const bubbles = [];
+  // anchor is a live {x,y,z} (e.g. an NPC's group.position) so the bubble follows a mover; owner de-dupes (one bubble per speaker)
+  function sayAt(anchor, text, dur = 3.2, opts = {}) {
+    if (!anchor) return;
+    let b = opts.owner != null ? bubbles.find((x) => x.owner === opts.owner) : null;
+    if (!b) {
+      if (bubbles.length >= 7) { const old = bubbles.shift(); old.el.remove(); }
+      const el = document.createElement('div'); bubbleLayer.appendChild(el);
+      b = { el, owner: opts.owner }; bubbles.push(b);
+    }
+    b.anchor = anchor; b.yOff = opts.yOff != null ? opts.yOff : 2.7; b.t = 0; b.dur = dur;
+    b.el.className = 'bubble' + (opts.chat ? ' chat' : ''); b.el.textContent = text; b.el.style.opacity = '0';
+  }
+  function updateBubbles(dt) {
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+      const b = bubbles[i]; b.t += dt;
+      if (b.t >= b.dur) { b.el.remove(); bubbles.splice(i, 1); continue; }
+      const s = project(b.anchor.x, b.anchor.y + b.yOff, b.anchor.z);
+      if (!s || s.x < -40 || s.x > 640 || s.y < -40 || s.y > 640) { b.el.style.opacity = '0'; continue; }
+      const op = Math.min(Math.min(1, b.t / 0.2), Math.min(1, (b.dur - b.t) / 0.5));   // fade in then out
+      b.el.style.opacity = String(op); b.el.style.left = s.x + 'px'; b.el.style.top = (s.y - 6) + 'px';
+    }
+  }
+  function clearBubbles() { for (const b of bubbles) b.el.remove(); bubbles.length = 0; }
+
   // ---- menu ----
   let tab = 0, row = 0;
   function renderMenu() {
@@ -494,7 +533,7 @@ export function createUI(G) {
   const api = {
     menuOpen: false,
     setCompass, setHealth, setLocation, setPrayer, setSpec, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible, setChannel, hideChannel,
-    hitsplat, xpDrop, levelBanner,
+    hitsplat, xpDrop, levelBanner, sayAt, updateBubbles, clearBubbles,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,
     showSync, hideSync, syncOpen,

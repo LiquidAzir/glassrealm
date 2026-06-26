@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { NPCS, ENEMIES, ENEMY_SPAWNS, WANDERERS } from './content.js';
+import { NPCS, ENEMIES, ENEMY_SPAWNS, WANDERERS, NPC_VOICE, WANDER_VOICE, NPC_CHATS } from './content.js';
 import { TAU, dist2D } from './util.js';
 import { WORLD_SCALE as WS } from './scale.js';
 import { rimLight } from './shaders.js';
@@ -226,6 +226,52 @@ export function createEntities(scene, world, G) {
       mobs.push({ def, group: g, heading: Math.random() * TAU, walkPhase: Math.random() * TAU, speed: def.speed, home: def.home, radius: def.radius, target: null, pauseT: 0, get pos() { return g.position; } });
     }
   });
+
+  // ---- ambient personality: time-of-day barks + overheard NPC conversations (content.js NPC_VOICE / NPC_CHATS) ----
+  npcs.forEach((n) => { n.barkT = 5 + Math.random() * 12; n.busy = false; });
+  const chats = NPC_CHATS.map((c) => ({ a: c.a, b: c.b, lines: c.lines, A: npcs.find((n) => n.def.key === c.a), B: npcs.find((n) => n.def.key === c.b), cd: 10 + Math.random() * 20, active: false, lineI: 0, lineT: 0 })).filter((c) => c.A && c.B);
+  function sayVoice(ent, v, prefix) {
+    if (!v || !G.ui || !G.ui.sayAt) return;
+    const night = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);   // wearier lines after dusk
+    const pool = (night && v.night && v.night.length ? v.night : (v.day || []));
+    const all = pool.concat(v.any || []);
+    if (all.length) G.ui.sayAt(ent.group.position, all[(Math.random() * all.length) | 0], 3.4, { owner: (prefix || 'npc_') + (ent.def.key || ent.def.name) });
+  }
+  function updateSpeech(dt, player) {
+    if (!G.ui || !G.ui.sayAt) return;
+    const px = player.position.x, pz = player.position.z, EAR2 = 24 * 24;   // only chatter within earshot of the player (world coords are WORLD_SCALE'd)
+    const near2 = (e) => { const dx = e.pos.x - px, dz = e.pos.z - pz; return dx * dx + dz * dz; };
+    for (const c of chats) {   // overheard two-NPC conversations, advanced line by line as bubbles
+      if (c.active) {
+        c.lineT -= dt;
+        if (c.lineT <= 0) {
+          if (c.lineI < c.lines.length) {
+            const ln = c.lines[c.lineI++], sp = ln.who === c.a ? c.A : c.B;
+            G.ui.sayAt(sp.group.position, ln.text, 3.6, { owner: 'npc_' + sp.def.key, chat: true });
+            c.lineT = 2.6 + ln.text.length * 0.018;
+          } else { c.active = false; c.A.busy = c.B.busy = false; c.cd = 26 + Math.random() * 36; }
+        }
+      } else {
+        c.cd -= dt;
+        if (c.cd <= 0) {
+          if (!c.A.busy && !c.B.busy && dist2D(c.A.pos.x, c.A.pos.z, c.B.pos.x, c.B.pos.z) < 22 && (near2(c.A) < EAR2 || near2(c.B) < EAR2)) {
+            c.active = true; c.lineI = 0; c.lineT = 0.15; c.A.busy = c.B.busy = true;
+          } else c.cd = 3 + Math.random() * 3;   // retry soon (player out of earshot / busy)
+        }
+      }
+    }
+    for (const n of npcs) {   // solo ambient barks (skip anyone mid-conversation)
+      if (n.busy) continue;
+      n.barkT -= dt;
+      if (n.barkT <= 0) { n.barkT = 9 + Math.random() * 11; if (near2(n) < EAR2) sayVoice(n, NPC_VOICE[n.def.key]); }
+    }
+    for (const m of mobs) {   // lone wanderers mutter too (their bubble follows them)
+      if (m.squad || !m.def || m.def.kind !== 'wander') continue;
+      if (m.barkT == null) m.barkT = 8 + Math.random() * 14;
+      m.barkT -= dt;
+      if (m.barkT <= 0) { m.barkT = 12 + Math.random() * 12; if (near2(m) < EAR2) sayVoice(m, WANDER_VOICE[m.def.name], 'wm_'); }
+    }
+  }
 
   // ambient animals — built from world.animalSpawns; not saved (rebuilt each load). Hens/ducks drop collectible eggs.
   const animals = [];
@@ -539,6 +585,7 @@ export function createEntities(scene, world, G) {
         scene.remove(tg.mesh); telegraphs.splice(i, 1);
       }
     }
+    updateSpeech(dt, player);
   }
 
   function damageEnemy(e, amount) {
@@ -564,5 +611,5 @@ export function createEntities(scene, world, G) {
     for (const e of enemies) e.group.visible = flag ? false : e.alive;
   }
 
-  return { npcs, mobs, animals, eggs, enemies, update, damageEnemy, spawnEnemy, setHidden, setPet, getPet: () => (pet ? pet.kind : null) };
+  return { npcs, mobs, animals, eggs, enemies, chats, update, damageEnemy, spawnEnemy, setHidden, setPet, getPet: () => (pet ? pet.kind : null) };
 }
