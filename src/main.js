@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -651,6 +651,46 @@ try {
       while (Object.keys(r.in).every((k) => G.inventory.has(k, r.in[k]))) { for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(out, 1); G.gainXp('smithing', r.xp); made++; }
       if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xff7a33, { n: 12, spread: 2.2, up: 3, life: 0.8 }); G.ui.toast(`Smelted ${made} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
     });
+  };
+
+  // ---------- spellbook (Magic): teleports + High Alchemy (items→gold) + Superheat (ore→bar anywhere) ----------
+  const ALCH_RATE = 1.5;   // High Alch pays more than a shop would
+  const alchCfg = {
+    title: 'High Alchemy', hint: '↑ ↓ select · tap to alch · ↑↓↑↓ leave', empty: 'No alchemisable items in your pack.',
+    rows: () => G.inventory.list().filter((it) => SHOP.sell[it.key]).map((it) => { const g = Math.max(1, Math.round(SHOP.sell[it.key] * ALCH_RATE)); return { section: 'High Alchemy', icon: it.def.icon, title: `Alch ${it.def.name}`, sub: `→ ${g}g each · ×${it.count}`, right: `🪙 ${g}`, data: { key: it.key } }; }),
+    onSelect: (r) => G.alchItem(r.data.key),
+  };
+  G.openAlch = () => { setMode('picker'); G.ui.openPicker(alchCfg); };
+  G.alchItem = (key) => {
+    if (G.inventory.count(key) < 1 || !SHOP.sell[key]) return;
+    const g = Math.max(1, Math.round(SHOP.sell[key] * ALCH_RATE));
+    G.inventory.remove(key, 1); G.inventory.add('gold', g); G.gainXp('magic', Math.max(6, Math.round(g / 3)));
+    if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.4, player.position.z, 0xffd24a, { n: 8, up: 2.4 });
+    if (G.audio) G.audio.sfx('cast');
+    G.ui.openPicker(alchCfg); G.save.save();   // refresh the list so counts/rows update
+  };
+  const superheatCfg = {
+    title: 'Superheat Item', hint: '↑ ↓ select · tap to smelt · ↑↓↑↓ leave', empty: 'No ore to superheat — mine some first.',
+    rows: () => SMELT.filter((r) => maxSmelt(r) >= 1).map((r) => ({ section: 'Superheat', icon: ITEMS[r.out].icon, title: `Superheat ${ITEMS[r.out].name}`, sub: Object.keys(r.in).map((k) => `${r.in[k]}× ${ITEMS[k].name}`).join(' + ') + ' · +Magic & Smithing XP', right: `×${maxSmelt(r)}`, data: { out: r.out } })),
+    onSelect: (r) => G.superheat(r.data.out),
+  };
+  G.openSuperheat = () => { setMode('picker'); G.ui.openPicker(superheatCfg); };
+  G.superheat = (out) => {
+    const r = SMELT.find((x) => x.out === out); if (!r || maxSmelt(r) < 1) return;   // magic = instant, no furnace/channel
+    for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(out, 1);
+    G.gainXp('smithing', r.xp); G.gainXp('magic', 10);
+    if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0xff7a33, { n: 10, up: 2.6 });
+    if (G.audio) G.audio.sfx('cast');
+    G.ui.openPicker(superheatCfg); G.save.save();
+  };
+  G.castSpell = (key) => {
+    const sp = SPELLS.find((s) => s.key === key); if (!sp) return;
+    if (G.skills.level('magic') < sp.level) { G.ui.toast(`Needs Magic ${sp.level} to cast ${sp.name}`, 'bad', 2200); return; }
+    closeMenu();
+    if (key === 'home') { const v = world.village, d = world.findClear(v.x, v.z + 12); player.group.position.set(d.x, world.height(d.x, d.z), d.z); if (player.snapCamera) player.snapCamera(); G.gainXp('magic', sp.xp); if (G.fx) G.fx.burst(d.x, world.height(d.x, d.z) + 1, d.z, 0x9b6bff, { n: 16, spread: 2.4, up: 3, life: 1 }); if (G.audio) G.audio.sfx('cast'); G.ui.toast('🏠 Teleported to Hearth Village', 'good', 1800); G.save.save(); }
+    else if (key === 'way') { if (!G.waystonesAttuned.size) { G.ui.toast('Attune a waystone first — walk up to one', 'bad', 2600); return; } G.gainXp('magic', sp.xp); G.openTravel(); }
+    else if (key === 'alch') G.openAlch();
+    else if (key === 'superheat') G.openSuperheat();
   };
 
   // ---------- interactive herblore: brew potions at a cauldron (level-gated, herb + secondary) ----------

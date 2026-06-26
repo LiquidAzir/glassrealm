@@ -459,6 +459,15 @@ export const PET_DEF = {
   boar:    { name: 'Boarling',   tameLevel: 18, perk: { melee: 5 } },
 };
 
+// Spellbook — cast from the Spells menu tab; each gated by Magic level. Teleports move you;
+// High Alchemy turns items into gold (a Magic money-maker); Superheat smelts ore anywhere.
+export const SPELLS = [
+  { key: 'home',      name: 'Home Teleport',     icon: '🏠', level: 1,  xp: 10, desc: 'Teleport to Hearth Village.' },
+  { key: 'way',       name: 'Waystone Teleport', icon: '🌀', level: 12, xp: 18, desc: 'Teleport to any waystone you have attuned.' },
+  { key: 'alch',      name: 'High Alchemy',      icon: '🪙', level: 20, xp: 0,  desc: 'Turn an item into gold for Magic XP.' },
+  { key: 'superheat', name: 'Superheat Item',    icon: '🔥', level: 30, xp: 0,  desc: 'Smelt ore into a bar without a furnace.' },
+];
+
 // Hidden things to stumble on while exploring — deliberately NOT shown on the map or quest
 // arrow. Walk near and investigate for a one-time reward. Persisted once found (save.js).
 export const DISCOVERIES = [

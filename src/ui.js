@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { ITEMS, SHOP, PRAYERS, ACHIEVEMENTS, ENEMIES, WEAKNESS, ATK_STYLE } from './content.js';
+import { ITEMS, SHOP, PRAYERS, SPELLS, ACHIEVEMENTS, ENEMIES, WEAKNESS, ATK_STYLE } from './content.js';
 import { WORLD_SCALE } from './scale.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Quests', 'Pets', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Spells', 'Quests', 'Pets', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -134,12 +134,13 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Quests: renderQuests, Pets: renderPets, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Spells: renderSpells, Quests: renderQuests, Pets: renderPets, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
     if (TABS[tab] === 'Gear') return gearRows().length;
     if (TABS[tab] === 'Prayer') return PRAYERS.length;
+    if (TABS[tab] === 'Spells') return SPELLS.length;
     if (TABS[tab] === 'Skills') return 4 + G.skills.DEFS.length;
     if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
     if (TABS[tab] === 'Pets') return G.petRows().length;
@@ -163,6 +164,8 @@ export function createUI(G) {
       const r = gearRows()[row]; if (r) { G.equipChoice(r); renderMenu(); }
     } else if (TABS[tab] === 'Prayer') {
       const pr = PRAYERS[row]; if (pr) { G.togglePrayer(pr.key); renderMenu(); }
+    } else if (TABS[tab] === 'Spells') {
+      const s = SPELLS[row]; if (s) G.castSpell(s.key);
     } else if (TABS[tab] === 'Skills') {
       if (row < 4) { G.setCombatStance(STANCE_KEYS[row]); renderMenu(); }
       else { const d = G.skills.DEFS[row - 4]; if (d && G.skills.canPrestige(d.key)) { G.prestigeSkill(d.key); renderMenu(); } }
@@ -306,6 +309,15 @@ export function createUI(G) {
     const got = keys.filter((k) => have.has(k)).length;
     let html = `<div class="section-head">Collection Log — ${got}/${keys.length} gear</div>`;
     html += keys.map((k) => { const it = ITEMS[k], owned = have.has(k); return `<div class="row" style="${owned ? '' : 'opacity:.4'}"><span class="row-icon">${it.icon}</span><div class="row-main"><div class="row-title">${owned ? it.name : '???'}</div><div class="row-sub">${owned ? it.desc : 'Not yet collected'}</div></div>${owned ? '<div class="row-trail">✓</div>' : ''}</div>`; }).join('');
+    els.menuBody.innerHTML = html;
+  }
+  function renderSpells() {
+    const lvl = G.skills.level('magic');
+    let html = `<div class="section-head">Spellbook — Magic ${lvl}</div>`;
+    html += SPELLS.map((s, i) => {
+      const locked = lvl < s.level;
+      return `<div class="row ${i === row ? 'sel' : ''}" style="${locked ? 'opacity:.5' : ''}"><span class="row-icon">${s.icon}</span><div class="row-main"><div class="row-title">${s.name}${locked ? ` <span style="color:var(--text-mut)">Lv ${s.level}</span>` : ''}</div><div class="row-sub">${s.desc}</div></div></div>`;
+    }).join('');
     els.menuBody.innerHTML = html;
   }
   function renderPets() {
