@@ -331,6 +331,7 @@ try {
   G.useStation = (s) => {
     if (s.kind === 'waystone') { G.openTravel(); return;
     } else if (s.kind === 'frostmaw') { G.frostmawTap(); return;
+    } else if (s.kind === 'colosseum') { G.startColosseum(s); return;
     } else if (s.kind === 'cook') { G.openCook(); return;
     } else if (s.kind === 'furnace') {
       G.openSmelt(); return;
@@ -728,6 +729,46 @@ try {
       else { G.ui.toast(`❄️ Frostmaw  ${sb.hp}/${sb.max}`, '', 1300); if (G.audio) G.audio.sfx('hit'); }
     });
   };
+
+  // ---------- Combat Colosseum: endless scaling waves of foes, escalating loot, a personal best ----------
+  G.colBest = (saved && saved.colBest) || 0;
+  const ARENA_FOES = Object.keys(ENEMIES).filter((k) => !ENEMIES[k].boss).sort((a, b) => ENEMIES[a].hp - ENEMIES[b].hp);
+  const ARENA_BOSSES = Object.keys(ENEMIES).filter((k) => ENEMIES[k].boss).sort((a, b) => ENEMIES[a].hp - ENEMIES[b].hp);
+  const wavePool = (wave) => { const lo = Math.max(0, Math.min(ARENA_FOES.length - 5, Math.floor((wave - 1) * 1.1))); return ARENA_FOES.slice(lo, lo + 5); };
+  function colCleanup() { const c = G.colosseum; if (!c) return; c.foes.forEach((e) => { const i = G.entities.enemies.indexOf(e); if (i >= 0) G.entities.enemies.splice(i, 1); engine.scene.remove(e.group); }); c.foes = []; }
+  function colSpawnWave() {
+    const c = G.colosseum; c.wave++;
+    if (c.wave % 10 === 0 && ARENA_BOSSES.length) { const bk = ARENA_BOSSES[Math.min(ARENA_BOSSES.length - 1, Math.floor(c.wave / 10) - 1)]; const e = G.entities.spawnEnemy(bk, c.cx, c.cz - 6); e.provoked = true; c.foes.push(e); G.ui.levelBanner(`⚔️ Colosseum — Wave ${c.wave}: BOSS!`); }
+    else { const n = 2 + Math.floor(c.wave / 2), pool = wavePool(c.wave); for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, x = c.cx + Math.cos(a) * 7, z = c.cz + Math.sin(a) * 7, e = G.entities.spawnEnemy(pool[i % pool.length], x, z); e.provoked = true; c.foes.push(e); } G.ui.levelBanner(`⚔️ Colosseum — Wave ${c.wave}`); }
+    if (G.audio) G.audio.sfx('cast');
+  }
+  G.startColosseum = (s) => {
+    if (G.colosseum) return;
+    clearCombat();
+    G.colosseum = { wave: 0, foes: [], cx: s.cx, cz: s.cz };
+    G.ui.toast('Survive the waves! Walk out of the arena to retreat.', 'good', 2800);
+    colSpawnWave();
+  };
+  G.endColosseum = (why) => {
+    const c = G.colosseum; if (!c) return;
+    const reached = c.wave, cx = c.cx, cz = c.cz;
+    colCleanup(); G.colosseum = null;
+    if (reached > G.colBest) { G.colBest = reached; G.ui.levelBanner(`🏆 New Colosseum best: Wave ${reached}!`); }
+    player.state.hp = Math.max(1, Math.round(player.state.maxHp * 0.4)); G.ui.setHealth(player.state.hp, player.state.maxHp);
+    const a = world.findClear(cx, cz - 16); player.group.position.set(a.x, world.height(a.x, a.z), a.z); if (player.snapCamera) player.snapCamera();
+    G.ui.toast(`Colosseum: reached Wave ${reached}. Best: ${G.colBest}.`, why === 'died' ? 'bad' : 'good', 3800);
+    G.save.save();
+  };
+  function updateColosseum() {
+    const c = G.colosseum; if (!c || !c.foes.length) return;
+    if (dist2D(player.position.x, player.position.z, c.cx, c.cz) > 26) { G.endColosseum('left'); return; }   // leaving the ring = retreat
+    if (c.foes.every((e) => !e.alive)) {   // wave cleared → reward + next wave
+      colCleanup();
+      G.inventory.add('gold', 20 + c.wave * 12); G.gainXp('combat', 30 + c.wave * 14);
+      if (c.wave % 5 === 0) { const gem = ['sapphire', 'emerald', 'ruby'][Math.min(2, Math.floor(c.wave / 5) - 1)] || 'sapphire'; if (ITEMS[gem]) G.inventory.add(gem, 1 + Math.floor(c.wave / 10)); }
+      colSpawnWave();
+    }
+  }
 
   // ---------- interactive herblore: brew potions at a cauldron (level-gated, herb + secondary) ----------
   const maxBrew = (r) => { let m = Infinity; for (const k in r.in) m = Math.min(m, Math.floor(G.inventory.count(k) / r.in[k])); return m; };
@@ -1203,6 +1244,7 @@ try {
     G.ui.setHealth(player.state.hp, player.state.maxHp);
     if (player.state.hp <= 0) {
       cancelChannel(); clearCombat();
+      if (G.colosseum) { G.endColosseum('died'); return; }   // arena death is safe — no gravestone, no item loss
       onDeath();   // drop goods to a gravestone at the death spot (unless Safe mode)
       player.state.hp = player.state.maxHp;
       const sx = world.village.x, sz = world.village.z + 12;
@@ -1497,7 +1539,7 @@ try {
       updateCombat();
       updateStatus(dt);
       updateGrave(dt);
-      updateMarket(dt);
+      updateMarket(dt); updateColosseum();
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -1569,7 +1611,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

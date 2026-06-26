@@ -912,6 +912,22 @@ export function createWorld(scene, seed = 1337) {
     stations.push({ kind: 'frostmaw', label: 'Frostmaw Brazier', x: bx, z: bz, y: by });
     locations.push({ name: 'The Frostmaw', x: fx, z: fz });
   })();
+
+  // The Colosseum — a combat wave-arena: a ring of pillars + a start pad east of Hearth
+  (function colosseum() {
+    const c = snapLand(byKey.verdant.x + 48, byKey.verdant.z + 30), cx = c.x, cz = c.z;
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * TAU, x = cx + Math.cos(a) * 13, z = cz + Math.sin(a) * 13, hh = height(x, z);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 4.2, 8), lmat(0xcabf9a)); col.position.set(x, hh + 2.1, z); group.add(col);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 1.4), lmat(0xe0d6b0)); cap.position.set(x, hh + 4.3, z); group.add(cap);
+      solids.push({ x, z, r: 0.7 });
+    }
+    const sx = cx, sz = cz - 11, sy = height(sx, sz);
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 0.4, 12), lmat(0x8a2f2a)); pad.position.set(sx, sy + 0.2, sz); group.add(pad);
+    const obelisk = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.6, 4), lmat(0xffd24a)); obelisk.position.set(sx, sy + 1.5, sz); group.add(obelisk);
+    stations.push({ kind: 'colosseum', label: 'Colosseum — fight the waves', x: sx, z: sz, y: sy, cx, cz });
+    locations.push({ name: 'The Colosseum', x: cx, z: cz });
+  })();
   for (const dg of DUNGEONS) locations.push({ name: dg.name, x: dg.x, z: dg.z });
   locations.push({ name: 'The Mistmoor', x: byKey.mistmoor.x, z: byKey.mistmoor.z });
   locations.push({ name: 'Tide Isle', x: byKey.tideisle.x, z: byKey.tideisle.z });
