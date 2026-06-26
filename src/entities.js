@@ -229,7 +229,12 @@ export function createEntities(scene, world, G) {
 
   // ---- ambient personality: time-of-day barks + overheard NPC conversations (content.js NPC_VOICE / NPC_CHATS) ----
   npcs.forEach((n) => { n.barkT = 5 + Math.random() * 12; n.busy = false; });
-  const chats = NPC_CHATS.map((c) => ({ a: c.a, b: c.b, lines: c.lines, A: npcs.find((n) => n.def.key === c.a), B: npcs.find((n) => n.def.key === c.b), cd: 10 + Math.random() * 20, active: false, lineI: 0, lineT: 0 })).filter((c) => c.A && c.B);
+  const chats = NPC_CHATS.map((c) => ({ a: c.a, b: c.b, lines: c.lines, A: npcs.find((n) => n.def.key === c.a), B: npcs.find((n) => n.def.key === c.b), cd: 10 + Math.random() * 20, active: false, lineI: 0, lineT: 0 }))
+    .filter((c) => {   // drop chats whose NPCs can't both load or sit too far apart to ever converse (the <22 runtime gate would never fire)
+      if (!c.A || !c.B) { console.warn('NPC_CHATS: unknown NPC key', c.a, c.b); return false; }
+      if (dist2D(c.A.pos.x, c.A.pos.z, c.B.pos.x, c.B.pos.z) >= 22) { console.warn('NPC_CHATS: pair too far to converse', c.a, c.b); return false; }
+      return true;
+    });
   function sayVoice(ent, v, prefix) {
     if (!v || !G.ui || !G.ui.sayAt) return;
     const night = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);   // wearier lines after dusk
