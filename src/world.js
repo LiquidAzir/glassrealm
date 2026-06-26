@@ -943,6 +943,19 @@ export function createWorld(scene, seed = 1337) {
     stations.push({ kind: 'trawler', label: 'Fishing Trawler', x: tx, z: tz, y: ty });
     locations.push({ name: 'Saltcrest Trawler Dock', x: tx, z: tz });
   })();
+
+  // The Wardrobe — a clothier's mannequin in Hearth Village to transmog skins + dye gear
+  (function wardrobe() {
+    const reg = byKey.verdant; if (!reg) return;
+    const p = snapLand(reg.x + 11, reg.z + 13), wx = p.x, wz = p.z, wy = height(wx, wz);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.9, 6), lmat(0x6a5236)); post.position.set(wx, wy + 0.45, wz); group.add(post);
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.32), lmat(0xb8863a)); torso.position.set(wx, wy + 1.2, wz); group.add(torso);
+    const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), lmat(0xe8d4b8)); head.position.set(wx, wy + 1.72, wz); group.add(head);
+    const cloak = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.08), lmat(0x9b6bff)); cloak.position.set(wx, wy + 1.15, wz - 0.2); group.add(cloak);
+    solids.push({ x: wx, z: wz, r: 0.8 });
+    stations.push({ kind: 'wardrobe', label: 'Wardrobe — transmog & dyes', x: wx, z: wz, y: wy });
+    locations.push({ name: 'The Wardrobe', x: wx, z: wz });
+  })();
   for (const dg of DUNGEONS) locations.push({ name: dg.name, x: dg.x, z: dg.z });
   locations.push({ name: 'The Mistmoor', x: byKey.mistmoor.x, z: byKey.mistmoor.z });
   locations.push({ name: 'Tide Isle', x: byKey.tideisle.x, z: byKey.tideisle.z });

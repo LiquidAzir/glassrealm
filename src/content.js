@@ -497,6 +497,13 @@ export const CAPE_COLORS = {
   beastmastery: 0xffe066, max: 0xffd45f,
 };
 
+// Wardrobe dye palette — bright/saturated hues that read well on the additive display (no pure white/black).
+export const DYE_PALETTE = {
+  crimson: 0xff2a2a, ember: 0xff6a2a, sunlight: 0xffd45f, jade: 0x2aff7a, forest: 0x2ab84a,
+  frost: 0x9bd0ff, royal: 0x2a5aff, twilight: 0xb080ff, rose: 0xff7ab0, copper: 0xcc7722,
+  ivory: 0xf0ead0, shadow: 0x4a3a6a,
+};
+
 // Hidden things to stumble on while exploring — deliberately NOT shown on the map or quest
 // arrow. Walk near and investigate for a one-time reward. Persisted once found (save.js).
 export const DISCOVERIES = [

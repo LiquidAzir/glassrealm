@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -99,6 +99,13 @@ try {
       const gr = WORLD_SCALE / (saved.worldScale || 1), gx = saved.grave.x * gr, gz = saved.grave.z * gr;
       G.grave = { x: gx, z: gz, items: saved.grave.items, t: saved.grave.t || 240, mesh: makeGraveMesh(gx, gz) };
     }
+  }
+  // Cosmetics: transmog skins + dyes (per slot), an appearance-only layer over the real equipment
+  const freshCosmetic = () => ({ weapon: null, armor: null, shield: null, dyes: { weapon: null, armor: null, shield: null } });
+  {
+    const sc = saved && saved.player && saved.player.cosmetic;
+    G.cosmetic = sc ? { weapon: sc.weapon || null, armor: sc.armor || null, shield: sc.shield || null, dyes: { weapon: (sc.dyes && sc.dyes.weapon) || null, armor: (sc.dyes && sc.dyes.armor) || null, shield: (sc.dyes && sc.dyes.shield) || null } } : freshCosmetic();
+    player.setCosmetic(G.cosmetic);
   }
 
   { const d = world.findClear(player.group.position.x, player.group.position.z); player.group.position.set(d.x, world.height(d.x, d.z), d.z); }   // never load stuck inside a (new) solid
@@ -385,6 +392,7 @@ try {
     } else if (s.kind === 'frostmaw') { G.frostmawTap(); return;
     } else if (s.kind === 'colosseum') { G.startColosseum(s); return;
     } else if (s.kind === 'trawler') { G.trawlerTap(); return;
+    } else if (s.kind === 'wardrobe') { G.openWardrobe(); return;
     } else if (s.kind === 'cook') { G.openCook(); return;
     } else if (s.kind === 'furnace') {
       G.openSmelt(); return;
@@ -881,6 +889,47 @@ try {
     if (tr.water >= TR_FLOOD) { trawlerEnd(tr, 'flood'); return; }
     if (tr.timer <= 0) trawlerEnd(tr, 'time');
   }
+
+  // ---------- Wardrobe: transmog skins + dyes (appearance-only) at a mannequin in Hearth ----------
+  const COS_SLOTS = [['weapon', '⚔️', 'Weapon'], ['armor', '🛡️', 'Armor'], ['shield', '🔰', 'Shield']];
+  const hex6 = (c) => '#' + (c >>> 0).toString(16).padStart(6, '0');
+  G.setTransmog = (slot, key) => { const v = (key && ITEMS[key]) ? key : null; G.cosmetic[slot] = v; player.setCosmetic(G.cosmetic); G.ui.toast(v ? `${slot} skin → ${ITEMS[v].name}` : `${slot} skin cleared`, 'gold', 1800); G.save.save(); };
+  G.setDye = (slot, color) => { G.cosmetic.dyes[slot] = (color != null) ? color : null; player.setCosmetic(G.cosmetic); G.ui.toast(color != null ? `${slot} dyed ${hex6(color)}` : `${slot} dye cleared`, 'gold', 1600); G.save.save(); };
+  G.openTransmogPicker = (slot) => {
+    const have = [...(G.collection || [])].filter((k) => ITEMS[k] && ITEMS[k].type === slot).sort();
+    G.ui.openPicker({
+      title: slot[0].toUpperCase() + slot.slice(1) + ' skin', hint: '↑ ↓ select · tap apply · ↑↓↑↓ leave',
+      empty: `No ${slot} gear in your Collection yet — obtain some first.`,
+      rows: () => [{ section: 'Transmog', icon: '🚫', title: 'Default (equipped look)', sub: 'clear the skin', data: { key: null } }].concat(have.map((k) => ({ section: 'Transmog', icon: ITEMS[k].icon, title: ITEMS[k].name, sub: ITEMS[k].desc || '', right: G.cosmetic[slot] === k ? '✓' : '', data: { key: k } }))),
+      onSelect: (r) => { G.setTransmog(slot, r.data.key); G.ui.openPicker(wardrobeCfg); },
+    });
+  };
+  G.openDyePicker = (slot) => {
+    G.ui.openPicker({
+      title: slot[0].toUpperCase() + slot.slice(1) + ' dye', hint: '↑ ↓ select · tap dye · ↑↓↑↓ leave',
+      rows: () => [{ section: 'Dye', icon: '🚫', title: 'No dye', sub: 'default colour', data: { color: null } }].concat(Object.keys(DYE_PALETTE).map((n) => ({ section: 'Dye', icon: '🎨', title: n[0].toUpperCase() + n.slice(1), sub: hex6(DYE_PALETTE[n]), right: G.cosmetic.dyes[slot] === DYE_PALETTE[n] ? '✓' : '', data: { color: DYE_PALETTE[n] } }))),
+      onSelect: (r) => { G.setDye(slot, r.data.color); G.ui.openPicker(wardrobeCfg); },
+    });
+  };
+  const wardrobeCfg = {
+    title: 'Wardrobe — Transmog & Dyes', hint: '↑ ↓ select · tap · ↑↓↑↓ leave',
+    rows: () => {
+      const c = G.cosmetic, rows = [];
+      COS_SLOTS.forEach(([slot, icon, label]) => {
+        const t = c[slot], d = c.dyes[slot];
+        rows.push({ section: label, icon, title: `${label} skin`, sub: t ? ITEMS[t].name : `your equipped ${label.toLowerCase()}`, right: t ? 'change' : 'set', data: { op: 'mog', slot } });
+        rows.push({ section: label, icon: '🎨', title: `${label} dye`, sub: d != null ? hex6(d) : 'none', right: 'pick', data: { op: 'dye', slot } });
+      });
+      rows.push({ section: 'Reset', icon: '♻️', title: 'Clear all cosmetics', sub: 'restore your default look', data: { op: 'reset' } });
+      return rows;
+    },
+    onSelect: (r) => {
+      if (r.data.op === 'mog') G.openTransmogPicker(r.data.slot);
+      else if (r.data.op === 'dye') G.openDyePicker(r.data.slot);
+      else { G.cosmetic = freshCosmetic(); player.setCosmetic(G.cosmetic); G.ui.toast('Cosmetics cleared', 'good', 1600); G.save.save(); G.ui.openPicker(wardrobeCfg); }
+    },
+  };
+  G.openWardrobe = () => { setMode('picker'); G.ui.openPicker(wardrobeCfg); };
 
   // ---------- interactive herblore: brew potions at a cauldron (level-gated, herb + secondary) ----------
   const maxBrew = (r) => { let m = Infinity; for (const k in r.in) m = Math.min(m, Math.floor(G.inventory.count(k) / r.in[k])); return m; };

@@ -95,6 +95,7 @@ export function createPlayer(scene, world) {
   const weaponGlows = [];   // orb / magic-glow meshes that shimmer each frame
 
   function clearHolder() { for (let i = weaponHolder.children.length - 1; i >= 0; i--) { if (weaponHolder.children[i] !== bladeTip) weaponHolder.remove(weaponHolder.children[i]); } weaponGlows.length = 0; }
+  let cosmetic = null;   // { weapon, armor, shield, dyes:{...} } transmog/dye overrides, set by main via setCosmetic()
   function buildWeaponModel(model, tint) {
     const m = new THREE.MeshLambertMaterial({ color: tint, flatShading: true });
     const glow = new THREE.MeshBasicMaterial({ color: tint });
@@ -121,17 +122,22 @@ export function createPlayer(scene, world) {
   }
   function setWeaponMesh(key) {
     clearHolder();
-    if (!key) { weaponTint = 0xdfe6ef; return; }   // unarmed → just fists; a soft pale swoosh for punches (not stale colour / pure white)
-    const it = weaponOf(key);
-    const md = WEAPON_MODEL[key] || [it.style === 'ranged' ? 'bow' : it.style === 'magic' ? 'staff' : 'sword', 0xcdd6e0];
-    weaponTint = md[1];   // swing trail tints to match the blade
-    buildWeaponModel(md[0], md[1]);
+    const dispKey = key ? ((cosmetic && cosmetic.weapon) || key) : null;   // transmog only reskins a weapon you actually wield
+    if (!dispKey) { weaponTint = 0xdfe6ef; return; }   // unarmed → just fists; a soft pale swoosh for punches (not stale colour / pure white)
+    const it = weaponOf(dispKey);
+    const md = WEAPON_MODEL[dispKey] || [it.style === 'ranged' ? 'bow' : it.style === 'magic' ? 'staff' : 'sword', 0xcdd6e0];
+    const dye = cosmetic && cosmetic.dyes ? cosmetic.dyes.weapon : null;
+    const tint = (dye != null) ? dye : md[1];
+    weaponTint = tint;   // swing trail tints to match the displayed blade
+    buildWeaponModel(md[0], tint);
   }
   function buildArmor(key) {
     while (armorGroup.children.length) armorGroup.remove(armorGroup.children[0]);
-    if (!key) return;
-    const a = ARMOR_MODEL[key] || { color: 0xb9c2cc };
-    const m = new THREE.MeshLambertMaterial({ color: a.color, flatShading: true });
+    const dispKey = key ? ((cosmetic && cosmetic.armor) || key) : null;
+    if (!dispKey) return;
+    const a = ARMOR_MODEL[dispKey] || { color: 0xb9c2cc };
+    const dye = cosmetic && cosmetic.dyes ? cosmetic.dyes.armor : null;
+    const m = new THREE.MeshLambertMaterial({ color: (dye != null) ? dye : a.color, flatShading: true });
     armorGroup.add(mkBox(0.86, 0.92, 0.58, m, 0, 1.15, 0));                         // chest plate over the tunic
     if (a.shoulders) { armorGroup.add(mkBox(0.34, 0.26, 0.52, m, -0.52, 1.5, 0)); armorGroup.add(mkBox(0.34, 0.26, 0.52, m, 0.52, 1.5, 0)); }
     if (a.helm) armorGroup.add(mkBox(0.44, 0.34, 0.44, m, 0, 2.0, 0));
@@ -145,8 +151,10 @@ export function createPlayer(scene, world) {
   }
   function buildShield(key) {
     while (shieldGroup.children.length) shieldGroup.remove(shieldGroup.children[0]);
-    if (!key) return;
-    const m = new THREE.MeshLambertMaterial({ color: SHIELD_COL[key] || 0x9aa0a8, flatShading: true });
+    const dispKey = key ? ((cosmetic && cosmetic.shield) || key) : null;
+    if (!dispKey) return;
+    const dye = cosmetic && cosmetic.dyes ? cosmetic.dyes.shield : null;
+    const m = new THREE.MeshLambertMaterial({ color: (dye != null) ? dye : (SHIELD_COL[dispKey] || 0x9aa0a8), flatShading: true });
     const sh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.72, 0.56), m); sh.position.set(-0.62, 1.2, 0.08); shieldGroup.add(sh);
     const boss = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), steel); boss.position.set(-0.7, 1.2, 0.08); shieldGroup.add(boss);
   }
@@ -343,6 +351,7 @@ export function createPlayer(scene, world) {
     group, state, update, updateCamera, impulseForward, impulseBack, impulseTurn, forwardVec,
     playAttack, playGather, refreshEquipment, weapon, handPosition,
     setBounds(b) { state.bounds = b; }, setSolids(s) { state.solids = s; }, snapCamera() { camReady = false; }, setCape,
+    setCosmetic(c) { cosmetic = c; refreshEquipment(); },
     get position() { return group.position; },
   };
 }
