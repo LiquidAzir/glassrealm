@@ -384,6 +384,7 @@ try {
     if (s.kind === 'waystone') { G.openTravel(); return;
     } else if (s.kind === 'frostmaw') { G.frostmawTap(); return;
     } else if (s.kind === 'colosseum') { G.startColosseum(s); return;
+    } else if (s.kind === 'trawler') { G.trawlerTap(); return;
     } else if (s.kind === 'cook') { G.openCook(); return;
     } else if (s.kind === 'furnace') {
       G.openSmelt(); return;
@@ -824,6 +825,61 @@ try {
       if (c.wave % 5 === 0) { const gem = ['sapphire', 'emerald', 'ruby'][Math.min(2, Math.floor(c.wave / 5) - 1)] || 'sapphire'; if (ITEMS[gem]) G.inventory.add(gem, 1 + Math.floor(c.wave / 10)); }
       colSpawnWave();
     }
+  }
+
+  // ---------- Fishing Trawler: bail the rising water while the net fills (Saltcrest Harbor dock) ----------
+  const TRAWLER_DUR = 55, TR_WATER_RISE = 16, TR_BAIL = 26, TR_NET = 12, TR_FLOOD = 100, TR_NET_WIN = 100, TR_BAIL_DUR = 0.7;
+  G.trawlerBest = (saved && saved.trawlerBest) || 0;
+  function trawlerEnd(tr, outcome) {
+    G.trawler = null;
+    const net = Math.round(tr.netFill);
+    if (net > G.trawlerBest) G.trawlerBest = net;
+    if (outcome === 'flood') {
+      const gold = 40 + Math.round(net * 0.4); G.inventory.add('gold', gold);
+      if (Math.random() < 0.6) G.inventory.add('raw_shrimp', 1);
+      G.gainXp('fishing', 50 + net);
+      G.ui.levelBanner('⛵ The trawler swamped — you bail out and limp to shore');
+      G.ui.toast(`Flooded at net ${net}% · salvaged 🪙${gold}`, 'bad', 3200);
+      if (G.audio) G.audio.sfx('bad');
+    } else {   // 'full' (net 100) or 'time' (timer ran out) — reward scales with net fill + speed
+      const full = outcome === 'full';
+      const tier = full ? (tr.bails <= 10 ? 3 : tr.bails <= 14 ? 2 : 1) : 0;
+      const gold = (full ? 160 : 60) + Math.round(net * 1.4) + tier * 50;
+      G.inventory.add('gold', gold);
+      const loot = {}, add = (k, n) => { if (ITEMS[k] && n > 0) { G.inventory.add(k, n); loot[k] = (loot[k] || 0) + n; } };
+      add('raw_shrimp', 3 + Math.floor(net / 22) + tier * 2);
+      add('raw_trout', 2 + Math.floor(net / 30) + tier);
+      if (full) {
+        if (Math.random() < 0.5) add('pearl', 1);
+        if (Math.random() < 0.3) add('coral_chunk', 1);
+        if (tier >= 3 && Math.random() < 0.12) add('pearl_depths', 1);   // rare amulet for a fast, clean haul
+      }
+      G.gainXp('fishing', (full ? 320 : 120) + net * 2);
+      G.ui.levelBanner(full ? '⛵ Net full — the haul is secured!' : '⛵ Time! You haul in what you netted');
+      G.ui.toast(`Haul: 🪙${gold}${Object.keys(loot).length ? ' + ' + Object.keys(loot).map((k) => `${loot[k]}× ${ITEMS[k].name}`).join(', ') : ''}`, 'good', 3800);
+      if (G.audio) G.audio.sfx('ach');
+    }
+    if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
+  }
+  G.trawlerTap = () => {
+    if (G.channel) return;
+    if (!G.trawler) { G.trawler = { timer: TRAWLER_DUR, water: 0, netFill: 0, bails: 0 }; G.ui.levelBanner('⛵ Cast off! Bail the rising water and fill the net'); if (G.audio) G.audio.sfx('cast'); }
+    const lvl = G.skills.level('fishing');
+    startChannel(TR_BAIL_DUR, 'fish', 'Hauling the net…', () => {
+      const tr = G.trawler; if (!tr) return;
+      tr.water = Math.max(0, tr.water - TR_BAIL); tr.netFill = Math.min(100, tr.netFill + TR_NET); tr.bails++;
+      G.gainXp('fishing', 16 + Math.round(lvl * 0.7));
+      if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0x4a9fce, { n: 8, spread: 1.6, up: 2, life: 0.6 });
+      if (G.audio) G.audio.sfx('hit');
+      if (tr.netFill >= TR_NET_WIN) trawlerEnd(tr, 'full');
+      else G.ui.toast(`⛵ Water ${Math.round(tr.water)}% · Net ${Math.round(tr.netFill)}%`, tr.water > 60 ? 'bad' : '', 1200);
+    });
+  };
+  function updateTrawler(dt) {
+    const tr = G.trawler; if (!tr) return;
+    tr.timer -= dt; tr.water = Math.min(100, tr.water + TR_WATER_RISE * dt);
+    if (tr.water >= TR_FLOOD) { trawlerEnd(tr, 'flood'); return; }
+    if (tr.timer <= 0) trawlerEnd(tr, 'time');
   }
 
   // ---------- interactive herblore: brew potions at a cauldron (level-gated, herb + secondary) ----------
@@ -1634,7 +1690,7 @@ try {
       updateCombat();
       updateStatus(dt);
       updateGrave(dt);
-      updateMarket(dt); updateColosseum(); updateWeatherParticles();
+      updateMarket(dt); updateColosseum(); updateTrawler(dt); updateWeatherParticles();
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
@@ -1706,7 +1762,7 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
-    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateTrawler(0.016); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

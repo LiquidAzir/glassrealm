@@ -50,6 +50,7 @@ export function createSave(G) {
       capesEarned: G.capesEarned ? [...G.capesEarned] : [],
       wornCape: G.wornCape || undefined,
       colBest: G.colBest || 0,
+      trawlerBest: G.trawlerBest || 0,
       clue: G.activeClue || undefined,
       diaries: G.diaries ? [...G.diaries] : [],
       deathMode: G.deathMode || 'standard',

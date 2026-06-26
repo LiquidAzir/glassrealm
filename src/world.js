@@ -928,6 +928,21 @@ export function createWorld(scene, seed = 1337) {
     stations.push({ kind: 'colosseum', label: 'Colosseum — fight the waves', x: sx, z: sz, y: sy, cx, cz });
     locations.push({ name: 'The Colosseum', x: cx, z: cz });
   })();
+
+  // The Fishing Trawler — a bail-the-water minigame at a dock in Saltcrest Harbor
+  (function trawler() {
+    const reg = byKey.saltcrest; if (!reg) return;
+    const c = snapLand(reg.x - 18, reg.z + 32), tx = c.x, tz = c.z, ty = height(tx, tz);
+    const dock = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.3, 3.6), lmat(0x8b7355)); dock.position.set(tx, ty + 0.15, tz); group.add(dock);
+    solids.push({ x: tx, z: tz, r: 2.4 });
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.8, 1.6), lmat(0x4a2a1a)); hull.position.set(tx - 2.6, ty + 0.5, tz - 0.8); group.add(hull);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 3.2, 6), lmat(0x6a5a4a)); mast.position.set(tx - 2.6, ty + 2.4, tz - 0.8); group.add(mast);
+    const sail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.8, 1.2), lmat(0xe8d4b8)); sail.position.set(tx - 2.0, ty + 2.2, tz - 0.8); group.add(sail);
+    const netCoil = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.6, 8), lmat(0xa87a3a)); netCoil.position.set(tx - 3.3, ty + 0.95, tz + 0.2); group.add(netCoil);
+    shimMeshes.push({ m: netCoil, baseY: ty + 0.95, seed: 11, kind: 'spin' });
+    stations.push({ kind: 'trawler', label: 'Fishing Trawler', x: tx, z: tz, y: ty });
+    locations.push({ name: 'Saltcrest Trawler Dock', x: tx, z: tz });
+  })();
   for (const dg of DUNGEONS) locations.push({ name: dg.name, x: dg.x, z: dg.z });
   locations.push({ name: 'The Mistmoor', x: byKey.mistmoor.x, z: byKey.mistmoor.z });
   locations.push({ name: 'Tide Isle', x: byKey.tideisle.x, z: byKey.tideisle.z });
