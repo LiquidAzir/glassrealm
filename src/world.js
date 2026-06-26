@@ -237,7 +237,8 @@ export function createWorld(scene, seed = 1337) {
   geo = geo.toNonIndexed(); geo.computeVertexNormals();
   const p = geo.attributes.position;
   const colors = new Float32Array(p.count * 3);
-  const c = new THREE.Color();
+  const na = geo.attributes.normal;          // flat-shaded → all 3 verts of a face share its normal (use .y for slope)
+  const c = new THREE.Color(), rockC = new THREE.Color();
   for (let i = 0; i < p.count; i += 3) {
     const cx = (p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3;
     const cz = (p.getZ(i) + p.getZ(i + 1) + p.getZ(i + 2)) / 3;
@@ -249,7 +250,14 @@ export function createWorld(scene, seed = 1337) {
     else if (h < 5) hex = rng() > 0.5 ? bi.low : bi.low2;
     else if (h < 8.2) hex = bi.high;
     else hex = bi.peak;
-    c.setHex(hex).multiplyScalar(0.9 + rng() * 0.2);
+    c.setHex(hex);
+    if (h >= 0.9) {                            // land: weather the slopes + let elevation catch light, so hills read as 3D form
+      const slope = 1 - Math.abs(na.getY(i));  // 0 = flat ground, →1 = sheer cliff face
+      if (slope > 0.32) c.lerp(rockC.setHex(bi.high), Math.min(0.8, (slope - 0.32) * 1.7)).multiplyScalar(0.84);   // bare darker rock on cliffs
+      const elev = Math.max(0, Math.min(1, (h - 0.9) / 8));
+      c.multiplyScalar(0.94 + elev * 0.12);    // valleys a touch darker, ridgelines brighter
+    }
+    c.multiplyScalar(0.9 + rng() * 0.16);      // fine per-facet grain (deterministic via the seeded rng)
     for (let k = 0; k < 3; k++) { colors[(i + k) * 3] = c.r; colors[(i + k) * 3 + 1] = c.g; colors[(i + k) * 3 + 2] = c.b; }
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
