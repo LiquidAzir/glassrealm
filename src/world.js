@@ -893,6 +893,25 @@ export function createWorld(scene, seed = 1337) {
   locations.push({ name: 'Emberdeep Cave', x: CAVE.x, z: CAVE.z });
   locations.push({ name: 'Frost Cavern', x: CAVE2.x, z: CAVE2.z });
   for (const m of MINES) locations.push({ name: m.name, x: m.x, z: m.z });
+
+  // The Frostmaw — a skilling-boss arena in the snowfields: an ice idol + a brazier you feed
+  (function frostmaw() {
+    const reg = byKey.snow; if (!reg) return;
+    const p = snapLand(reg.x, reg.z + 18), fx = p.x, fz = p.z, fy = height(fx, fz);
+    const body = new THREE.Mesh(new THREE.IcosahedronGeometry(3.0, 0), lmat(0x9bd0ff)); body.position.set(fx, fy + 3, fz); body.scale.y = 1.5; group.add(body);
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.4, 5), lmat(0xcfeaff)); horn.position.set(fx - 1, fy + 5.2, fz); horn.rotation.z = 0.45; group.add(horn);
+    const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.4, 5), lmat(0xcfeaff)); horn2.position.set(fx + 1, fy + 5.2, fz); horn2.rotation.z = -0.45; group.add(horn2);
+    const eye = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0), new THREE.MeshBasicMaterial({ color: 0x2bd6ff })); eye.position.set(fx, fy + 4.2, fz + 2.4); group.add(eye);
+    shimMeshes.push({ m: eye, baseY: fy + 4.2, seed: 7, kind: 'spin' });
+    solids.push({ x: fx, z: fz, r: 3.0 });
+    const bx = fx, bz = fz + 6, by = height(bx, bz);
+    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 1.1, 8), lmat(0x4a4036)); stand.position.set(bx, by + 0.55, bz); group.add(stand);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.55, 0.4, 8), lmat(0x6a5a44)); bowl.position.set(bx, by + 1.2, bz); group.add(bowl);
+    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.1, 6), new THREE.MeshBasicMaterial({ color: 0xff8a3d })); fire.position.set(bx, by + 1.95, bz); group.add(fire);
+    shimMeshes.push({ m: fire, baseY: by + 1.95, seed: 3, kind: 'spin' });
+    stations.push({ kind: 'frostmaw', label: 'Frostmaw Brazier', x: bx, z: bz, y: by });
+    locations.push({ name: 'The Frostmaw', x: fx, z: fz });
+  })();
   for (const dg of DUNGEONS) locations.push({ name: dg.name, x: dg.x, z: dg.z });
   locations.push({ name: 'The Mistmoor', x: byKey.mistmoor.x, z: byKey.mistmoor.z });
   locations.push({ name: 'Tide Isle', x: byKey.tideisle.x, z: byKey.tideisle.z });

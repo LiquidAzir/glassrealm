@@ -330,6 +330,7 @@ try {
   };
   G.useStation = (s) => {
     if (s.kind === 'waystone') { G.openTravel(); return;
+    } else if (s.kind === 'frostmaw') { G.frostmawTap(); return;
     } else if (s.kind === 'cook') { G.openCook(); return;
     } else if (s.kind === 'furnace') {
       G.openSmelt(); return;
@@ -691,6 +692,41 @@ try {
     else if (key === 'way') { if (!G.waystonesAttuned.size) { G.ui.toast('Attune a waystone first — walk up to one', 'bad', 2600); return; } G.gainXp('magic', sp.xp); G.openTravel(); }
     else if (key === 'alch') G.openAlch();
     else if (key === 'superheat') G.openSuperheat();
+  };
+
+  // ---------- skilling boss: The Frostmaw — feed the brazier with timed gathers to subdue it ----------
+  G.skillBoss = null;   // { hp, max, points, feeds }
+  const FROST_HP = 600;
+  function frostmawWin(sb) {
+    G.skillBoss = null;
+    const tier = Math.min(3, 1 + Math.floor(24 / Math.max(1, sb.feeds)));   // fewer feeds to subdue = a richer crate
+    const gold = 120 + Math.round(sb.points * 0.45) + Math.round(Math.random() * 90);
+    G.inventory.add('gold', gold);
+    const loot = {}, add = (k, n) => { if (ITEMS[k] && n > 0) { G.inventory.add(k, n); loot[k] = (loot[k] || 0) + n; } };
+    add('wood', 12 + tier * 6); add('coal', 5 + tier * 3);
+    if (Math.random() < 0.55) add('sapphire', tier);
+    if (Math.random() < 0.30) add('ruby', 1);
+    if (Math.random() < 0.12) add('frost_staff', 1);   // rare unique reward
+    const bonusXp = 420 + sb.points;
+    G.gainXp('woodcutting', bonusXp); G.gainXp('cooking', Math.round(bonusXp * 0.6));
+    G.ui.levelBanner('❄️ The Frostmaw is subdued! Crate claimed');
+    G.ui.toast(`Crate: 🪙${gold}${Object.keys(loot).length ? ' + ' + Object.keys(loot).map((k) => `${loot[k]}× ${ITEMS[k].name}`).join(', ') : ''}`, 'gold', 4200);
+    if (G.audio) G.audio.sfx('ach'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
+  }
+  G.frostmawTap = () => {
+    if (G.channel) return;
+    if (!G.skillBoss) { G.skillBoss = { hp: FROST_HP, max: FROST_HP, points: 0, feeds: 0 }; G.ui.levelBanner('❄️ The Frostmaw stirs — feed the brazier!'); if (G.audio) G.audio.sfx('cast'); }
+    const lvl = G.skills.level('woodcutting');
+    startChannel(Math.max(2.0, 3.4 - lvl * 0.02), 'chop', 'Feeding the brazier…', () => {
+      const sb = G.skillBoss; if (!sb) return;
+      const dmg = 26 + Math.round(lvl * 1.6) + Math.floor(Math.random() * 18);
+      sb.hp = Math.max(0, sb.hp - dmg); sb.points += dmg; sb.feeds++;
+      G.gainXp('woodcutting', 14 + lvl); G.gainXp('cooking', 8);   // chop bruma roots + stoke the fire
+      if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.6, player.position.z, 0x9bf2ff, { n: 10, spread: 2, up: 3, life: 0.8 });
+      player.state.hp = Math.max(1, player.state.hp - 4); G.ui.setHealth(player.state.hp, player.state.maxHp);   // the cold bites (non-lethal)
+      if (sb.hp <= 0) frostmawWin(sb);
+      else { G.ui.toast(`❄️ Frostmaw  ${sb.hp}/${sb.max}`, '', 1300); if (G.audio) G.audio.sfx('hit'); }
+    });
   };
 
   // ---------- interactive herblore: brew potions at a cauldron (level-gated, herb + secondary) ----------
