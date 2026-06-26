@@ -1765,6 +1765,24 @@ try {
     if (f) f.far = 110 - (110 - 34) * ((w ? w.fog : 0) || 0) * it;
   }
 
+  // Time-of-day lighting: the sun arcs overhead, warms toward the horizon (golden hour) and cools at
+  // night; the sky/hemi ambient + a faint fog haze grade with it. Kept dark enough that distance stays
+  // see-through on the additive display. Self-resets every frame (so weather can layer on top).
+  function applyTimeOfDay(t) {
+    const day = (Math.sin(t * Math.PI * 2 - Math.PI / 2) + 1) / 2;   // 0 = midnight, 1 = noon
+    const ang = t * Math.PI * 2;
+    const gh = Math.min(1, day / 0.7);                                // golden-hour → noon ramp (0 = sun low, 1 = high)
+    const tw = Math.max(0, 1 - Math.abs(day - 0.2) / 0.2);            // twilight bump: peaks when the sun sits near the horizon
+    engine.hemi.intensity = 0.48 + 0.28 * day;
+    engine.sun.intensity = 0.42 + 0.58 * day;
+    engine.fill.intensity = 0.18 + 0.10 * day;
+    engine.sun.position.set(Math.cos(ang) * 60, 22 + 78 * day, Math.sin(ang) * 40);
+    engine.sun.color.setHSL(0.045 + 0.075 * gh, 0.74 - 0.24 * gh, 0.40 + 0.16 * day);   // warm-orange low sun → pale gold overhead
+    engine.hemi.color.setHSL(0.60 - 0.02 * gh, 0.55 - 0.30 * day, 0.26 + 0.46 * day);   // moody blue night → soft pale-blue day (night floor kept readable on the additive display)
+    engine.fill.color.setHSL(0.58, 0.50, 0.30 + 0.10 * day);                            // cool sky bounce into the shadows
+    const fog = engine.scene.fog;
+    if (fog) fog.color.setHSL(tw > 0 ? 0.07 : 0.60, 0.6, 0.005 + 0.02 * tw + 0.003 * day);   // a faint aerial haze; kept near-black so far distance still melts into the real world
+  }
   let running = true, tod = 0.32, mmTick = 0, econTick = 0;
   function frame() {
     if (!running) return;
@@ -1772,13 +1790,7 @@ try {
     if (++econTick % 90 === 0) { G.economy.tick(); G.farm.tick(); }   // accrue passive business + farm income (~1.5s)
     // day/night cycle (~180s) — kept bright enough to stay readable on the display
     tod = (tod + dt / 180) % 1;
-    const day = (Math.sin(tod * Math.PI * 2 - Math.PI / 2) + 1) / 2;
-    engine.hemi.intensity = 0.48 + 0.26 * day;
-    engine.sun.intensity = 0.42 + 0.55 * day;
-    engine.fill.intensity = 0.18 + 0.10 * day;
-    const ang = tod * Math.PI * 2;
-    engine.sun.position.set(Math.cos(ang) * 60, 25 + 75 * day, Math.sin(ang) * 40);
-    engine.sun.color.setHSL(0.09, 0.55, 0.38 + 0.18 * day);
+    applyTimeOfDay(tod);
     updateWeather(dt); applyWeatherLight(); weatherGroup.visible = mode === 'world';   // don't render the 90 particle meshes indoors
     if (mode === 'world') {
       player.update(dt, input);
@@ -1868,6 +1880,8 @@ try {
     target() { return G.currentTarget ? { kind: G.currentTarget.kind, label: G.currentTarget.label, dist: +G.currentTarget.dist.toFixed(2) } : null; },
     pause() { running = false; },
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
+    setTod(t) { tod = ((t % 1) + 1) % 1; applyTimeOfDay(tod); return tod; },   // jump the clock (dev/preview)
+    get tod() { return tod; },
     step(n = 1) { for (let i = 0; i < n; i++) { if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateTrawler(0.016); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
   };
 } catch (err) {
