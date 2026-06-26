@@ -179,12 +179,13 @@ try {
     const p = PERK_DEFS.find((x) => x.key === key); if (!p) return;
     if (G.perksOwned.has(key)) {   // toggle off → refund (and any perk that required it)
       G.perksOwned.delete(key);
-      for (const o of [...G.perksOwned]) { const od = PERK_DEFS.find((x) => x.key === o); if (od && od.prereq === key) G.perksOwned.delete(o); }
-      G.ui.toast(`${p.name} refunded`, '', 1500); applyMaxHp(); G.save.save(); return;
+      const also = [];
+      for (const o of [...G.perksOwned]) { const od = PERK_DEFS.find((x) => x.key === o); if (od && od.prereq === key) { G.perksOwned.delete(o); also.push(od.name); } }
+      G.ui.toast(`${p.name}${also.length ? ' + ' + also.join(' + ') : ''} refunded`, '', 1600); applyMaxHp(); G.save.save(); return;
     }
     if (p.req && G.skills.level(p.reqSkill) < p.req) { G.ui.toast(`Needs ${p.reqSkill} ${p.req} to unlock ${p.name}`, 'bad', 2200); return; }
     if (p.prereq && !G.perksOwned.has(p.prereq)) { const pre = PERK_DEFS.find((x) => x.key === p.prereq); G.ui.toast(`Requires the ${pre ? pre.name : p.prereq} perk first`, 'bad', 2400); return; }
-    if (G.perkPointsAvail() < p.cost) { G.ui.toast(`Need ${p.cost} perk points (you have ${G.perkPointsAvail()})`, 'bad', 2400); return; }
+    if (G.perkPointsAvail() < p.cost) { G.ui.toast(`Need ${p.cost} perk points (you have ${Math.max(0, G.perkPointsAvail())})`, 'bad', 2400); return; }
     G.perksOwned.add(key); G.ui.toast(`✓ ${p.name} unlocked`, 'gold', 1900); if (G.audio) G.audio.sfx('ach'); applyMaxHp(); G.save.save();
   };
 
@@ -1593,8 +1594,8 @@ try {
   }
   function updateWeatherParticles() {
     const w = WEATHER[weather.kind], part = w ? w.part : null, op = weather.intensity;
-    for (const m of rainPool) { if (part !== 'rain') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 10 + Math.random() * 4; m.position.set(player.position.x + o.x, player.position.y + o.y, player.position.z + o.z); m.material.opacity = 0.5 * op; m.material.color.setHex(w.tint); }
-    for (const m of snowPool) { if (part !== 'snow') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.w += 0.026; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 11 + Math.random() * 3; m.position.set(player.position.x + o.x + Math.sin(o.w) * 1.5, player.position.y + o.y, player.position.z + o.z); m.material.opacity = 0.8 * op; }
+    for (const m of rainPool) { if (part !== 'rain') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 10 + Math.random() * 4; m.position.set(player.position.x + o.x, player.position.y + o.y, player.position.z + o.z); m.material.opacity = 0.62 * op; m.material.color.setHex(w.tint); }
+    for (const m of snowPool) { if (part !== 'snow') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.w += 0.026; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 11 + Math.random() * 3; m.position.set(player.position.x + o.x + Math.sin(o.w) * 1.5, player.position.y + o.y, player.position.z + o.z); m.material.opacity = 0.92 * op; }
   }
   function applyWeatherLight() {   // called each frame after the day/night lights are set; recomputed from the fresh base so it self-resets
     const w = WEATHER[weather.kind], it = weather.intensity, f = engine.scene.fog;
@@ -1616,7 +1617,7 @@ try {
     const ang = tod * Math.PI * 2;
     engine.sun.position.set(Math.cos(ang) * 60, 25 + 75 * day, Math.sin(ang) * 40);
     engine.sun.color.setHSL(0.09, 0.55, 0.38 + 0.18 * day);
-    updateWeather(dt); applyWeatherLight();
+    updateWeather(dt); applyWeatherLight(); weatherGroup.visible = mode === 'world';   // don't render the 90 particle meshes indoors
     if (mode === 'world') {
       player.update(dt, input);
       G.entities.update(dt, player);

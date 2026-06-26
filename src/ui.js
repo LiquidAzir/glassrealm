@@ -337,7 +337,7 @@ export function createUI(G) {
     els.menuBody.innerHTML = html;
   }
   function renderPerks() {
-    const rows = G.perkRows(), avail = G.perkPointsAvail(), earned = G.perkPointsEarned();
+    const rows = G.perkRows(), avail = Math.max(0, G.perkPointsAvail()), earned = G.perkPointsEarned();
     let html = `<div class="section-head">Perks — ${G.perksOwned.size}/${rows.length} · ${avail}/${earned} points free</div>`;
     rows.forEach((r, i) => {
       html += `<div class="row ${i === row ? 'sel' : ''}" style="${r.locked ? 'opacity:.5' : ''}"><span class="row-icon">${r.icon}</span><div class="row-main"><div class="row-title">${r.name}${r.owned ? ' <span style="color:var(--gold)">✓</span>' : ''}</div><div class="row-sub">${r.desc}${r.reqText ? ` · <span style="color:var(--text-mut)">${r.reqText}</span>` : ''}</div></div><div class="row-trail">${r.owned ? 'owned' : r.cost + ' pt'}</div></div>`;
