@@ -468,6 +468,26 @@ export const SPELLS = [
   { key: 'superheat', name: 'Superheat Item',    icon: '🔥', level: 30, xp: 0,  desc: 'Smelt ore into a bar without a furnace.' },
 ];
 
+// Talent / perk tree — spend perk points (earned from total levels, quest points, achievements)
+// on build-defining passives. Each folds into an existing system. reqSkill/req gates a perk;
+// prereq requires another perk first. Toggle in the Perks menu tab (refundable).
+export const PERK_DEFS = [
+  { key: 'scholar',         name: 'Scholar',         icon: '📚', cost: 3, reqSkill: 'prayer',      req: 5,  desc: 'All XP gains +12%.' },
+  { key: 'bastion',         name: 'Bastion',         icon: '🛡️', cost: 4, reqSkill: 'defence',     req: 12, desc: '+22 max HP.' },
+  { key: 'stoneheart',      name: 'Stoneheart',      icon: '🪨', cost: 5, reqSkill: 'defence',     req: 20, desc: 'Take 10% less damage.' },
+  { key: 'prospector',      name: 'Prospector',      icon: '⛏️', cost: 3, reqSkill: 'mining',      req: 10, desc: 'Mine 20% faster.' },
+  { key: 'woodmaster',      name: 'Woodmaster',      icon: '🪓', cost: 3, reqSkill: 'woodcutting', req: 10, desc: 'Chop 20% faster.' },
+  { key: 'naturalist',      name: 'Naturalist',      icon: '🌿', cost: 3, reqSkill: 'foraging',    req: 8,  desc: 'Forage & fish 15% faster.' },
+  { key: 'lucky',           name: 'Lucky',           icon: '🎲', cost: 4, reqSkill: 'slayer',      req: 5,  desc: 'Rare drops 25% more often.' },
+  { key: 'treasure_hunter', name: 'Treasure Hunter', icon: '🪙', cost: 4, reqSkill: 'thieving',    req: 12, desc: 'Extra gold from kills & caskets.' },
+  { key: 'zealot',          name: 'Zealot',          icon: '✨', cost: 3, reqSkill: 'prayer',      req: 15, desc: 'Prayer drains 25% slower.' },
+  { key: 'alchemist',       name: 'Alchemist',       icon: '⚗️', cost: 3, reqSkill: 'magic',       req: 12, desc: 'Alchemy & Superheat +25% Magic XP.' },
+  { key: 'berserker',       name: 'Berserker',       icon: '⚔️', cost: 4, reqSkill: 'combat',      req: 15, desc: '+18% melee damage below 40% HP.' },
+  { key: 'lifesteal',       name: 'Lifesteal',       icon: '❤️', cost: 5, reqSkill: 'combat',      req: 18, prereq: 'berserker', desc: 'Melee hits heal 8% of damage dealt.' },
+  { key: 'medic',           name: 'Medic',           icon: '🧪', cost: 3, reqSkill: 'herblore',    req: 8,  desc: 'Food & potions heal 15% more.' },
+  { key: 'tracker',         name: 'Tracker',         icon: '☠️', cost: 4, reqSkill: 'slayer',      req: 12, desc: '+30% Slayer XP.' },
+];
+
 // Hidden things to stumble on while exploring — deliberately NOT shown on the map or quest
 // arrow. Walk near and investigate for a one-time reward. Persisted once found (save.js).
 export const DISCOVERIES = [

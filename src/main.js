@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -133,7 +133,7 @@ try {
     return b;
   }
   G.gearBonus = gearBonus;
-  function applyMaxHp() { const mh = 100 + gearBonus().maxhp + (G.diaryBonus ? G.diaryBonus() : 0); player.state.maxHp = mh; if (player.state.hp > mh) player.state.hp = mh; G.ui.setHealth(player.state.hp, mh); }
+  function applyMaxHp() { const mh = 100 + gearBonus().maxhp + (G.diaryBonus ? G.diaryBonus() : 0) + (G.perkHpBonus ? G.perkHpBonus() : 0); player.state.maxHp = mh; if (player.state.hp > mh) player.state.hp = mh; G.ui.setHealth(player.state.hp, mh); }
 
   // ---- companion pets (Beastmastery): tame wild animals → one follows you & grants its perk ----
   G.pets = new Set((saved && saved.pets) || []);
@@ -163,6 +163,31 @@ try {
   };
   if (G.activePet) G.entities.setPet(G.activePet);
 
+  // ---- talent / perk tree: spend points (total levels + quest points + achievements) on passives ----
+  G.perksOwned = new Set((saved && saved.perksOwned) || []);
+  G.hasPerk = (k) => G.perksOwned.has(k);
+  G.perkPointsEarned = () => Math.floor(G.skills.total() / 25) + Math.floor(G.quests.points() / 10) + Math.floor(((G.ach && G.ach.unlocked) ? G.ach.unlocked.size : 0) / 5);
+  G.perkPointsSpent = () => { let s = 0; for (const k of G.perksOwned) { const p = PERK_DEFS.find((x) => x.key === k); if (p) s += p.cost; } return s; };
+  G.perkPointsAvail = () => G.perkPointsEarned() - G.perkPointsSpent();
+  G.perkXpMult = () => (G.perksOwned.has('scholar') ? 1.12 : 1);
+  G.xpMult = () => G.perkXpMult() * (G.weatherXpMult ? G.weatherXpMult() : 1);   // combined XP modifier (perks × weather)
+  G.perkHpBonus = () => (G.perksOwned.has('bastion') ? 22 : 0);
+  G.perkLuck = () => (G.perksOwned.has('lucky') ? 1.25 : 1);
+  G.perkGather = (skill) => { let m = 1; if (skill === 'mining' && G.perksOwned.has('prospector')) m *= 0.8; if (skill === 'woodcutting' && G.perksOwned.has('woodmaster')) m *= 0.8; if ((skill === 'foraging' || skill === 'fishing') && G.perksOwned.has('naturalist')) m *= 0.85; return m; };
+  G.perkRows = () => PERK_DEFS.map((p) => { const owned = G.perksOwned.has(p.key); const reqMet = !p.req || G.skills.level(p.reqSkill) >= p.req; const preMet = !p.prereq || G.perksOwned.has(p.prereq); const pre = p.prereq && PERK_DEFS.find((x) => x.key === p.prereq); return { key: p.key, name: p.name, icon: p.icon, desc: p.desc, cost: p.cost, owned, locked: !owned && (!reqMet || !preMet), reqText: !reqMet ? `needs ${p.reqSkill} ${p.req}` : (!preMet ? `needs ${pre ? pre.name : p.prereq}` : '') }; });
+  G.buyPerk = (key) => {
+    const p = PERK_DEFS.find((x) => x.key === key); if (!p) return;
+    if (G.perksOwned.has(key)) {   // toggle off → refund (and any perk that required it)
+      G.perksOwned.delete(key);
+      for (const o of [...G.perksOwned]) { const od = PERK_DEFS.find((x) => x.key === o); if (od && od.prereq === key) G.perksOwned.delete(o); }
+      G.ui.toast(`${p.name} refunded`, '', 1500); applyMaxHp(); G.save.save(); return;
+    }
+    if (p.req && G.skills.level(p.reqSkill) < p.req) { G.ui.toast(`Needs ${p.reqSkill} ${p.req} to unlock ${p.name}`, 'bad', 2200); return; }
+    if (p.prereq && !G.perksOwned.has(p.prereq)) { const pre = PERK_DEFS.find((x) => x.key === p.prereq); G.ui.toast(`Requires the ${pre ? pre.name : p.prereq} perk first`, 'bad', 2400); return; }
+    if (G.perkPointsAvail() < p.cost) { G.ui.toast(`Need ${p.cost} perk points (you have ${G.perkPointsAvail()})`, 'bad', 2400); return; }
+    G.perksOwned.add(key); G.ui.toast(`✓ ${p.name} unlocked`, 'gold', 1900); if (G.audio) G.audio.sfx('ach'); applyMaxHp(); G.save.save();
+  };
+
   G.stats = { kills: 0, crafted: 0, regions: new Set(), bosses: new Set(), killsByType: {} };
   if (saved && saved.stats) { G.stats.kills = saved.stats.kills || 0; G.stats.crafted = saved.stats.crafted || 0; G.stats.deaths = saved.stats.deaths || 0; (saved.stats.regions || []).forEach((r) => G.stats.regions.add(r)); (saved.stats.bosses || []).forEach((b) => G.stats.bosses.add(b)); Object.assign(G.stats.killsByType, saved.stats.killsByType || {}); }
   G.diaries = new Set((saved && saved.diaries) || []);   // claimed region-diary tiers ("region:tierIdx")
@@ -179,7 +204,7 @@ try {
   G.slayerClaim = () => {
     const s = G.slayer; if (!s.active || s.progress < s.count) return;
     const reward = s.count * 8; G.inventory.add('gold', reward);
-    G.gainXp('slayer', Math.round(s.count * 15 * (G.slayerPerks.has('slayerXp') ? 1.2 : 1)));
+    G.gainXp('slayer', Math.round(s.count * 15 * (G.slayerPerks.has('slayerXp') ? 1.2 : 1) * (G.hasPerk && G.hasPerk('tracker') ? 1.3 : 1)));
     const pts = 3 + Math.floor(s.count / 3); G.slayerPoints += pts; s.active = false;
     G.ui.toast(`Slayer contract complete! +${reward}g · +${pts} Slayer points`, 'good', 3000);
     G.ach.evaluate(); G.save.save();
@@ -223,6 +248,7 @@ try {
 
   // ---------- gameplay verbs ----------
   G.gainXp = (key, amt) => {
+    if (G.xpMult) amt = Math.round(amt * G.xpMult());   // perks (Scholar) + weather XP modifiers
     const r = G.skills.addXp(key, amt);
     G.ui.xpDrop(`+${r.amount} ${skillName(key)}`);   // show the prestige-boosted amount actually granted
     if (r.leveled) { G.ui.levelBanner(`${skillName(key)} Level ${r.level}!`); if (G.audio) G.audio.sfx('level'); if (G.fx) G.fx.burst(player.position.x, player.position.y + 2, player.position.z, 0xffd45f, { n: 14, spread: 3.2, up: 4.2, life: 0.8 }); if (G.ach) G.ach.evaluate(); }
@@ -411,6 +437,7 @@ try {
     else if (w.poison && w.style !== 'magic') e.dot = { kind: 'poison', dmg: w.poison, t: 8, tick: 1.5 };   // venomous weapons (e.g. Hyphae Lash) poison on hit
     const apD = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
     if (apD && apD.dmgDealt) dmg = Math.round(dmg * apD.dmgDealt);
+    if (sk === 'melee' && G.hasPerk && G.hasPerk('berserker') && player.state.hp <= player.state.maxHp * 0.4) dmg = Math.round(dmg * 1.18);   // Berserker: harder hits when wounded
     // special attack: a spec bar charges per hit and auto-unleashes when full (×2.4 + AoE splash)
     let special = false;
     if ((player.state.spec || 0) >= 100) { special = true; player.state.spec = 0; dmg = Math.round(dmg * 2.4); }
@@ -425,6 +452,7 @@ try {
     } else {
       G.ui.hitsplat(e.pos.x, hitY, e.pos.z, dmg, 'enemy');
       G.entities.damageEnemy(e, dmg);
+      if (G.hasPerk && G.hasPerk('lifesteal')) { const h = Math.max(1, Math.round(dmg * 0.08)); player.state.hp = Math.min(player.state.maxHp, player.state.hp + h); G.ui.setHealth(player.state.hp, player.state.maxHp); }   // Lifesteal on melee
     }
     if (special) {
       G.audio.sfx('ach'); G.ui.toast('✦ Special attack!', 'gold', 1300);
@@ -451,10 +479,11 @@ try {
     if (def.type === 'clue') { G.readClue(); return; }
     if (def.type !== 'consumable') return;
     if (player.state.hp >= player.state.maxHp) { G.ui.toast('Already at full health'); return; }
-    player.state.hp = Math.min(player.state.maxHp, player.state.hp + def.heal);
+    const heal = Math.round(def.heal * (G.hasPerk && G.hasPerk('medic') ? 1.15 : 1));   // Medic perk
+    player.state.hp = Math.min(player.state.maxHp, player.state.hp + heal);
     G.inventory.remove(key, 1);
     G.ui.setHealth(player.state.hp, player.state.maxHp);
-    G.ui.toast(`Used ${def.name} (+${def.heal} HP)`, 'good', 1600);
+    G.ui.toast(`Used ${def.name} (+${heal} HP)`, 'good', 1600);
     G.fx.burst(player.position.x, player.position.y + 1.5, player.position.z, 0x7CFFB0, { n: 9, up: 2.6 });
     G.save.save();
   };
@@ -463,7 +492,7 @@ try {
     if (def.buff) b[def.buff] = { mult: def.mult, t: def.dur };
     if (def.cure === 'poison') { st.poison = null; b.antipoison = { t: def.dur || 120 }; }
     if (def.restorePrayer) { st.prayer = Math.min(st.maxPrayer, st.prayer + def.restorePrayer); G.ui.setPrayer(st.prayer, st.maxPrayer); }
-    if (def.heal) { st.hp = Math.min(st.maxHp, st.hp + def.heal); G.ui.setHealth(st.hp, st.maxHp); }
+    if (def.heal) { st.hp = Math.min(st.maxHp, st.hp + Math.round(def.heal * (G.hasPerk && G.hasPerk('medic') ? 1.15 : 1))); G.ui.setHealth(st.hp, st.maxHp); }
     G.inventory.remove(key, 1);
     if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.7, player.position.z, def.col || 0x7cffb0, { n: 10, up: 2.6 });
     G.ui.toast(`Drank ${def.name}`, 'good', 1700); G.audio.sfx('pickup'); G.save.save();
@@ -666,7 +695,7 @@ try {
   G.alchItem = (key) => {
     if (G.inventory.count(key) < 1 || !SHOP.sell[key]) return;
     const g = Math.max(1, Math.round(SHOP.sell[key] * ALCH_RATE));
-    G.inventory.remove(key, 1); G.inventory.add('gold', g); G.gainXp('magic', Math.max(6, Math.round(g / 3)));
+    G.inventory.remove(key, 1); G.inventory.add('gold', g); G.gainXp('magic', Math.round(Math.max(6, Math.round(g / 3)) * (G.hasPerk && G.hasPerk('alchemist') ? 1.25 : 1)));
     if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.4, player.position.z, 0xffd24a, { n: 8, up: 2.4 });
     if (G.audio) G.audio.sfx('cast');
     G.ui.openPicker(alchCfg); G.save.save();   // refresh the list so counts/rows update
@@ -680,7 +709,7 @@ try {
   G.superheat = (out) => {
     const r = SMELT.find((x) => x.out === out); if (!r || maxSmelt(r) < 1) return;   // magic = instant, no furnace/channel
     for (const k in r.in) G.inventory.remove(k, r.in[k]); G.inventory.add(out, 1);
-    G.gainXp('smithing', r.xp); G.gainXp('magic', 10);
+    G.gainXp('smithing', r.xp); G.gainXp('magic', Math.round(10 * (G.hasPerk && G.hasPerk('alchemist') ? 1.25 : 1)));
     if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0xff7a33, { n: 10, up: 2.6 });
     if (G.audio) G.audio.sfx('cast');
     G.ui.openPicker(superheatCfg); G.save.save();
@@ -1235,6 +1264,7 @@ try {
     if (player.state.combatStance === 'aggressive') mit *= 1.12;   // aggressive: you guard less
     mit = Math.max(0.25, mit);                   // never below 25% of post-armour damage (no invincibility stack)
     taken = Math.max(1, Math.round(taken * mit));
+    if (G.hasPerk && G.hasPerk('stoneheart')) taken = Math.max(1, Math.round(taken * 0.9));   // Stoneheart: -10% damage taken
     player.state.hp -= taken;
     hurtFlash = 0.25;
     G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, taken, 'player');
@@ -1259,7 +1289,8 @@ try {
     const def = e.def;
     const names = [];
     for (const k in def.loot) { G.inventory.add(k, def.loot[k]); names.push(ITEMS[k].name); }
-    if (def.rare && Math.random() < def.rare.chance * (G.slayerPerks.has('luck') ? 1.5 : 1)) { G.inventory.add(def.rare.item, 1); G.ui.toast(`✨ Rare drop: ${ITEMS[def.rare.item].name}!`, 'gold', 3400); }
+    if (def.rare && Math.random() < def.rare.chance * (G.slayerPerks.has('luck') ? 1.5 : 1) * (G.perkLuck ? G.perkLuck() : 1)) { G.inventory.add(def.rare.item, 1); G.ui.toast(`✨ Rare drop: ${ITEMS[def.rare.item].name}!`, 'gold', 3400); }
+    if (G.hasPerk && G.hasPerk('treasure_hunter')) G.inventory.add('gold', Math.max(1, Math.round(def.xp * 0.15)));   // Treasure Hunter: extra gold per kill
     const ksk = e._lastSkill || 'combat';   // attack stance can route part of the kill XP into Defence
     const kstance = ATTACK_STYLES[e._xpStance || 'accurate'] || {};
     if (kstance.defShare) { G.gainXp('defence', Math.round(def.xp * kstance.defShare)); G.gainXp(ksk, Math.round(def.xp * (1 - kstance.defShare))); }
@@ -1346,7 +1377,7 @@ try {
     if (t.kind !== 'enemy') clearCombat();   // tapping anything else breaks off the fight
     const lvl = (k) => G.skills.level(k);
     // best gathering tool you own for a skill auto-speeds the channel (Toolsmithing payoff)
-    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f * (G.petGather ? G.petGather() : 1); };
+    const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f * (G.petGather ? G.petGather() : 1) * (G.perkGather ? G.perkGather(skill) : 1); };
     if (t.kind === 'tree') startChannel(Math.max(1.8, (4 - lvl('woodcutting') * 0.03) * toolSpeed('woodcutting')), 'chop', 'Chopping…', () => G.chopTree(t.ref));
     else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
     else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(3, (7 - lvl('mining') * 0.04) * toolSpeed('mining')), 'mine', 'Mining…', () => G.mineOre(t.ref)); }
@@ -1543,7 +1574,7 @@ try {
       if (player.state.activePrayer) {
         const ap = PRAYERS.find((pp) => pp.key === player.state.activePrayer);
         if (ap) {
-          player.state.prayer -= ap.drain * dt;
+          player.state.prayer -= ap.drain * dt * (G.hasPerk && G.hasPerk('zealot') ? 0.75 : 1);
           if (ap.regen && player.state.hp < player.state.maxHp) { player.state.hp = Math.min(player.state.maxHp, player.state.hp + ap.regen * dt); G.ui.setHealth(player.state.hp, player.state.maxHp); }
           if (player.state.prayer <= 0) { player.state.prayer = 0; player.state.activePrayer = null; G.ui.toast('Prayer depleted', 'bad', 1500); }
         }

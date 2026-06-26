@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ITEMS, SHOP, PRAYERS, SPELLS, ACHIEVEMENTS, ENEMIES, WEAKNESS, ATK_STYLE } from './content.js';
 import { WORLD_SCALE } from './scale.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Spells', 'Quests', 'Pets', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Spells', 'Quests', 'Pets', 'Perks', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -134,7 +134,7 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Spells: renderSpells, Quests: renderQuests, Pets: renderPets, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Spells: renderSpells, Quests: renderQuests, Pets: renderPets, Perks: renderPerks, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
@@ -144,6 +144,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Skills') return 4 + G.skills.DEFS.length;
     if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
     if (TABS[tab] === 'Pets') return G.petRows().length;
+    if (TABS[tab] === 'Perks') return G.perkRows().length;
     if (TABS[tab] === 'Diary') return 6;
     if (TABS[tab] === 'Tasks') return G.diaryRows().length;
     return 0;
@@ -174,6 +175,8 @@ export function createUI(G) {
       if (q) { G.trackQuest(q.id); renderMenu(); }
     } else if (TABS[tab] === 'Pets') {
       const r = G.petRows()[row]; if (r) { G.setActivePet(r.kind); renderMenu(); }
+    } else if (TABS[tab] === 'Perks') {
+      const r = G.perkRows()[row]; if (r) { G.buyPerk(r.key); renderMenu(); }
     } else if (TABS[tab] === 'Diary') {
       if (row === 0 && G.audio) { G.audio.toggleMuted(); G.save.save(); renderMenu(); }
       else if (row === 1 && G.requestRestart) G.requestRestart();
@@ -318,6 +321,14 @@ export function createUI(G) {
       const locked = lvl < s.level;
       return `<div class="row ${i === row ? 'sel' : ''}" style="${locked ? 'opacity:.5' : ''}"><span class="row-icon">${s.icon}</span><div class="row-main"><div class="row-title">${s.name}${locked ? ` <span style="color:var(--text-mut)">Lv ${s.level}</span>` : ''}</div><div class="row-sub">${s.desc}</div></div></div>`;
     }).join('');
+    els.menuBody.innerHTML = html;
+  }
+  function renderPerks() {
+    const rows = G.perkRows(), avail = G.perkPointsAvail(), earned = G.perkPointsEarned();
+    let html = `<div class="section-head">Perks — ${G.perksOwned.size}/${rows.length} · ${avail}/${earned} points free</div>`;
+    rows.forEach((r, i) => {
+      html += `<div class="row ${i === row ? 'sel' : ''}" style="${r.locked ? 'opacity:.5' : ''}"><span class="row-icon">${r.icon}</span><div class="row-main"><div class="row-title">${r.name}${r.owned ? ' <span style="color:var(--gold)">✓</span>' : ''}</div><div class="row-sub">${r.desc}${r.reqText ? ` · <span style="color:var(--text-mut)">${r.reqText}</span>` : ''}</div></div><div class="row-trail">${r.owned ? 'owned' : r.cost + ' pt'}</div></div>`;
+    });
     els.menuBody.innerHTML = html;
   }
   function renderPets() {

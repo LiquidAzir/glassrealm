@@ -46,6 +46,7 @@ export function createSave(G) {
       collection: G.collection ? [...G.collection] : [],
       pets: G.pets ? [...G.pets] : [],
       activePet: G.activePet || undefined,
+      perksOwned: G.perksOwned ? [...G.perksOwned] : [],
       colBest: G.colBest || 0,
       clue: G.activeClue || undefined,
       diaries: G.diaries ? [...G.diaries] : [],
