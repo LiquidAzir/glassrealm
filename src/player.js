@@ -212,7 +212,11 @@ export function createPlayer(scene, world) {
   }
   function setToolMesh(kind) {
     while (toolHolder.children.length) toolHolder.remove(toolHolder.children[0]);
-    toolHolder.rotation.z = (kind === 'fish' || kind === 'cook') ? 0 : Math.PI;   // pick/axe head UP so you strike head-first; rod & ladle hang as before
+    // Orient each tool the way you'd actually hold it: pick/axe head UP (strike head-first), the rod
+    // angled UP-AND-FORWARD over the water (not dangling upside-down), the ladle bowl-down to dip the pot.
+    if (kind === 'cook') toolHolder.rotation.set(0, 0, 0);
+    else if (kind === 'fish') toolHolder.rotation.set(-0.6, 0, Math.PI);
+    else toolHolder.rotation.set(0, 0, Math.PI);
     if (kind === 'mine') {                                                    // pickaxe
       toolHolder.add(mkBox(0.06, 0.95, 0.06, woodMat, 0, -0.5, 0));
       toolHolder.add(mkBox(0.55, 0.09, 0.09, steel, 0, -0.92, 0));
