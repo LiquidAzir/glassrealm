@@ -48,7 +48,7 @@ const WEAPON_GRIP = {
   scepter:    { tilt: 0.3,   roll: 0,      hands: 1, gy: -0.22, rest: 'ready' },
   wand:       { tilt: 0.42,  roll: -0.087, hands: 1, gy: -0.14, rest: 'ready' },
   flail:      { tilt: 0.24,  roll: -0.07,  hands: 1, gy: -0.10, rest: 'low' },
-  staff:      { tilt: 0.087, roll: 0.035,  hands: 1, gy: -0.48, rest: 'planted' },
+  staff:      { tilt: 0.087, roll: 0.035,  hands: 1, gy: -0.15, rest: 'planted' },
   bow:        { tilt: 0.035, roll: 0.14,   hands: 1, gy: 0,     rest: 'low' },
   longbow:    { tilt: 0.035, roll: 0.105,  hands: 1, gy: 0,     rest: 'low' },
   axe:        { tilt: -0.24, roll: -0.14,  hands: 1, gy: -0.14, rest: 'shoulder' },
@@ -356,8 +356,8 @@ export function createPlayer(scene, world) {
     const shoulderRest = state.gripRest === 'shoulder';
     const cradleRest = state.gripRest === 'cradle';
     const leftGrips = twoH && state.gripRest === 'planted';   // only planted polearms bring the off-hand onto the haft; shoulder + cradle carry one-handed (natural for a shouldered greatsword / a cradled book or crossbow)
-    const r2hX = shoulderRest ? -0.5 : -0.32, r2hZ = shoulderRest ? -0.18 : (cradleRest ? -0.3 : -0.78);   // right arm draws the weapon toward centre (or shoulder)
-    const l2hX = -0.2, l2hZ = 1.45;                                                                        // off-hand reaches across to the haft
+    const r2hX = shoulderRest ? -0.5 : -0.32, r2hZ = shoulderRest ? -0.18 : (cradleRest ? -0.3 : -0.5);   // right arm draws the weapon toward centre (planted stays nearer upright, not hugged across the body)
+    const l2hX = -0.35, l2hZ = 1.15;                                                                        // off-hand reaches the haft without the near-horizontal over-rotation
     const breath = Math.sin(state.t * 1.6);
 
     // attack animation (right arm drives the swing)
