@@ -322,10 +322,18 @@ export function createPlayer(scene, world) {
           break;
         }
       }
+      rightArm.rotation.z += (0 - rightArm.rotation.z) * gk;   // keep the swing in-plane (no sideways drift mid-strike)
+      hand.rotation.x += (0.22 - hand.rotation.x) * gk;        // steady grip through the swing
       if (state.attackAnim === 0 && state.toolActive) showTool(false);
     } else {
-      rightArm.rotation.x += (gait - rightArm.rotation.x) * gk;   // counter-swing with the gait
-      if (!state.moving && Math.abs(rightArm.rotation.x) < 0.01) rightArm.rotation.x = 0;
+      // Carry the held weapon naturally: a measured stride-bob while moving, and breathing life at rest —
+      // so it moves WITH the arm instead of floating frozen in place.
+      const breath = Math.sin(state.t * 1.6);
+      const targX = (state.moving ? gait * 0.34 : breath * 0.05) - 0.1;   // relaxed ready bias + a controlled carry-bob (not a free-arm flail)
+      const targZ = state.moving ? Math.sin(state.bob * 0.5) * 0.05 : breath * 0.035;   // slight sway so the weapon lives
+      rightArm.rotation.x += (targX - rightArm.rotation.x) * gk;
+      rightArm.rotation.z += (targZ - rightArm.rotation.z) * gk;
+      hand.rotation.x += ((0.22 + (state.moving ? Math.abs(Math.sin(state.bob)) * 0.14 : breath * 0.03)) - hand.rotation.x) * gk;   // wrist settles with each footfall, breathes at rest
     }
 
     // swoosh trail follows the blade during a melee swing only (not casts, shots or tool gathering)
