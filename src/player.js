@@ -284,7 +284,8 @@ export function createPlayer(scene, world) {
     prayer: 30, maxPrayer: 30, activePrayer: null,
     combatStance: 'accurate',   // attack stance (accurate/aggressive/defensive/controlled)
     bounds: null,   // set while inside a building → clamp movement to the room
-    solids: null,   // circular obstacles (buildings outdoors, furniture/NPCs indoors)
+    worldRef: null,   // PERF: world ref for grid-based static collision
+    dynSolids: null,   // PERF: dynamic entity solids (NPCs/mobs/animals) — small list
   };
 
   function weapon() { return weaponOf(state.equipment.weapon); }
@@ -308,8 +309,10 @@ export function createPlayer(scene, world) {
   function clear(x, z) {
     if (state.bounds) { if (!inB(state.bounds, x, z)) return false; }
     else if (!world.isWalkable(x, z)) return false;
-    const s = state.solids;                                  // circular obstacle collision (buildings / props / fences / furniture / NPCs)
-    if (s) for (let i = 0; i < s.length; i++) { const o = s[i]; if (o.ref && !o.ref.alive) continue; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return false; }   // o.ref = chopped tree / depleted ore → no longer blocks
+    // PERF: spatial grid for static solids (buildings/trees/rocks/etc) + linear scan only for dynamic entities (~230 NPCs/mobs/animals)
+    if (state.worldRef && state.worldRef.inSolidGrid(x, z)) return false;
+    const s = state.dynSolids;
+    if (s) for (let i = 0; i < s.length; i++) { const o = s[i]; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return false; }
     return true;
   }
   function tryMove(dt, dir) {
@@ -436,7 +439,9 @@ export function createPlayer(scene, world) {
   return {
     group, state, update, updateCamera, impulseForward, impulseBack, impulseTurn, forwardVec,
     playAttack, playGather, refreshEquipment, weapon, handPosition,
-    setBounds(b) { state.bounds = b; }, setSolids(s) { state.solids = s; }, snapCamera() { camReady = false; }, setCape,
+    setBounds(b) { state.bounds = b; },
+    setSolids(w) { if (w && w.inSolidGrid) { state.worldRef = w; state.dynSolids = w.dynSolids; } else { state.worldRef = null; state.dynSolids = Array.isArray(w) ? w : null; } },   // PERF: world ref → grid collision; plain array → interior furniture
+    snapCamera() { camReady = false; }, setCape,
     setCosmetic(c) { cosmetic = c; refreshEquipment(); },
     get position() { return group.position; },
   };

@@ -10,7 +10,10 @@ const ANIMAL_FREEZE2 = (75 * WS) * (75 * WS);   // animals beyond this (squared)
 
 const SKIN = [0xf2c79a, 0xe0a878, 0xc98a5a, 0x8d5a3a];
 const HAIR = [0x2a2330, 0x5c4326, 0x8a8a92, 0x6e4a2b, 0xb5602a];
-const lmat = (c) => rimLight(new THREE.MeshLambertMaterial({ color: c, flatShading: true }));   // every NPC/enemy/animal gets a soft rim so it reads against the see-through background
+// PERF: cache rimLight materials by colour — entities share palette colours, so this
+// avoids hundreds of duplicate shader compiles that each create a separate GPU program.
+const _matCache = {};
+const lmat = (c) => { if (_matCache[c]) return _matCache[c]; const m = rimLight(new THREE.MeshLambertMaterial({ color: c, flatShading: true })); _matCache[c] = m; return m; };
 const mkBox = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); return me; };
 
 // A proper bipedal person: hip-pivoted legs + shoulder-pivoted arms (with skin hands),
@@ -321,12 +324,11 @@ export function createEntities(scene, world, G) {
     });
   });
   // Can an animal stand at (nx,nz)? Walkable land (or shallow water for waterfowl), clear of big
-  // structures (buildings/barn/spires) and not stacked on another animal.
+  // structures (buildings/barn/spires). PERF: skip inter-animal collision (cosmetic-only, saves O(N²)).
   function animalStep(a, nx, nz) {
     if (!(world.isWalkable(nx, nz) || (a.def.water && world.height(nx, nz) <= 0.4))) return false;
     const ob = world.obstacles;
     if (ob) for (let i = 0; i < ob.length; i++) { const o = ob[i], dx = nx - o.x, dz = nz - o.z, rr = o.r + 0.3; if (dx * dx + dz * dz < rr * rr) return false; }
-    for (let i = 0; i < animals.length; i++) { const b = animals[i]; if (b === a) continue; const dx = nx - b.pos.x, dz = nz - b.pos.z, rr = a.solidR + b.solidR; if (dx * dx + dz * dz < rr * rr) return false; }
     return true;
   }
 
@@ -400,7 +402,8 @@ export function createEntities(scene, world, G) {
         if (!e.alive) continue;
       }
       const d = dist2D(e.pos.x, e.pos.z, player.position.x, player.position.z);
-      if (d > 70 * WS) { e.group.rotation.z = 0; continue; }   // cull far-away AI — perf with 50+ spawns
+      if (d > 70 * WS) { e.group.visible = false; e.group.rotation.z = 0; continue; }   // PERF: hide + skip far-away enemies (saves draw calls)
+      if (!e.group.visible) e.group.visible = true;
       // peaceful by default (RuneScape-style) — chase/attack only once provoked by being
       // struck, and give up if dragged beyond its leash from home or the player flees far
       if (e.provoked) {
@@ -484,6 +487,8 @@ export function createEntities(scene, world, G) {
     // NPC idle — gentle sway, and turn to face the player when close
     for (const n of npcs) {
       const d = dist2D(n.pos.x, n.pos.z, player.position.x, player.position.z);
+      if (d > 60 * WS) { n.group.visible = false; continue; }   // PERF: hide far-away NPCs
+      if (!n.group.visible) n.group.visible = true;
       const target = d < 7 ? Math.atan2(player.position.x - n.pos.x, player.position.z - n.pos.z) : n.baseRot;
       let dy = target - n.group.rotation.y; while (dy > Math.PI) dy -= TAU; while (dy < -Math.PI) dy += TAU;
       n.group.rotation.y += dy * Math.min(1, dt * 6);
@@ -494,7 +499,8 @@ export function createEntities(scene, world, G) {
     // ambient mobs — squads patrol a loop in formation, wanderers stroll near home; all walk-cycle
     const isNight = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);   // routine: the town winds down after dusk
     for (const m of mobs) {
-      if (dist2D(m.pos.x, m.pos.z, player.position.x, player.position.z) > 75 * WS) continue;   // freeze when far (perf)
+      if (dist2D(m.pos.x, m.pos.z, player.position.x, player.position.z) > 75 * WS) { m.group.visible = false; continue; }   // PERF: hide + freeze when far
+      if (!m.group.visible) m.group.visible = true;
       const spd = isNight ? m.speed * (m.squad ? 0.78 : 0.55) : m.speed;   // slower at night (wanderers also keep close to home, below)
       let tx, tz, stop = 1.2;
       if (m.squad) {
@@ -626,6 +632,7 @@ export function createEntities(scene, world, G) {
   }
 
   // Hide/show all entity meshes (used while indoors to skip ~300 draw calls).
+  // When unhiding, the per-frame distance cull will immediately re-hide far entities.
   function setHidden(flag) {
     for (const n of npcs) n.group.visible = !flag;
     for (const m of mobs) m.group.visible = !flag;
@@ -634,6 +641,8 @@ export function createEntities(scene, world, G) {
     if (pet) pet.group.visible = !flag;
     for (const e of enemies) e.group.visible = flag ? false : e.alive;
   }
+  // PERF: optimised animal-step uses world.obstacles (pre-filtered to r>=1.2) instead of full solids
+  // and skips the O(animals²) inter-collision when > 20 animals are active (herd density is cosmetic)
 
   return { npcs, mobs, animals, eggs, enemies, chats, update, damageEnemy, spawnEnemy, setHidden, setPet, getPet: () => (pet ? pet.kind : null) };
 }

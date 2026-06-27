@@ -31,18 +31,22 @@ export function createInteraction(G) {
       const dx = p.x - x, dz = p.z - z, d2 = dx * dx + dz * dz, r = RANGE[kind];
       if (d2 <= r * r && d2 < bestD2) { bestD2 = d2; bestC = { kind, ref, x, z, label, dist: Math.sqrt(d2) }; }
     };
-    for (const t of G.world.trees) if (t.alive) consider('tree', t, t.x, t.z, 'Chop tree');
-    for (const b of G.world.bushes) if (b.alive) consider('bush', b, b.x, b.z, 'Forage berries');
-    for (const o of G.world.oreNodes) if (o.alive) consider('ore', o, o.x, o.z, 'Mine ' + cap(o.type));
-    for (const f of G.world.fishingSpots) consider('fish', f, f.x, f.z, 'Fish here');
-    for (const s of G.world.stations) consider('station', s, s.x, s.z, 'Use ' + s.label);
-    for (const pl of G.world.plots) consider('plot', pl, pl.x, pl.z, pl.state === 'grown' ? 'Harvest crop' : pl.state === 'growing' ? 'Crop growing…' : 'Plant seeds');
-    for (const st of G.world.stalls) consider('stall', st, st.x, st.z, st.cooldown > 0 ? 'Stall (watched)' : 'Steal from stall');
-    for (const sc of G.world.shortcuts) consider('shortcut', sc, sc.x, sc.z, `Shortcut: ${sc.name} (Agility ${sc.level})`);
-    for (const f of G.world.ferries) consider('ferry', f, f.x, f.z, 'Take the ferry');
-    for (const n of G.entities.npcs) consider('npc', n, n.pos.x, n.pos.z, 'Talk to ' + n.def.name);
-    for (const a of (G.entities.animals || [])) if (!(G.pets && G.pets.has(a.kind))) consider('tame', a, a.pos.x, a.pos.z, 'Tame ' + cap(a.kind));
+    // PERF: max interact range is ~5 units — skip anything beyond 6 units (cheap dx/dz pre-check avoids sqrt for ~99% of objects)
+    const px = p.x, pz = p.z, CUT = 6;
+    const near = (x, z) => { const dx = px - x, dz = pz - z; return dx > -CUT && dx < CUT && dz > -CUT && dz < CUT; };
+    for (const t of G.world.trees) if (t.alive && near(t.x, t.z)) consider('tree', t, t.x, t.z, 'Chop tree');
+    for (const b of G.world.bushes) if (b.alive && near(b.x, b.z)) consider('bush', b, b.x, b.z, 'Forage berries');
+    for (const o of G.world.oreNodes) if (o.alive && near(o.x, o.z)) consider('ore', o, o.x, o.z, 'Mine ' + cap(o.type));
+    for (const f of G.world.fishingSpots) if (near(f.x, f.z)) consider('fish', f, f.x, f.z, 'Fish here');
+    for (const s of G.world.stations) if (near(s.x, s.z)) consider('station', s, s.x, s.z, 'Use ' + s.label);
+    for (const pl of G.world.plots) if (near(pl.x, pl.z)) consider('plot', pl, pl.x, pl.z, pl.state === 'grown' ? 'Harvest crop' : pl.state === 'growing' ? 'Crop growing…' : 'Plant seeds');
+    for (const st of G.world.stalls) if (near(st.x, st.z)) consider('stall', st, st.x, st.z, st.cooldown > 0 ? 'Stall (watched)' : 'Steal from stall');
+    for (const sc of G.world.shortcuts) if (near(sc.x, sc.z)) consider('shortcut', sc, sc.x, sc.z, `Shortcut: ${sc.name} (Agility ${sc.level})`);
+    for (const f of G.world.ferries) if (near(f.x, f.z)) consider('ferry', f, f.x, f.z, 'Take the ferry');
+    for (const n of G.entities.npcs) if (near(n.pos.x, n.pos.z)) consider('npc', n, n.pos.x, n.pos.z, 'Talk to ' + n.def.name);
+    for (const a of (G.entities.animals || [])) if (near(a.pos.x, a.pos.z) && !(G.pets && G.pets.has(a.kind))) consider('tame', a, a.pos.x, a.pos.z, 'Tame ' + cap(a.kind));
     for (const d of G.world.discoveries) {
+      if (!near(d.x, d.z)) continue;
       if (d.repeat) { if (d.cooldown <= 0) consider('discovery', d, d.x, d.z, d.prompt || 'Use'); }
       else if (!d.found) consider('discovery', d, d.x, d.z, d.prompt || 'Investigate');
     }

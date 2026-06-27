@@ -207,29 +207,44 @@ export function createWorld(scene, seed = 1337) {
     for (const b of BRIDGES) { if (b.type === 'ferry') continue; m = Math.max(m, smoothstep((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / b.fall)); }   // ferries are sea routes — no land
     return m;
   }
-  function height(x, z) {
+  // Pre-filter bridges that need walkway flattening (skip ferries once, not every height() call)
+  const LAND_BRIDGES = BRIDGES.filter((b) => b.type !== 'ferry');
+  // Pre-filter regions with peaks
+  const PEAK_REGIONS = REGIONS.filter((r) => r.peak);
+  // Pre-filter flat dungeons
+  const FLAT_DUNGEONS = DUNGEONS.filter((dg) => dg.flat);
+  function _heightRaw(x, z) {
     const land = landMask(x, z);
     let h = land * 2.4;
-    h += (Math.sin(x * (0.10 / WS)) * Math.cos(z * (0.09 / WS)) * 1.3 + Math.sin(x * (0.06 / WS) + z * (0.045 / WS) + 2.0) * 1.1 + Math.cos(z * (0.08 / WS)) * 0.7) * land;   // noise freq /WS → heightfield is a true scaled copy (features keep their original height)
-    for (const r of REGIONS) if (r.peak) h += smoothstep(clamp(1 - Math.hypot(x - r.peak.x, z - r.peak.z) / r.peak.r, 0, 1)) * r.peak.h * land;
+    h += (Math.sin(x * (0.10 / WS)) * Math.cos(z * (0.09 / WS)) * 1.3 + Math.sin(x * (0.06 / WS) + z * (0.045 / WS) + 2.0) * 1.1 + Math.cos(z * (0.08 / WS)) * 0.7) * land;
+    for (const r of PEAK_REGIONS) h += smoothstep(clamp(1 - Math.hypot(x - r.peak.x, z - r.peak.z) / r.peak.r, 0, 1)) * r.peak.h * land;
     h += (land - 1) * 1.6;
-    // flatten bridges into level causeways so noise dips never break the path
-    for (const b of BRIDGES) {
-      if (b.type === 'ferry') continue;   // no walkway flattening for sea routes
+    for (const b of LAND_BRIDGES) {
       const d = distToSeg(x, z, b.ax, b.az, b.bx, b.bz);
-      if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.4 * fl); }   // natural neck: raise troughs only, keep rolling land
-      else { const fl = smoothstep(clamp((b.halfW - d) / 4, 0, 1)); h = h * (1 - fl) + b.flat * fl; }   // causeway/span: flat walkway
+      if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.4 * fl); }
+      else { const fl = smoothstep(clamp((b.halfW - d) / 4, 0, 1)); h = h * (1 - fl) + b.flat * fl; }
     }
     for (const v of villages) { const flat = smoothstep(clamp((16.5 - dist2D(x, z, v.x, v.z)) / 16.5, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
-    // flatten the new dungeon floors into level arenas so the boss/chest never sink underwater near a coast
-    for (const dg of DUNGEONS) { if (!dg.flat) continue; const flat = smoothstep(clamp((dg.r - 3 - dist2D(x, z, dg.x, dg.z)) / 6, 0, 1)); h = h * (1 - flat) + 1.8 * flat; }
+    for (const dg of FLAT_DUNGEONS) { const flat = smoothstep(clamp((dg.r - 3 - dist2D(x, z, dg.x, dg.z)) / 6, 0, 1)); h = h * (1 - flat) + 1.8 * flat; }
+    return h;
+  }
+  // PERF: quantised height cache — entities at nearby positions share one lookup.
+  // Resolution 0.5 units ≈ sub-tile; cache is cleared every frame by tick().
+  let _hcache = new Map();
+  function height(x, z) {
+    const kx = (x * 2 + 0.5) | 0, kz = (z * 2 + 0.5) | 0;   // quantise to 0.5-unit grid
+    const k = kx * 131071 + kz;   // cheap unique key (prime spread)
+    const v = _hcache.get(k);
+    if (v !== undefined) return v;
+    const h = _heightRaw(x, z);
+    _hcache.set(k, h);
     return h;
   }
   const isWalkable = (x, z) => height(x, z) > 0.35;
   function biomeAt(x, z) { let best = REGIONS[0], bd = Infinity; for (const r of REGIONS) { const d = Math.hypot(x - r.x, z - r.z) - r.r; if (d < bd) { bd = d; best = r; } } return best.biome; }
 
   // --- terrain mesh (biome-coloured) -------------------------------------
-  const SIZE = Math.ceil(480 * WS), SEG = Math.round(128 * WS), CX = 19 * WS, CZ = 3 * WS;   // heightfield grows with WORLD_SCALE to cover the (now larger) frontier regions
+  const SIZE = Math.ceil(480 * WS), SEG = Math.round(80 * WS), CX = 19 * WS, CZ = 3 * WS;   // PERF: reduced from 128→80 segments/WS (halves triangle count: ~65K→~26K tris, still fine for low-poly)
   let geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   geo.rotateX(-Math.PI / 2); geo.translate(CX, 0, CZ);
   const pa = geo.attributes.position;
@@ -266,7 +281,7 @@ export function createWorld(scene, seed = 1337) {
   // Sea: a faintly self-lit surface (reads as luminous water on the additive display) that ripples on
   // the GPU — a subdivided plane displaced by crossed sine waves in the vertex shader.
   const waveUniform = { value: 0 };
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 96, 96).rotateX(-Math.PI / 2),
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 48, 48).rotateX(-Math.PI / 2),   // PERF: 96→48 subdivisions (still smooth waves, ¼ vertex count)
     new THREE.MeshLambertMaterial({ color: 0x2bd6cf, emissive: 0x0a3a44, transparent: true, opacity: 0.52, depthWrite: false }));
   water.material.onBeforeCompile = (sh) => {
     sh.uniforms.uWave = waveUniform;
@@ -405,7 +420,9 @@ export function createWorld(scene, seed = 1337) {
   const solids = [];                       // circular collision obstacles (buildings, wells)
   const animalSpawns = [];                 // {kind,x,z,home,roam,penned} — farm livestock + wild creatures (entities.js builds them)
   const stations = [];
-  const lmat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });   // hoisted: used by builders below
+  // PERF: cache world build materials by colour — settlements reuse the same palette colours extensively
+  const _wmatCache = {};
+  const lmat = (c) => { if (_wmatCache[c]) return _wmatCache[c]; const m = new THREE.MeshLambertMaterial({ color: c, flatShading: true }); _wmatCache[c] = m; return m; };
   const waystones = [];   // fast-travel network nodes
   const snapLand = (x, z) => { if (isWalkable(x, z)) return { x, z }; for (let r = 3; r <= 44; r += 3) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz)) return { x: nx, z: nz }; } return { x, z }; };
   // nearest walkable tile that sits right by the water's edge (for ducks/waterfowl)
@@ -712,8 +729,36 @@ export function createWorld(scene, seed = 1337) {
   for (const rk of rocks) if (rk.s > 0.7) solids.push({ x: rk.x, z: rk.z, r: 0.5 + rk.s * 0.4 });   // only the larger boulders
   const BLOCK_DISC = { obelisk: 1.0, tower: 1.0, statue: 1.0, lighthouse: 1.1, crystal: 0.9, well: 0.9, idol: 0.8, shrine: 0.7, cairn: 0.7, meteor: 1.0, wreck: 1.4 };
   for (const d of discoveries) { const r = BLOCK_DISC[d.kind]; if (r) solids.push({ x: d.x, z: d.z, r }); }
+
+  // PERF: spatial grid for collision — O(~10) cell lookups instead of O(1500) linear scan.
+  // The grid is built ONCE after all static solids are added (before bridge clearing).
+  // Dynamic refs (chopped trees / depleted ore) are checked inline by the existing ref.alive guard.
+  const GRID_CELL = 8;   // world units per cell (larger than the biggest solid radius)
+  const solidGrid = {};
+  function _gridKey(cx, cz) { return cx + ',' + cz; }
+  function buildSolidGrid() {
+    for (const k in solidGrid) delete solidGrid[k];   // clear
+    for (let i = 0; i < solids.length; i++) {
+      const o = solids[i];
+      // insert into all cells the solid's bounding circle touches
+      const minCx = Math.floor((o.x - o.r) / GRID_CELL), maxCx = Math.floor((o.x + o.r) / GRID_CELL);
+      const minCz = Math.floor((o.z - o.r) / GRID_CELL), maxCz = Math.floor((o.z + o.r) / GRID_CELL);
+      for (let cx = minCx; cx <= maxCx; cx++) for (let cz = minCz; cz <= maxCz; cz++) {
+        const k = _gridKey(cx, cz);
+        if (!solidGrid[k]) solidGrid[k] = [];
+        solidGrid[k].push(o);
+      }
+    }
+  }
+  function inSolidGrid(x, z) {
+    const cx = Math.floor(x / GRID_CELL), cz = Math.floor(z / GRID_CELL);
+    const cell = solidGrid[_gridKey(cx, cz)];
+    if (!cell) return false;
+    for (let i = 0; i < cell.length; i++) { const o = cell[i]; if (o.ref && !o.ref.alive) continue; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return true; }
+    return false;
+  }
   // find a spot that's both walkable AND clear of solids — used by teleports so you never land stuck inside an obstacle
-  function inSolid(x, z) { for (const o of solids) { if (o.ref && !o.ref.alive) continue; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return true; } return false; }
+  function inSolid(x, z) { return inSolidGrid(x, z); }
   function findClear(x, z) { if (isWalkable(x, z) && !inSolid(x, z)) return { x, z }; for (let r = 2; r <= 40; r += 2) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz) && !inSolid(nx, nz)) return { x: nx, z: nz }; } return { x, z }; }
 
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
@@ -1024,17 +1069,19 @@ export function createWorld(scene, seed = 1337) {
     });
     if (kept.length !== solids.length) { solids.length = 0; for (const k of kept) solids.push(k); }
   })();
+  buildSolidGrid();   // PERF: build spatial hash after all static solids + bridge clearing
 
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
   function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }
 
+  const dynSolids = [];   // PERF: dynamic entity solids (NPCs/mobs/animals) — separate from grid-indexed statics
   return {
     group, height, isWalkable, WATER_Y,
     village: VILLAGE_A,
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, animalSpawns, obstacles: solids.filter((s) => s.r >= 1.2), mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
+    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, dynSolids, inSolidGrid, animalSpawns, obstacles: solids.filter((s) => s.r >= 1.2), mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);
@@ -1056,6 +1103,8 @@ export function createWorld(scene, seed = 1337) {
     showTrophy(key) { const m = trophyMeshes[key]; if (m) m.forEach((x) => (x.visible = true)); },
     tick(dt) {
       animT += dt;
+      // PERF: clear quantised height cache each frame (entities re-query nearby positions)
+      _hcache = new Map();
       windUniform.value = animT * 1.1;   // drives the GPU canopy sway
       waveUniform.value = animT * 1.4;   // drives the GPU sea ripples
       for (const f of fireMeshes) { f.m.scale.setScalar(0.82 + Math.sin(animT * 9 + f.seed) * 0.18); f.m.position.y = f.baseY + Math.sin(animT * 13 + f.seed) * 0.05; }

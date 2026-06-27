@@ -61,9 +61,9 @@ try {
   G.fx = createFx(engine.scene);
   G.interiors = createInteriors(engine.scene);
   G.inInterior = false; G.interiorStations = [];
-  player.setSolids(world.solids);   // collide with buildings/wells outdoors
+  player.setSolids(world);   // PERF: pass world ref — player uses spatial grid for statics + dynSolids for entities
   // also collide with the living world: NPCs, ambient mobs, and animals (dynamic solids track their live positions; radii < interaction range so you can still talk/use)
-  { const dynSolid = (ent, r) => world.solids.push({ get x() { return ent.group.position.x; }, get z() { return ent.group.position.z; }, r });
+  { const dynSolid = (ent, r) => world.dynSolids.push({ get x() { return ent.group.position.x; }, get z() { return ent.group.position.z; }, r });
     G.entities.npcs.forEach((n) => dynSolid(n, 0.55));
     G.entities.mobs.forEach((m) => dynSolid(m, 0.5));
     G.entities.animals.forEach((a) => dynSolid(a, a.solidR)); }
@@ -1231,7 +1231,7 @@ try {
     world.group.visible = true;
     G.entities.setHidden(false);
     player.setBounds(null);
-    player.setSolids(world.solids);
+    player.setSolids(world);   // PERF: restore world ref for grid-based collision
     const r = G.returnPos || { x: world.village.x, z: world.village.z + 12, heading: Math.PI };
     player.group.position.set(r.x, world.height(r.x, r.z), r.z);
     player.state.heading = r.heading;
@@ -1745,10 +1745,12 @@ try {
   G.weatherXpMult = () => { const w = WEATHER[weather.kind]; return w ? w.xp : 1; };
   G.weatherGather = (skill) => { const w = WEATHER[weather.kind]; if (!w) return 1; return skill === 'fishing' ? w.fish : w.gather; };
   G.weatherDmg = (style) => { const w = WEATHER[weather.kind]; if (!w) return 1; return style === 'magic' ? w.magic : style === 'ranged' ? w.ranged : 1; };
-  const RAIN_N = 36, SNOW_N = 54, weatherGroup = new THREE.Group(); engine.scene.add(weatherGroup);
+  const RAIN_N = 20, SNOW_N = 28, weatherGroup = new THREE.Group(); engine.scene.add(weatherGroup);   // PERF: reduced from 36/54 → 20/28 (still reads well on glasses)
   const rainPool = [], snowPool = [];
-  for (let i = 0; i < RAIN_N; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.1, 0.05), new THREE.MeshBasicMaterial({ color: 0x9bbdd8, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.frustumCulled = false; m._o = { x: (Math.random() - 0.5) * 16, z: (Math.random() - 0.5) * 16, y: Math.random() * 12, sp: 14 + Math.random() * 5 }; weatherGroup.add(m); rainPool.push(m); }
-  for (let i = 0; i < SNOW_N; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.frustumCulled = false; m._o = { x: (Math.random() - 0.5) * 18, z: (Math.random() - 0.5) * 18, y: Math.random() * 11, sp: 2 + Math.random() * 2.5, w: Math.random() * 6.28 }; weatherGroup.add(m); snowPool.push(m); }
+  const rainGeo = new THREE.BoxGeometry(0.05, 1.1, 0.05), rainMat = new THREE.MeshBasicMaterial({ color: 0x9bbdd8, transparent: true, opacity: 0, depthWrite: false });   // PERF: shared geo+mat
+  const snowGeo = new THREE.IcosahedronGeometry(0.1, 0), snowMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+  for (let i = 0; i < RAIN_N; i++) { const m = new THREE.Mesh(rainGeo, rainMat); m.visible = false; m.frustumCulled = false; m._o = { x: (Math.random() - 0.5) * 16, z: (Math.random() - 0.5) * 16, y: Math.random() * 12, sp: 14 + Math.random() * 5 }; weatherGroup.add(m); rainPool.push(m); }
+  for (let i = 0; i < SNOW_N; i++) { const m = new THREE.Mesh(snowGeo, snowMat); m.visible = false; m.frustumCulled = false; m._o = { x: (Math.random() - 0.5) * 18, z: (Math.random() - 0.5) * 18, y: Math.random() * 11, sp: 2 + Math.random() * 2.5, w: Math.random() * 6.28 }; weatherGroup.add(m); snowPool.push(m); }
   function nearestBiome() { let best = null, bd = Infinity; for (const r of world.regions) { const dx = r.x - player.position.x, dz = r.z - player.position.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = r; } } return best ? best.biome : 'grass'; }   // regions are already WORLD_SCALE'd — don't re-scale
   function pickWeather(biome) { const c = []; for (const k in WEATHER) { const w = WEATHER[k]; if (w.biomes === '*' || w.biomes.includes(biome)) c.push([k, w.weight]); } let tot = c.reduce((s, x) => s + x[1], 0), r = Math.random() * tot; for (const [k, wt] of c) { r -= wt; if (r <= 0) return k; } return 'clear'; }
   function updateWeather(dt) {
@@ -1760,8 +1762,11 @@ try {
   }
   function updateWeatherParticles() {
     const w = WEATHER[weather.kind], part = w ? w.part : null, op = weather.intensity;
-    for (const m of rainPool) { if (part !== 'rain') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 10 + Math.random() * 4; m.position.set(player.position.x + o.x, player.position.y + o.y, player.position.z + o.z); m.material.opacity = 0.62 * op; m.material.color.setHex(w.tint); }
-    for (const m of snowPool) { if (part !== 'snow') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.w += 0.026; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 11 + Math.random() * 3; m.position.set(player.position.x + o.x + Math.sin(o.w) * 1.5, player.position.y + o.y, player.position.z + o.z); m.material.opacity = 0.92 * op; }
+    // PERF: shared material — set once, not per-mesh
+    if (part === 'rain') { rainMat.opacity = 0.62 * op; rainMat.color.setHex(w.tint); }
+    if (part === 'snow') { snowMat.opacity = 0.92 * op; }
+    for (const m of rainPool) { if (part !== 'rain') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 10 + Math.random() * 4; m.position.set(player.position.x + o.x, player.position.y + o.y, player.position.z + o.z); }
+    for (const m of snowPool) { if (part !== 'snow') { if (m.visible) m.visible = false; continue; } m.visible = true; const o = m._o; o.w += 0.026; o.y -= o.sp * 0.016; if (o.y < -2) o.y = 11 + Math.random() * 3; m.position.set(player.position.x + o.x + Math.sin(o.w) * 1.5, player.position.y + o.y, player.position.z + o.z); }
   }
   function applyWeatherLight() {   // called each frame after the day/night lights are set; recomputed from the fresh base so it self-resets
     const w = WEATHER[weather.kind], it = weather.intensity, f = engine.scene.fog;
@@ -1793,7 +1798,7 @@ try {
     engine.fill.color.setHex(0x88b8ff); engine.fill.intensity = 0.2;
   }
   const updateLighting = () => { if (G.inInterior) applyInteriorLight(); else applyTimeOfDay(tod); };   // indoors shouldn't track the outdoor sky
-  let running = true, tod = (saved && saved.tod != null) ? saved.tod : 0.32, mmTick = 0, econTick = 0;
+  let running = true, tod = (saved && saved.tod != null) ? saved.tod : 0.32, mmTick = 0, econTick = 0, locTick = 0;
   Object.defineProperty(G, 'tod', { get: () => tod, configurable: true });   // expose for save.js
   function frame() {
     if (!running) return;
@@ -1801,8 +1806,8 @@ try {
     if (++econTick % 90 === 0) { G.economy.tick(); G.farm.tick(); }   // accrue passive business + farm income (~1.5s)
     // day/night cycle (~180s) — kept bright enough to stay readable on the display
     tod = (tod + dt / 180) % 1;
-    updateLighting();
-    updateWeather(dt); applyWeatherLight(); weatherGroup.visible = mode === 'world';   // don't render the 90 particle meshes indoors
+    if (econTick % 4 === 0) updateLighting();   // PERF: lighting every 4th frame (~15 Hz) — tod changes slowly (full cycle = 3 min)
+    updateWeather(dt); if (econTick % 4 === 0) applyWeatherLight(); weatherGroup.visible = mode === 'world';   // PERF: weather lighting synced with tod lighting throttle
     if (mode === 'world') {
       player.update(dt, input);
       G.entities.update(dt, player);
@@ -1832,7 +1837,7 @@ try {
       }
       G.currentTarget = G.interact.best();
       updatePrompt();
-      updateLocation();
+      if (++locTick % 6 === 0) updateLocation();   // PERF: check location every 6th frame (~10 Hz) — player barely moves in 100ms
     } else if (mode === 'interior') {
       player.update(dt, input);
       G.fx.update(dt);
@@ -1846,7 +1851,7 @@ try {
     else { const r = player.state.hp / player.state.maxHp; if (r > 0 && r < 0.3) document.body.style.boxShadow = `inset 0 0 80px rgba(255,40,40,${((0.3 - r) * 0.9 + 0.1).toFixed(2)})`; else if (document.body.style.boxShadow) document.body.style.boxShadow = ''; }
     player.updateCamera(engine.camera, dt);
     G.ui.setCompass(player.state.heading);
-    if (mode === 'world' || mode === 'interior') updateMarkers();   // markers are hidden behind overlays
+    if ((mode === 'world' || mode === 'interior') && econTick % 2 === 0) updateMarkers();   // PERF: markers every 2nd frame (~30 Hz) — projections + DOM writes
     if (mode === 'interior') G.ui.setMinimapVisible(false);
     else { G.ui.setMinimapVisible(true); if (mode === 'world') { mmTick++; if (mmTick % 3 === 0) G.ui.updateMinimap(); } }
     engine.renderer.render(engine.scene, engine.camera);
@@ -1895,6 +1900,11 @@ try {
     setTod(t) { tod = ((t % 1) + 1) % 1; applyTimeOfDay(tod); return tod; },   // jump the clock (dev/preview)
     get tod() { return tod; },
     step(n = 1) { for (let i = 0; i < n; i++) { updateLighting(); applyWeatherLight(); if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); G.ui.updateBubbles(0.016); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateTrawler(0.016); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    // PERF: benchmark hook — measures average frame time over N frames
+    perf(n = 120) { const t = []; let i = 0; const fn = () => { const s = performance.now(); frame(); t.push(performance.now() - s); if (++i < n) requestAnimationFrame(fn); else { running = false; const avg = t.reduce((a, b) => a + b) / t.length; const fps = 1000 / avg; console.log(`perf: ${avg.toFixed(1)}ms avg (${fps.toFixed(0)} fps), min ${Math.min(...t).toFixed(1)}ms, max ${Math.max(...t).toFixed(1)}ms`); } }; running = false; setTimeout(() => { running = true; fn(); }, 100); },
+    get drawCalls() { return engine.renderer.info.render.calls; },
+    get triangles() { return engine.renderer.info.render.triangles; },
+    get programs() { return engine.renderer.info.programs ? engine.renderer.info.programs.length : 'N/A'; },
   };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);

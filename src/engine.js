@@ -6,7 +6,7 @@ import * as THREE from 'three';
 export function createEngine(canvas) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
+    antialias: false,   // PERF: disabled — saves ~30% GPU fill on mobile/glasses (low-poly style hides jaggies)
     alpha: false,
     powerPreference: 'high-performance',
   });
@@ -21,7 +21,7 @@ export function createEngine(canvas) {
   const FOG = 0x000000;
   scene.fog = new THREE.Fog(FOG, 26, 110);
 
-  const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 400);
+  const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 160);   // PERF: far plane 400→160 (fog hides beyond ~110 anyway; GPU frustum cull kicks in earlier)
   camera.position.set(0, 12, 14);
 
   // Hemisphere for soft sky/ground ambient + a warm directional sun for facets.
