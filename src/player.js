@@ -30,6 +30,38 @@ const WEAPON_MODEL = {
   moonscythe: ['scythe', 0xc6a8ff], windpierce_crossbow: ['crossbow', 0x9bdcff], archon_scepter: ['scepter', 0xffe066],
   valkyr_glaive: ['halberd', 0xfff0c0], stormweaver_scepter: ['scepter', 0x6fd0ff],
 };
+// How each weapon SHAPE sits in the hand at rest. tilt = forward lean of the weapon from vertical
+// (rad, + = tip forward), roll = slight inward lean across the body, hands = 1 or 2 (two-handers
+// also bring the left hand onto the haft), gz/gy = grip offset, rest = carry style. Applied to the
+// gripPivot so the held silhouette reads naturally instead of every weapon standing dead-vertical.
+// tilt/roll in radians; gy slides the weapon along its length so the right hand grips the haft (not the
+// butt); gz pushes cradled weapons forward off the chest; lg = how far up the haft the off-hand grips
+// (two-handers). Values synthesised from a 3-lens design panel (realism / silhouette / rig-feasibility).
+const GRIP_FWD = 1, GRIP_ROLL = 1;   // axis signs (calibrated so +tilt leans the tip the way the character faces)
+const WEAPON_GRIP = {
+  _default:   { tilt: 0.18,  roll: 0,      hands: 1, gy: -0.08, rest: 'ready' },
+  sword:      { tilt: 0.175, roll: -0.07,  hands: 1, gy: -0.08, rest: 'ready' },
+  scimitar:   { tilt: 0.21,  roll: -0.175, hands: 1, gy: -0.10, rest: 'ready' },
+  rapier:     { tilt: 0.31,  roll: 0.05,   hands: 1, gy: -0.09, rest: 'ready' },
+  dagger:     { tilt: 0.42,  roll: -0.105, hands: 1, gy: -0.07, rest: 'ready' },
+  mace:       { tilt: 0.33,  roll: 0,      hands: 1, gy: -0.2,  rest: 'ready' },
+  scepter:    { tilt: 0.3,   roll: 0,      hands: 1, gy: -0.22, rest: 'ready' },
+  wand:       { tilt: 0.42,  roll: -0.087, hands: 1, gy: -0.14, rest: 'ready' },
+  flail:      { tilt: 0.24,  roll: -0.07,  hands: 1, gy: -0.10, rest: 'low' },
+  staff:      { tilt: 0.087, roll: 0.035,  hands: 1, gy: -0.48, rest: 'planted' },
+  bow:        { tilt: 0.035, roll: 0.14,   hands: 1, gy: 0,     rest: 'low' },
+  longbow:    { tilt: 0.035, roll: 0.105,  hands: 1, gy: 0,     rest: 'low' },
+  axe:        { tilt: -0.24, roll: -0.14,  hands: 1, gy: -0.14, rest: 'shoulder' },
+  greatsword: { tilt: -0.45, roll: -0.07,  hands: 2, lg: 0.27, gy: -0.11, rest: 'shoulder' },
+  warhammer:  { tilt: -0.18, roll: -0.18,  hands: 2, lg: 0.27, gy: -0.10, rest: 'shoulder' },
+  spear:      { tilt: 0.14,  roll: 0,      hands: 2, lg: 0.40, gy: -0.20, rest: 'planted' },
+  trident:    { tilt: 0.14,  roll: 0,      hands: 2, lg: 0.42, gy: -0.20, rest: 'planted' },
+  halberd:    { tilt: 0.12,  roll: -0.087, hands: 2, lg: 0.40, gy: -0.18, rest: 'planted' },
+  scythe:     { tilt: 0.07,  roll: -0.14,  hands: 2, lg: 0.42, gy: -0.17, rest: 'planted' },
+  crossbow:   { tilt: 1.29,  roll: 0,      hands: 2, lg: 0.45, gy: 0,     gz: 0.20, rest: 'cradle' },
+  grimoire:   { tilt: 1.29,  roll: 0,      hands: 2, lg: 0.70, gy: 0.05,  gz: 0.25, rest: 'cradle' },
+  claw:       { tilt: 0,     roll: 0,      hands: 1, gy: 0,     rest: 'worn' },
+};
 // Per-armor body looks: chest colour + optional shoulders / helm / hood.
 const ARMOR_MODEL = {
   leather_armor: { color: 0x8a5a2e }, iron_armor: { color: 0x9aa0a8, shoulders: true }, steel_armor: { color: 0xeaf2ff, shoulders: true, helm: true },
@@ -66,6 +98,7 @@ export function createPlayer(scene, world) {
   const legR = new THREE.Group(); legR.position.set(0.17, 0.7, 0); legR.add(mkBox(0.24, 0.7, 0.24, dark, 0, -0.35, 0)); body.add(legR);
   body.add(mkBox(0.74, 0.82, 0.46, tunic, 0, 1.15, 0));      // torso
   const armL = new THREE.Group(); armL.position.set(-0.5, 1.5, 0); armL.add(mkBox(0.2, 0.62, 0.22, tunic, 0, -0.31, 0)); body.add(armL);   // left arm (swings)
+  const leftFist = mkBox(0.18, 0.18, 0.18, skin, 0, -0.62, 0); armL.add(leftFist);   // left hand — completes the silhouette + grips two-handed weapons
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), skin);
   head.position.set(0, 1.86, 0); body.add(head);
   body.add(mkBox(0.4, 0.12, 0.06, visorMat, 0, 1.9, 0.3));   // facing visor (+z)
@@ -89,7 +122,8 @@ export function createPlayer(scene, world) {
   const hand = new THREE.Group(); hand.position.set(0, -0.62, 0); rightArm.add(hand);
   hand.rotation.x = 0.22;   // weapon carried at a slight forward "ready" tilt rather than dead-vertical
   hand.add(mkBox(0.18, 0.18, 0.18, skin, 0, 0, 0));          // fist
-  const weaponHolder = new THREE.Group(); hand.add(weaponHolder);
+  const gripPivot = new THREE.Group(); hand.add(gripPivot);   // per-weapon held orientation (tilt / roll / grip offset) — wraps the holder so the flip + meshes below stay untouched
+  const weaponHolder = new THREE.Group(); gripPivot.add(weaponHolder);
   weaponHolder.rotation.z = Math.PI;   // weapons are modelled extending -Y; flip so they're held UPRIGHT (blade/orb up), still forward-facing
   const bladeTip = new THREE.Object3D(); bladeTip.position.set(0, -1.0, 0); weaponHolder.add(bladeTip);   // approx blade tip — sampled for the swing trail
   const toolHolder = new THREE.Group(); hand.add(toolHolder); toolHolder.visible = false;   // axe/pick/rod shown while gathering
@@ -121,8 +155,21 @@ export function createPlayer(scene, world) {
     else if (model === 'grimoire') { weaponHolder.add(mkBox(0.5, 0.62, 0.12, m, 0, -0.3, 0.1)); weaponHolder.add(mkBox(0.44, 0.54, 0.13, new THREE.MeshLambertMaterial({ color: 0xf4ecd0, flatShading: true }), 0, -0.3, 0.11)); const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), glow); orb.position.set(0, -0.05, 0.2); weaponHolder.add(orb); weaponGlows.push(orb); }
     else if (model === 'scepter') { weaponHolder.add(mkBox(0.06, 1.0, 0.06, m, 0, -0.5, 0)); const head = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), glow); head.position.set(0, -1.05, 0); weaponHolder.add(head); weaponGlows.push(head); for (const a of [0, Math.PI * 2 / 3, Math.PI * 4 / 3]) { const p = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 4), glow); p.position.set(Math.cos(a) * 0.18, -1.05, Math.sin(a) * 0.18); p.rotation.z = -Math.PI / 2; p.rotation.y = a; weaponHolder.add(p); } }
   }
+  function applyGrip(shape) {   // orient the held weapon in the hand per its type
+    const g = WEAPON_GRIP[shape] || WEAPON_GRIP._default;
+    gripPivot.rotation.set(GRIP_FWD * (g.tilt || 0), 0, GRIP_ROLL * (g.roll || 0));
+    gripPivot.position.set(0, 0, g.gz || 0);
+    weaponHolder.position.y = g.gy || 0;   // slide along the haft so the fist grips it, not the butt
+    state.weaponHands = g.hands || 1;
+    state.gripRest = g.rest || 'ready';
+    state.gripLeft = g.lg || 0;
+  }
+  function resetGrip() {   // unarmed → neutral fist, no held weapon
+    gripPivot.rotation.set(0, 0, 0); gripPivot.position.set(0, 0, 0); weaponHolder.position.y = 0;
+    state.weaponHands = 1; state.gripRest = 'ready'; state.gripLeft = 0;
+  }
   function setWeaponMesh(key) {
-    clearHolder();
+    clearHolder(); resetGrip();
     let cw = (key && cosmetic && cosmetic.weapon) ? cosmetic.weapon : null;   // transmog only reskins a weapon you actually wield
     // only reskin to a REAL weapon of the SAME combat style — keeps the attack animation matching the silhouette + a stale/invalid key can't crash the model lookup
     if (cw && (!weaponOf(cw) || !weaponOf(key) || weaponOf(cw).style !== weaponOf(key).style)) cw = null;
@@ -134,6 +181,7 @@ export function createPlayer(scene, world) {
     const tint = (dye != null) ? dye : md[1];
     weaponTint = tint;   // swing trail tints to match the displayed blade
     buildWeaponModel(md[0], tint);
+    applyGrip(md[0]);
   }
   function buildArmor(key) {
     while (armorGroup.children.length) armorGroup.remove(armorGroup.children[0]);
@@ -227,6 +275,7 @@ export function createPlayer(scene, world) {
     coastFwd: 0, coastBack: 0, coastTurn: 0, coastTurnDir: 0,
     moving: false, bob: 0,
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
+    weaponHands: 1, gripRest: 'ready', gripLeft: 0, hasShield: false,   // held-weapon pose (set by setWeaponMesh / refreshEquipment)
     equipment: { weapon: null, armor: null, amulet: null, ring: null, shield: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
     combatStance: 'accurate',   // attack stance (accurate/aggressive/defensive/controlled)
@@ -239,6 +288,7 @@ export function createPlayer(scene, world) {
     setWeaponMesh(state.equipment.weapon);
     buildArmor(state.equipment.armor);
     buildShield(state.equipment.shield);
+    state.hasShield = !!state.equipment.shield;   // a shield occupies the off-hand → no two-handed grip
   }
   refreshEquipment();
 
@@ -296,14 +346,21 @@ export function createPlayer(scene, world) {
     // magic weapons shimmer: a gentle orb pulse + slow spin
     if (weaponGlows.length) { const pul = 1 + Math.sin(state.t * 5) * 0.16; for (let i = 0; i < weaponGlows.length; i++) { weaponGlows[i].scale.setScalar(pul); weaponGlows[i].rotation.y += dt * 1.4; } }
 
-    // walk cycle — legs swing at the hips, arms counter-swing (the right arm yields to an attack)
+    // walk cycle — legs swing at the hips
     const gait = state.moving ? Math.sin(state.bob) * 0.5 : 0;
     const gk = Math.min(1, dt * 12);
     legL.rotation.x += (gait - legL.rotation.x) * gk;
     legR.rotation.x += (-gait - legR.rotation.x) * gk;
-    armL.rotation.x += (-gait - armL.rotation.x) * gk;
 
-    // attack animation (right arm)
+    const twoH = state.weaponHands === 2 && !state.toolActive && !state.hasShield;   // both hands grip the haft
+    const shoulderRest = state.gripRest === 'shoulder';
+    const cradleRest = state.gripRest === 'cradle';
+    const leftGrips = twoH && state.gripRest === 'planted';   // only planted polearms bring the off-hand onto the haft; shoulder + cradle carry one-handed (natural for a shouldered greatsword / a cradled book or crossbow)
+    const r2hX = shoulderRest ? -0.5 : -0.32, r2hZ = shoulderRest ? -0.18 : (cradleRest ? -0.3 : -0.78);   // right arm draws the weapon toward centre (or shoulder)
+    const l2hX = -0.2, l2hZ = 1.45;                                                                        // off-hand reaches across to the haft
+    const breath = Math.sin(state.t * 1.6);
+
+    // attack animation (right arm drives the swing)
     if (state.attackAnim > 0) {
       state.attackAnim = Math.max(0, state.attackAnim - dt);
       const t = 1 - state.attackAnim / state.animDur;
@@ -322,18 +379,31 @@ export function createPlayer(scene, world) {
           break;
         }
       }
-      rightArm.rotation.z += (0 - rightArm.rotation.z) * gk;   // keep the swing in-plane (no sideways drift mid-strike)
-      hand.rotation.x += (0.22 - hand.rotation.x) * gk;        // steady grip through the swing
+      rightArm.rotation.z += ((twoH ? -0.3 : 0) - rightArm.rotation.z) * gk;   // 2H keeps the inward bias through the strike; else stay in-plane
+      hand.rotation.x += (0.22 - hand.rotation.x) * gk;                        // steady grip through the swing
       if (state.attackAnim === 0 && state.toolActive) showTool(false);
+    } else if (twoH) {
+      // Two-handed carry: the right arm draws the weapon to centre-front (or up to the shoulder), where the off-hand can meet it.
+      rightArm.rotation.x += ((r2hX + breath * 0.03) - rightArm.rotation.x) * gk;
+      rightArm.rotation.z += (r2hZ - rightArm.rotation.z) * gk;
+      hand.rotation.x += (0.22 - hand.rotation.x) * gk;
     } else {
-      // Carry the held weapon naturally: a measured stride-bob while moving, and breathing life at rest —
-      // so it moves WITH the arm instead of floating frozen in place.
-      const breath = Math.sin(state.t * 1.6);
-      const targX = (state.moving ? gait * 0.34 : breath * 0.05) - 0.1;   // relaxed ready bias + a controlled carry-bob (not a free-arm flail)
-      const targZ = state.moving ? Math.sin(state.bob * 0.5) * 0.05 : breath * 0.035;   // slight sway so the weapon lives
+      // One-handed carry: a measured stride-bob while moving, breathing life at rest — moves WITH the arm, never frozen.
+      const targX = (state.moving ? gait * 0.34 : breath * 0.05) - 0.1;
+      const targZ = state.moving ? Math.sin(state.bob * 0.5) * 0.05 : breath * 0.035;
       rightArm.rotation.x += (targX - rightArm.rotation.x) * gk;
       rightArm.rotation.z += (targZ - rightArm.rotation.z) * gk;
-      hand.rotation.x += ((0.22 + (state.moving ? Math.abs(Math.sin(state.bob)) * 0.14 : breath * 0.03)) - hand.rotation.x) * gk;   // wrist settles with each footfall, breathes at rest
+      hand.rotation.x += ((0.22 + (state.moving ? Math.abs(Math.sin(state.bob)) * 0.14 : breath * 0.03)) - hand.rotation.x) * gk;
+    }
+
+    // off-hand (left arm): grips the haft on a planted/cradled two-hander, otherwise counter-swings with the gait
+    if (leftGrips) {
+      const swingLift = state.attackAnim > 0 ? (rightArm.rotation.x + 0.32) * 0.6 : 0;   // rise with the right arm through a swing so the hands stay together
+      armL.rotation.x += ((l2hX + breath * 0.02 + swingLift) - armL.rotation.x) * gk;
+      armL.rotation.z += (l2hZ - armL.rotation.z) * gk;
+    } else {
+      armL.rotation.x += (-gait - armL.rotation.x) * gk;
+      armL.rotation.z += (0 - armL.rotation.z) * gk;   // release any prior two-handed reach
     }
 
     // swoosh trail follows the blade during a melee swing only (not casts, shots or tool gathering)
