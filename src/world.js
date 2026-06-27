@@ -1011,6 +1011,20 @@ export function createWorld(scene, seed = 1337) {
   locations.push({ name: 'Cinderbreak Isle', x: byKey.cinderbreak.x, z: byKey.cinderbreak.z });
   function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak', jungle: 'Kytari Spire', badlands: 'Red Mesa', highland: 'Thunderpeak', glade: 'Moonspire', amberfell: 'Amber Tor', shardspire: 'Prism Peak', skyreach: 'Aerie Spire', cinderbreak: 'Cinder Cone', sporevale: 'Spore Knoll' })[key] || 'Peak'; }
 
+  // Keep a clear lane down the centre of every land bridge: a stray tree/rock/prop that generated on a
+  // causeway must never block the crossing to a new region. Drop those solids so passage stays fluid.
+  // (Mutates `solids` in place so the collision list, `obstacles`, and the inSolid/findClear closures all agree.)
+  (() => {
+    const kept = solids.filter((s) => {
+      for (const b of BRIDGES) {
+        if (b.type === 'ferry') continue;
+        if (distToSeg(s.x, s.z, b.ax, b.az, b.bx, b.bz) < Math.min(b.halfW, 3.6) + (s.r || 0)) return false;   // within the central walking lane
+      }
+      return true;
+    });
+    if (kept.length !== solids.length) { solids.length = 0; for (const k of kept) solids.push(k); }
+  })();
+
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
   function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }
 
