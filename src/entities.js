@@ -6,7 +6,7 @@ import { rimLight } from './shaders.js';
 
 const DEATH_DUR = 0.55;   // topple/shrink/sink before the corpse vanishes
 const ATK_ANIM = 0.3;     // forward-lean bite when an enemy strikes
-const ANIMAL_FREEZE2 = (75 * WS) * (75 * WS);   // animals beyond this (squared) freeze + hide (perf)
+const ANIMAL_FREEZE2 = (70 * WS) * (70 * WS);   // animals beyond this (squared) freeze + hide (perf; ~just past the fog line)
 
 const SKIN = [0xf2c79a, 0xe0a878, 0xc98a5a, 0x8d5a3a];
 const HAIR = [0x2a2330, 0x5c4326, 0x8a8a92, 0x6e4a2b, 0xb5602a];
@@ -374,6 +374,8 @@ export function createEntities(scene, world, G) {
   }
   function update(dt, player) {
     T += dt;
+    const lf = (update._lf = (update._lf | 0) + 1);   // frame counter for distant-entity LOD (half-rate AI far away)
+    const LOD2 = (45 * WS) * (45 * WS);                // beyond this (squared) an ambient entity updates every OTHER frame — imperceptible through fog
     for (const e of enemies) {
       if (!e.alive) {
         if (e.dying > 0) {                                  // death: topple sideways, shrink, sink
@@ -404,6 +406,7 @@ export function createEntities(scene, world, G) {
       const d = dist2D(e.pos.x, e.pos.z, player.position.x, player.position.z);
       if (d > 70 * WS) { e.group.visible = false; e.group.rotation.z = 0; continue; }   // PERF: hide + skip far-away enemies (saves draw calls)
       if (!e.group.visible) e.group.visible = true;
+      if (d * d > LOD2 && (lf & 1)) continue;   // LOD: distant (non-engaging) enemies update at half-rate; anyone chasing the player is near, so unaffected
       // peaceful by default (RuneScape-style) — chase/attack only once provoked by being
       // struck, and give up if dragged beyond its leash from home or the player flees far
       if (e.provoked) {
@@ -499,8 +502,11 @@ export function createEntities(scene, world, G) {
     // ambient mobs — squads patrol a loop in formation, wanderers stroll near home; all walk-cycle
     const isNight = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);   // routine: the town winds down after dusk
     for (const m of mobs) {
-      if (dist2D(m.pos.x, m.pos.z, player.position.x, player.position.z) > 75 * WS) { m.group.visible = false; continue; }   // PERF: hide + freeze when far
+      const md = dist2D(m.pos.x, m.pos.z, player.position.x, player.position.z);
+      if (md > 70 * WS) { m.group.visible = false; continue; }   // PERF: hide + freeze when far (just past the fog line)
       if (!m.group.visible) m.group.visible = true;
+      if (md * md > LOD2 && (lf & 1)) continue;   // LOD: distant ambient mobs amble at half-rate
+
       const spd = isNight ? m.speed * (m.squad ? 0.78 : 0.55) : m.speed;   // slower at night (wanderers also keep close to home, below)
       let tx, tz, stop = 1.2;
       if (m.squad) {
@@ -542,6 +548,7 @@ export function createEntities(scene, world, G) {
       const D = a.def, anim = a.group.userData.anim;
       const pdx = a.pos.x - player.position.x, pdz = a.pos.z - player.position.z, pd2 = pdx * pdx + pdz * pdz;
       const far = pd2 > ANIMAL_FREEZE2; a.group.visible = !far; if (far) continue;   // freeze + hide far away (perf)
+      if (pd2 > LOD2 && (lf & 1)) continue;   // LOD: distant grazers update at half-rate (imperceptible through fog)
       let moving = false, grazing = false;
       const flee = D.skittish && !a.penned && pd2 < 18;   // wild prey bolt when the player gets within ~4.2
       if (flee) {
