@@ -1075,6 +1075,20 @@ export function createWorld(scene, seed = 1337) {
   function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }
 
   const dynSolids = [];   // PERF: dynamic entity solids (NPCs/mobs/animals) — separate from grid-indexed statics
+  // PERF: the overworld is overwhelmingly STATIC props. Bake their world matrices once and switch OFF
+  // per-frame matrix recompute — kills the matrix pass over ~2.4k meshes every frame. Only LEAF MESHES
+  // are frozen (groups keep updating so nested animated meshes still resolve), then the tick-animated
+  // meshes (water bob / shimmer / forge-fire / orbs / moving ferries, enumerated from tick() above) are
+  // explicitly re-enabled so their per-frame transforms still apply.
+  group.updateMatrixWorld(true);
+  group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = false; });
+  const _live = (m) => { if (m) m.matrixAutoUpdate = true; };
+  _live(water);
+  for (const s of shimMeshes) _live(s.m);
+  for (const f of fireMeshes) _live(f.m);
+  for (const o of orbMeshes) _live(o.m);
+  for (const f of (ferryBoats || [])) _live(f.m);
+
   return {
     group, height, isWalkable, WATER_Y,
     village: VILLAGE_A,
