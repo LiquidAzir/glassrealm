@@ -41,6 +41,7 @@ export function createSave(G) {
       slayerPoints: G.slayerPoints || 0,
       slayerPerks: G.slayerPerks ? [...G.slayerPerks] : [],
       tracked: G.trackedQuest || undefined,
+      sagaChoices: (G.sagaChoices && Object.keys(G.sagaChoices).length) ? { ...G.sagaChoices } : undefined,   // branching saga-finale outcomes
       audioMuted: G.audio ? G.audio.muted : false,
       worldScale: WORLD_SCALE,
       tod: (typeof G.tod === 'number') ? G.tod : undefined,   // time-of-day continuity across reloads

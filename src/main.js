@@ -251,6 +251,8 @@ try {
   G.waystonesAttuned = new Set((saved && saved.world && saved.world.waystonesAttuned) || []);   // fast-travel nodes you've walked up to
   G.slayer = (saved && saved.slayer) ? { ...saved.slayer } : { active: false, enemy: null, count: 0, progress: 0 };
   G.trackedQuest = (saved && saved.tracked) || null;   // selected quest the arrow guides (auto-set on accept)
+  G.sagaChoices = (saved && saved.sagaChoices) ? { ...saved.sagaChoices } : {};   // branching saga-finale outcomes ({questId: outcomeKey}), drives epilogue dialogue
+  G.sagaChoice = (qid, outcome) => { G.sagaChoices[qid] = outcome; G.save && G.save.save(); };   // record a finale choice + persist
   if (!(G.trackedQuest && G.quests.status(G.trackedQuest) === 'active')) { const a = G.quests.activeList(); G.trackedQuest = a.length ? a[0] : null; }   // default-select the active quest so it's guided
   const SLAYER_POOL = ['boar', 'wolf', 'bandit', 'scorpion', 'frost_wolf', 'skeleton', 'goblin', 'crystal_sprite', 'magma_imp', 'deep_lurker'];
   G.slayerPoints = (saved && saved.slayerPoints) || 0;
