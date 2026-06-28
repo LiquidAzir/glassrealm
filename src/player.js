@@ -29,6 +29,8 @@ const WEAPON_MODEL = {
   gravewarden_scythe: ['scythe', 0x9bb0c0], warlord_flail: ['flail', 0xc04040], shadow_claws: ['claw', 0x6a4a9a], dragoon_halberd: ['halberd', 0xff7a3a], seraph_blade: ['greatsword', 0xfff0c0],
   moonscythe: ['scythe', 0xc6a8ff], windpierce_crossbow: ['crossbow', 0x9bdcff], archon_scepter: ['scepter', 0xffe066],
   valkyr_glaive: ['halberd', 0xfff0c0], stormweaver_scepter: ['scepter', 0x6fd0ff],
+  // Expansion IV frontier dungeon boss weapons
+  dreamtide_staff: ['staff', 0x4fd6dc], rimeforged_axe: ['axe', 0xbfe0ff], glassmaw_bow: ['longbow', 0x80e0f0], voidedge_blade: ['greatsword', 0xb08adf], brinesong_trident: ['trident', 0xf08fb8],
 };
 // How each weapon SHAPE sits in the hand at rest. tilt = forward lean of the weapon from vertical
 // (rad, + = tip forward), roll = slight inward lean across the body, hands = 1 or 2 (two-handers

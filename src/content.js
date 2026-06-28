@@ -32,6 +32,12 @@ export const ITEMS = {
   molten_glass:    { name: 'Molten Glass',    icon: '🟠', type: 'material', desc: 'Half-cooled caldera glass, warm and faintly singing.' },
   glasswake_heart: { name: 'Glasswake Heart', icon: '🖤', type: 'amulet', bonus: { melee: 9, def: 6 },  desc: 'Cut from the shattered Glasswake — proof the screaming stopped. +9 melee, +6 defence.' },
   whispering_glass:{ name: 'Whispering Glass', icon: '🔮', type: 'amulet', bonus: { magic: 9, maxhp: 20 }, desc: 'The Glasswake cooled, not killed; its memories whisper to you still. +9 magic, +20 max HP.' },
+  // --- Frontier dungeon boss weapons (Expansion IV Batch 5) ---
+  dreamtide_staff:   { name: 'Dreamtide Staff',   icon: '🪄', type: 'weapon', style: 'magic',  skill: 'magic',  bonus: 28, range: 16,  speed: 0.66, desc: "The Lantern-Drowned's staff, lit from within. +28 magic." },
+  rimeforged_axe:    { name: 'Rimeforged Axe',    icon: '🪓', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 30, range: 3.0, speed: 0.46, desc: "The Rimewright's cold-forged axe. +30 melee." },
+  glassmaw_bow:      { name: 'Glassmaw Bow',      icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 28, range: 18,  speed: 0.54, desc: 'Strung from fused obsidian, it sings when drawn. +28 ranged.' },
+  voidedge_blade:    { name: 'Voidedge Blade',    icon: '⚔️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 32, range: 2.9, speed: 0.42, desc: "The Hollowed Warden's blade, edged with abyss. +32 melee." },
+  brinesong_trident: { name: 'Brinesong Trident', icon: '🔱', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 34, range: 3.2, speed: 0.5,  desc: "The Brinemother's trident, humming with the tide. +34 melee." },
 
   copper_ore: { name: 'Copper Ore', icon: '🟠', type: 'material', desc: 'Raw copper, smelts into a bronze bar.' },
   iron_ore:   { name: 'Iron Ore',   icon: '🔩', type: 'material', desc: 'Raw iron, smelts with coal into an iron bar.' },
@@ -803,6 +809,12 @@ export const ENEMIES = {
   glass_wisp:          { name: 'Glass-Wisp',     hp: 60,  dmg: 15, speed: 4.6, xp: 165, color: 0x6fd0e0, aggro: 13, shape: 'beast',    loot: { obsidian_tear: 1, bones: 1 } },
   cinderglass_stalker: { name: 'Cinderglass Stalker', hp: 84, dmg: 20, speed: 4.2, xp: 235, color: 0xc04828, aggro: 15, shape: 'humanoid', loot: { molten_glass: 1, obsidian_tear: 1, bones: 1 } },
   the_glasswake:       { name: 'The Glasswake',  hp: 320, dmg: 34, speed: 3.1, xp: 1100, color: 0x80e0f0, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 460, obsidian_shard: 4, molten_glass: 4, ruby: 2, bones: 4 }, rare: { item: 'ashen_signet', chance: 0.25 } },
+  // --- Frontier dungeon bosses (Expansion IV Batch 5; one per new realm) ---
+  the_lantern_drowned: { name: 'The Lantern-Drowned', hp: 360, dmg: 36, speed: 3.2, xp: 1080, color: 0x4fd6dc, aggro: 20, shape: 'humanoid', scale: 2.1, boss: true, loot: { gold: 500, dreamtide_staff: 1, tideglass: 5, pearl: 3, bones: 4 }, rare: { item: 'tideglass_ring', chance: 0.3 } },
+  the_rimewright:      { name: 'The Rimewright',      hp: 380, dmg: 38, speed: 3.0, xp: 1120, color: 0xbfe0ff, aggro: 20, shape: 'humanoid', scale: 2.0, boss: true, loot: { gold: 520, rimeforged_axe: 1, frost_iron: 6, sapphire: 2, bones: 4 }, rare: { item: 'frostguard_amulet', chance: 0.3 } },
+  the_glassmaw:        { name: 'The Glassmaw',        hp: 380, dmg: 38, speed: 3.1, xp: 1140, color: 0x80e0f0, aggro: 20, shape: 'beast',    scale: 2.2, boss: true, loot: { gold: 520, glassmaw_bow: 1, obsidian_shard: 4, ruby: 2, bones: 4 }, rare: { item: 'ashen_signet', chance: 0.25 } },
+  the_hollowed_warden: { name: 'The Hollowed Warden', hp: 400, dmg: 40, speed: 3.0, xp: 1200, color: 0xb08adf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 560, voidedge_blade: 1, amethyst_wisp: 5, emerald: 2, bones: 4 }, rare: { item: 'pall_amulet', chance: 0.25 } },
+  the_brinemother:     { name: 'The Brinemother',     hp: 380, dmg: 38, speed: 3.1, xp: 1120, color: 0xf08fb8, aggro: 20, shape: 'beast',    scale: 2.2, boss: true, loot: { gold: 520, brinesong_trident: 1, brine_silver: 6, pearl: 3, bones: 4 } },
 };
 
 // ---------- Combat triangle ----------
@@ -828,6 +840,7 @@ export const WEAKNESS = {
   ashen_revenant: 'ranged', obsidian_sentinel: 'magic', cinder_cultist: 'melee', pyraxis: 'magic',
   glimmer_leech: 'ranged', the_dreamward: 'ranged', frost_wraith: 'magic', glacier_wight: 'melee', heart_of_hoarfrost: 'magic', shade_stalker: 'melee', edgewraith: 'magic', the_reckoner: 'ranged', salt_wraith: 'magic',
   glass_wisp: 'ranged', cinderglass_stalker: 'magic', the_glasswake: 'ranged',
+  the_lantern_drowned: 'ranged', the_rimewright: 'magic', the_glassmaw: 'magic', the_hollowed_warden: 'ranged', the_brinemother: 'magic',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -841,6 +854,7 @@ export const ATK_STYLE = {
   cinder_cultist: 'magic', pyraxis: 'magic',
   frost_wraith: 'magic', the_dreamward: 'magic', heart_of_hoarfrost: 'magic', the_reckoner: 'magic',
   the_glasswake: 'magic',
+  the_lantern_drowned: 'magic', the_glassmaw: 'ranged', the_hollowed_warden: 'magic',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -958,6 +972,12 @@ export const ENEMY_SPAWNS = [
   { enemy: 'glass_wisp', x: 224, z: 148 }, { enemy: 'glass_wisp', x: 230, z: 144 }, { enemy: 'glass_wisp', x: 218, z: 152 }, { enemy: 'glass_wisp', x: 222, z: 142 },
   { enemy: 'cinderglass_stalker', x: 256, z: 166 }, { enemy: 'cinderglass_stalker', x: 260, z: 160 }, { enemy: 'cinderglass_stalker', x: 252, z: 170 }, { enemy: 'cinderglass_stalker', x: 262, z: 164 },
   { enemy: 'the_glasswake', x: 238, z: 140 },
+  // --- Frontier dungeons (one boss + guards each, at the dungeon arena coords) ---
+  { enemy: 'glimmer_leech', x: 270, z: -50 }, { enemy: 'glimmer_leech', x: 274, z: -46 }, { enemy: 'the_lantern_drowned', x: 272, z: -48 },   // Sunken Lanternworks (Duskmere)
+  { enemy: 'frost_wraith', x: -52, z: -240 }, { enemy: 'frost_wraith', x: -48, z: -236 }, { enemy: 'the_rimewright', x: -50, z: -238 },        // Frostforge Deep (Aurorath)
+  { enemy: 'cinderglass_stalker', x: 256, z: 150 }, { enemy: 'cinderglass_stalker', x: 260, z: 146 }, { enemy: 'the_glassmaw', x: 258, z: 148 }, // Glassmaw Vault (Cindughol)
+  { enemy: 'edgewraith', x: -246, z: 26 }, { enemy: 'edgewraith', x: -242, z: 22 }, { enemy: 'the_hollowed_warden', x: -244, z: 24 },           // Abyssal Reliquary (Sablon)
+  { enemy: 'salt_wraith', x: -140, z: 208 }, { enemy: 'salt_wraith', x: -136, z: 204 }, { enemy: 'the_brinemother', x: -138, z: 206 },          // Drowned Saltworks (Mirelythe)
 ];
 
 export const QUESTS = {

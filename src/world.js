@@ -168,6 +168,12 @@ const DUNGEONS = [
   { key: 'stormcrowneyrie', name: 'Stormcrown Eyrie', x: 118, z: -150, r: 12, flat: true, style: 'spire', spire: 0xb9c6e0, orb: 0x8fd6ff, chest: { label: 'Windward Vault', gold: 400, loot: { skyfeather: 3, gale_core: 2, storm_shard: 2, sapphire: 2 } }, ore: [['iron', 3], ['coal', 3]] },
   { key: 'mycelheart', name: 'The Mycelial Heart', x: -156, z: 66, r: 12, flat: true, style: 'fungal', spire: 0x7a4a8a, orb: 0x9aff7a, chest: { label: 'Spore Vault', gold: 340, loot: { creeping_ichor: 3, sporecap: 5, emerald: 1 } }, ore: [['copper', 3]] },
   { key: 'caldera', name: 'The Caldera Sanctum', x: -56, z: 160, r: 12, flat: true, style: 'spike', spire: 0x16121a, orb: 0xff5a2a, chest: { label: 'Reliquary of Ash', gold: 480, loot: { obsidian_shard: 4, magma_core: 2, ruby: 2 } }, ore: [['coal', 4], ['iron', 3]] },
+  // --- Expansion IV dungeons (one per new realm) ---
+  { key: 'lanternworks', name: 'The Sunken Lanternworks', x: 272, z: -48,  r: 11, flat: true, style: 'pillar',  spire: 0x2a4a5a, orb: 0x4fd6dc, chest: { label: "Founders' Lantern-Vault", gold: 460, loot: { tideglass: 4, pearl: 3, sapphire: 2 } }, ore: [['copper', 3], ['iron', 2]] },
+  { key: 'frostforge',  name: 'The Frostforge Deep',    x: -50, z: -238, r: 11, style: 'crystal', spire: 0x8fb6e0, orb: 0x9bf2ff, chest: { label: 'Rime Vault',    gold: 500, loot: { frost_iron: 4, aurora_quartz: 2, sapphire: 3 } }, ore: [['iron', 3], ['coal', 3]] },
+  { key: 'glassmaw',    name: 'The Glassmaw Vault',      x: 258, z: 148,  r: 11, style: 'spike',   spire: 0x2c2433, orb: 0xff6a3a, chest: { label: 'Glassmaw Hoard', gold: 480, loot: { obsidian_shard: 4, molten_glass: 3, ruby: 2 } }, ore: [['iron', 3], ['coal', 3]] },
+  { key: 'abyssreliquary', name: 'The Abyssal Reliquary', x: -244, z: 24, r: 12, flat: true, style: 'spire', spire: 0x3a3248, orb: 0xb08adf, chest: { label: 'Abyssal Reliquary', gold: 520, loot: { amethyst_wisp: 4, emerald: 2, sapphire: 2 } }, ore: [['coal', 3]] },
+  { key: 'saltworks',   name: 'The Drowned Saltworks',   x: -138, z: 206, r: 11, flat: true, style: 'pillar', spire: 0x9a7a6a, orb: 0xf08fb8, chest: { label: 'Saltworks Vault', gold: 480, loot: { brine_silver: 4, pearl: 3, sapphire: 2 } }, ore: [['copper', 2], ['iron', 2]] },
 ];
 const SHORTCUT_LINKS = [
   { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
