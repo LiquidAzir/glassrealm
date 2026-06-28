@@ -249,10 +249,13 @@ export function createEntities(scene, world, G) {
     if (st && R[st] && Math.random() < 0.3) return pickOne(R[st]);
     return null;
   }
+  // Out in the world, bubbles should LINGER long enough to read — scale the on-screen time with the line
+  // length (a comfortable ~16 chars/sec) on a generous base, capped so a wall of text doesn't camp forever.
+  const readDur = (t) => Math.min(9, 3.8 + (t ? t.length : 0) * 0.06);
   function emitBark(ent, v, prefix) {
     if (!G.ui || !G.ui.sayAt) return;
     const rx = reactiveLine();
-    if (rx) { G.ui.sayAt(ent.group.position, rx, 3.6, { owner: (prefix || 'npc_') + (ent.def.key || ent.def.name) }); return; }
+    if (rx) { G.ui.sayAt(ent.group.position, rx, readDur(rx), { owner: (prefix || 'npc_') + (ent.def.key || ent.def.name) }); return; }
     sayVoice(ent, v, prefix);
   }
   function sayVoice(ent, v, prefix) {
@@ -260,7 +263,7 @@ export function createEntities(scene, world, G) {
     const night = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);   // wearier lines after dusk
     const pool = (night && v.night && v.night.length ? v.night : (v.day || []));
     const all = pool.concat(v.any || []);
-    if (all.length) G.ui.sayAt(ent.group.position, all[(Math.random() * all.length) | 0], 3.4, { owner: (prefix || 'npc_') + (ent.def.key || ent.def.name) });
+    if (all.length) { const line = all[(Math.random() * all.length) | 0]; G.ui.sayAt(ent.group.position, line, readDur(line), { owner: (prefix || 'npc_') + (ent.def.key || ent.def.name) }); }
   }
   function updateSpeech(dt, player) {
     if (!G.ui || !G.ui.sayAt) return;
@@ -272,8 +275,8 @@ export function createEntities(scene, world, G) {
         if (c.lineT <= 0) {
           if (c.lineI < c.lines.length) {
             const ln = c.lines[c.lineI++], sp = ln.who === c.a ? c.A : c.B;
-            G.ui.sayAt(sp.group.position, ln.text, 3.6, { owner: 'npc_' + sp.def.key, chat: true });
-            c.lineT = 2.6 + ln.text.length * 0.018;
+            G.ui.sayAt(sp.group.position, ln.text, readDur(ln.text), { owner: 'npc_' + sp.def.key, chat: true });
+            c.lineT = 3.2 + ln.text.length * 0.045;   // hold each line long enough to read before the reply lands
           } else { c.active = false; c.A.busy = c.B.busy = false; c.cd = 26 + Math.random() * 36; }
         }
       } else {
@@ -325,11 +328,26 @@ export function createEntities(scene, world, G) {
   });
   // Can an animal stand at (nx,nz)? Walkable land (or shallow water for waterfowl), clear of big
   // structures (buildings/barn/spires). PERF: skip inter-animal collision (cosmetic-only, saves O(N²)).
+  // shared: is (nx,nz) clear of big structures (buildings / barn / spires)? used by animals, ambient mobs
+  // AND enemies so none of them phase through walls.
+  function obstacleClear(nx, nz) {
+    const ob = world.obstacles;
+    if (ob) for (let i = 0; i < ob.length; i++) { const o = ob[i], dx = nx - o.x, dz = nz - o.z, rr = o.r + 0.4; if (dx * dx + dz * dz < rr * rr) return false; }
+    return true;
+  }
   function animalStep(a, nx, nz) {
     if (!(world.isWalkable(nx, nz) || (a.def.water && world.height(nx, nz) <= 0.4))) return false;
-    const ob = world.obstacles;
-    if (ob) for (let i = 0; i < ob.length; i++) { const o = ob[i], dx = nx - o.x, dz = nz - o.z, rr = o.r + 0.3; if (dx * dx + dz * dz < rr * rr) return false; }
-    return true;
+    return obstacleClear(nx, nz);
+  }
+  // Move group by (sx,sz), sliding along walls (try full, then X-only, then Z-only) so it routes AROUND
+  // a building instead of phasing through it or sticking. `gate(nx,nz)` is an optional extra constraint
+  // (e.g. an enemy's leash). Returns true if it moved.
+  function stepSlide(group, px, pz, sx, sz, gate) {
+    const ok = (nx, nz) => world.isWalkable(nx, nz) && obstacleClear(nx, nz) && (!gate || gate(nx, nz));
+    if (ok(px + sx, pz + sz)) { group.position.x = px + sx; group.position.z = pz + sz; return true; }
+    if (ok(px + sx, pz)) { group.position.x = px + sx; return true; }
+    if (ok(px, pz + sz)) { group.position.z = pz + sz; return true; }
+    return false;
   }
 
   // companion pet — one tamed animal (or a rare boss pet) that trails a step behind the player
@@ -437,9 +455,8 @@ export function createEntities(scene, world, G) {
         }
         e.heading = Math.atan2(player.position.x - e.pos.x, player.position.z - e.pos.z);
         if (d > 1.7) {
-          const nx = e.pos.x + Math.sin(e.heading) * e.def.speed * dt;
-          const nz = e.pos.z + Math.cos(e.heading) * e.def.speed * dt;
-          if (world.isWalkable(nx, nz)) { e.group.position.x = nx; e.group.position.z = nz; moving = true; }
+          const sx = Math.sin(e.heading) * e.def.speed * dt, sz = Math.cos(e.heading) * e.def.speed * dt;
+          if (stepSlide(e.group, e.pos.x, e.pos.z, sx, sz)) moving = true;   // route around walls toward the player
         } else {
           e.attackCd -= dt;
           if (e.attackCd <= 0) { e.attackCd = e.enraged ? 0.85 : 1.3; e.atkAnim = ATK_ANIM; G.damagePlayer(Math.round(e.def.dmg * (e.enraged ? 1.25 : 1)), e); }
@@ -449,18 +466,16 @@ export function createEntities(scene, world, G) {
         if (homeDist > e.leash) {
           // beyond leash (e.g. kited out of its arena) — walk straight back toward home
           e.heading = Math.atan2(e.home.x - e.pos.x, e.home.z - e.pos.z);
-          const nx = e.pos.x + Math.sin(e.heading) * e.def.speed * 0.6 * dt;
-          const nz = e.pos.z + Math.cos(e.heading) * e.def.speed * 0.6 * dt;
-          if (world.isWalkable(nx, nz)) { e.group.position.x = nx; e.group.position.z = nz; moving = true; }
+          const sx = Math.sin(e.heading) * e.def.speed * 0.6 * dt, sz = Math.cos(e.heading) * e.def.speed * 0.6 * dt;
+          if (stepSlide(e.group, e.pos.x, e.pos.z, sx, sz)) moving = true;
           e.wanderT = 0;
         } else {
           e.wanderT -= dt;
           if (e.wanderT <= 0) { e.wanderT = 1 + Math.random() * 2.5; e.heading = Math.random() * TAU; e.moving = Math.random() > 0.45; }
           if (e.moving) {
             const sp = e.def.speed * 0.4;
-            const nx = e.pos.x + Math.sin(e.heading) * sp * dt;
-            const nz = e.pos.z + Math.cos(e.heading) * sp * dt;
-            if (world.isWalkable(nx, nz) && dist2D(nx, nz, e.home.x, e.home.z) < e.leash) { e.group.position.x = nx; e.group.position.z = nz; moving = true; }
+            const sx = Math.sin(e.heading) * sp * dt, sz = Math.cos(e.heading) * sp * dt;
+            if (stepSlide(e.group, e.pos.x, e.pos.z, sx, sz, (nx, nz) => dist2D(nx, nz, e.home.x, e.home.z) < e.leash)) moving = true;
             else e.wanderT = 0;
           }
         }
@@ -530,8 +545,8 @@ export function createEntities(scene, world, G) {
       let moving = false;
       if (dd > stop) {
         m.heading = Math.atan2(dx, dz);
-        const nx = m.pos.x + Math.sin(m.heading) * spd * dt, nz = m.pos.z + Math.cos(m.heading) * spd * dt;
-        if (world.isWalkable(nx, nz)) { m.group.position.x = nx; m.group.position.z = nz; moving = true; }
+        const sx = Math.sin(m.heading) * spd * dt, sz = Math.cos(m.heading) * spd * dt;
+        if (stepSlide(m.group, m.pos.x, m.pos.z, sx, sz)) moving = true;   // soldiers/wanderers slide along walls instead of phasing through
       }
       m.group.position.y = world.height(m.pos.x, m.pos.z);
       m.group.rotation.y = m.heading;
