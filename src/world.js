@@ -1075,6 +1075,54 @@ export function createWorld(scene, seed = 1337) {
   function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }
 
   const dynSolids = [];   // PERF: dynamic entity solids (NPCs/mobs/animals) — separate from grid-indexed statics
+  // PERF: BATCH static decorative props into one vertex-coloured mesh PER REGION. Only meshes that are
+  // DIRECT children of the world group AND use a shared lmat-cache material qualify — every dynamic /
+  // animated / glow / transparent / terrain mesh uses a FRESH material (mutating a shared cached colour
+  // would corrupt all props of that colour), so they're all auto-excluded; nested signature/discovery
+  // groups are skipped by the direct-child rule. Per-region (not one mega-mesh) so distant chunks still
+  // frustum-cull. Collapses the dense village clusters from hundreds of draws/objects to a handful.
+  (() => {
+    const lmatSet = new Set(Object.values(_wmatCache));
+    group.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+    const bins = new Map(), wp = new THREE.Vector3();
+    for (const o of group.children) {
+      if (!o.isMesh || o.isInstancedMesh || !lmatSet.has(o.material) || !o.geometry || !o.geometry.attributes.position) continue;
+      o.getWorldPosition(wp);
+      let ri = 0, bd = Infinity;
+      for (let i = 0; i < REGIONS.length; i++) { const dx = REGIONS[i].x - wp.x, dz = REGIONS[i].z - wp.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; ri = i; } }
+      if (!bins.has(ri)) bins.set(ri, []);
+      bins.get(ri).push(o);
+    }
+    for (const [, meshes] of bins) {
+      if (meshes.length < 4) continue;   // not worth a merge for a tiny cluster
+      let total = 0; const parts = [];
+      for (const m of meshes) {
+        const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+        g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+        parts.push({ g, c: m.material.color }); total += g.attributes.position.count;
+      }
+      const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3), col = new Float32Array(total * 3);
+      let off = 0;
+      for (const p of parts) {
+        const gp = p.g.attributes.position, gn = p.g.attributes.normal, n = gp.count;
+        pos.set(gp.array.subarray(0, n * 3), off * 3);
+        if (gn) nor.set(gn.array.subarray(0, n * 3), off * 3);
+        for (let i = 0; i < n; i++) { const k = (off + i) * 3; col[k] = p.c.r; col[k + 1] = p.c.g; col[k + 2] = p.c.b; }
+        off += n; p.g.dispose();
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      geo.computeBoundingSphere();
+      const merged = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+      merged.matrixAutoUpdate = false;
+      group.add(merged);
+      for (const m of meshes) group.remove(m);
+    }
+  })();
+
   // PERF: the overworld is overwhelmingly STATIC props. Bake their world matrices once and switch OFF
   // per-frame matrix recompute — kills the matrix pass over ~2.4k meshes every frame. Only LEAF MESHES
   // are frozen (groups keep updating so nested animated meshes still resolve), then the tick-animated
