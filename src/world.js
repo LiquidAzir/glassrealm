@@ -62,7 +62,7 @@ const REGIONS = [
   // --- Expansion IV: 5 frontier realms (E twilight tidal flats, far-N aurora shelf, SE obsidian glass, far-W umbral abyss-edge, SW pink saltmarsh) ---
   { key: 'duskmere',  x: 252,  z: -64,  r: 38, biome: 'twilight',  village: { name: 'Lanternwash',      x: 252,  z: -64,  hut: [0x2a4a5a, 0x4fd6dc] }, tree: 'palm',   nTree: 16, nBush: 10, nRock: 8,  nFish: 9, ore: [['copper', 4], ['iron', 3]] },
   { key: 'aurorath',  x: -26,  z: -250, r: 36, biome: 'aurora',    village: { name: 'Hoarfast',         x: -26,  z: -250, hut: [0xcdd8ec, 0x7fa8d6] }, peak: { x: -26, z: -262, r: 16, h: 15 }, tree: 'pine', nTree: 20, nBush: 4, nRock: 14, nFish: 3, ore: [['iron', 4], ['coal', 4], ['gem_rock', 2]] },
-  { key: 'cindughol', x: 240,  z: 156,  r: 34, biome: 'obsidian',                                                                                  peak: { x: 240, z: 150, r: 14, h: 12 }, tree: 'cactus', nTree: 8, nBush: 0, nRock: 22, nFish: 2, ore: [['iron', 5], ['coal', 5]] },
+  { key: 'cindughol', x: 240,  z: 156,  r: 34, biome: 'obsidian',  village: { name: 'Emberglass', x: 226, z: 170, hut: [0x2c2433, 0xff6a3a] },                       peak: { x: 240, z: 150, r: 14, h: 12 }, tree: 'cactus', nTree: 8, nBush: 0, nRock: 22, nFish: 2, ore: [['iron', 5], ['coal', 5]] },
   { key: 'sablon',    x: -256, z: 2,    r: 40, biome: 'umbral',    village: { name: 'Greywarden Rest',  x: -256, z: 2,    hut: [0x3a2f4a, 0xb88ad6] }, tree: 'pine',   nTree: 30, nBush: 6, nRock: 12, nFish: 3, ore: [['iron', 4], ['coal', 3], ['gem_rock', 2]] },
   { key: 'mirelythe', x: -150, z: 222,  r: 36, biome: 'saltmarsh', village: { name: 'Rosbrine',         x: -150, z: 222,  hut: [0xf4e2e8, 0xf08fb8] }, tree: 'palm',   nTree: 12, nBush: 8, nRock: 6,  nFish: 8, ore: [['copper', 4], ['iron', 3]] },
 ];
@@ -491,6 +491,12 @@ export function createWorld(scene, seed = 1337) {
     fae:      { wall: 0x8a5ad0, wall2: 0x3a8aff, roof: 0x5ac8c0, roofStyle: 'spire',  glow: 0x8af0ff, accents: ['glow', 'lanterns'] },
     coast:    { wall: 0xcfe0e8, wall2: 0x3a93a6, roof: 0x2fb0c8, roofStyle: 'gable',  glow: 0xffe08a, accents: ['lanterns', 'awning'] },
     autumn:   { wall: 0xe4ac4e, wall2: 0x9a4a24, roof: 0xd85a26, roofStyle: 'pagoda', glow: 0xffb84a, accents: ['lanterns', 'banners'] },
+    // --- Expansion IV biomes ---
+    twilight: { wall: 0x3a5a6a, wall2: 0x24414f, roof: 0x2f8ca6, roofStyle: 'gable',  glow: 0x4fd6dc, accents: ['stilts', 'lanterns'] },
+    aurora:   { wall: 0xcdd8ec, wall2: 0x7fa8d6, roof: 0x4f7ad8, roofStyle: 'steep',  glow: 0x9bf2ff, accents: ['snowcap', 'glow'] },
+    obsidian: { wall: 0x2c2433, wall2: 0x4a3a4a, roof: 0x7a2a2a, roofStyle: 'pitch',  glow: 0xff6a3a, accents: ['embers', 'stonebase'] },
+    umbral:   { wall: 0x3a3248, wall2: 0x282038, roof: 0x4a3a6a, roofStyle: 'steep',  glow: 0xb08adf, accents: ['lanterns', 'stonebase'] },
+    saltmarsh:{ wall: 0xe8c0c8, wall2: 0x9a7a6a, roof: 0xd07a8a, roofStyle: 'thatch', glow: 0xf08fb8, accents: ['stilts', 'lanterns'] },
   };
   function building(bx, bz, vcx, vcz, type, pal, biome) {
     const st = TOWN[biome] || TOWN.grass;
