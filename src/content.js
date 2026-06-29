@@ -876,6 +876,16 @@ export const ATTACK_STYLES = {
   controlled: { name: 'Controlled', icon: '⚖️', dmgMult: 1.00, defShare: 0.33, desc: 'Balanced; a third of XP into Defence.' },
 };
 
+// ---------- Auto-Play ----------  (hands-free grinding for passive play on the glasses; pick a job from the menu)
+export const AUTO_MODES = [
+  { key: 'woodcutting', name: 'Chop Wood', icon: '🪓', sub: 'Walk to the nearest trees and fell them on a loop' },
+  { key: 'mining',      name: 'Mine Ore',  icon: '⛏️', sub: 'Work the nearest rocks you have the level to mine' },
+  { key: 'fishing',     name: 'Fish',      icon: '🎣', sub: 'Fish the nearest spot' },
+  { key: 'foraging',    name: 'Forage',    icon: '🌿', sub: 'Pick berries/herbs from the nearest bushes' },
+  { key: 'combat',      name: 'Fight',     icon: '⚔️', sub: 'Hunt the nearest foes — auto-eats food when low' },
+  { key: 'questing',    name: 'Quest',     icon: '🧭', sub: 'Pursue your tracked quest (fights/gathers/travels)' },
+];
+
 export const ENEMY_SPAWNS = [
   { enemy: 'boar', x: -22, z: 4 }, { enemy: 'boar', x: -28, z: 14 }, { enemy: 'boar', x: 24, z: 10 }, { enemy: 'boar', x: -10, z: 26 },
   { enemy: 'wolf', x: 70, z: 18 }, { enemy: 'wolf', x: 88, z: -8 }, { enemy: 'wolf', x: 60, z: -6 },

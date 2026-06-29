@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE, FACTIONS } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE, FACTIONS, AUTO_MODES } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -1388,6 +1388,7 @@ try {
   }
   function clearGrave() { if (G.grave && G.grave.mesh) world.group.remove(G.grave.mesh); G.grave = null; }
   function onDeath() {
+    if (G.autoplay && G.autoplay.on) G.setAutoplay(null);   // stop hands-free play on death (no death loops)
     G.stats.deaths = (G.stats.deaths || 0) + 1;
     player.state.activePrayer = null; player.state.poison = null;
     if (G.deathMode === 'safe') { G.ui.toast('You fell — and woke safely by the village hearth.', 'bad', 3000); return; }
@@ -1536,6 +1537,7 @@ try {
       return;
     }
     if (mode === 'world' || mode === 'interior') {
+      if (G.autoplay.on && a !== 'tap' && a !== 'doubletap') G.setAutoplay(null);   // grab the controls → auto-play disengages
       if (G.channel && a !== 'tap') cancelChannel();   // any move stops gathering
       if (a === 'up') player.impulseForward();
       else if (a === 'left') player.impulseTurn(-1);
@@ -1631,6 +1633,78 @@ try {
     const d = dist2D(player.position.x, player.position.z, e.pos.x, e.pos.z);
     if (d > player.weapon().range + 8) { G.combatTarget = null; return; }   // walked off → disengage
     G.attackEnemy(e);   // only actually strikes when off cooldown + in range
+  }
+
+  // ---------- Auto-Play: hands-free "walk to the nearest target and do the job", for passive play on the glasses ----------
+  G.autoplay = { on: false, mode: null };
+  G.setAutoplay = (modeKey) => {
+    const ap = G.autoplay;
+    if (G.channel) cancelChannel();
+    clearCombat();
+    if (!modeKey || ap.mode === modeKey) { ap.on = false; ap.mode = null; G.ui.setAutoIndicator(null); G.ui.toast('Auto-Play off', '', 1400); }
+    else { ap.on = true; ap.mode = modeKey; const m = AUTO_MODES.find((x) => x.key === modeKey); G.ui.setAutoIndicator(m ? m.icon + ' ' + m.name : modeKey); G.ui.toast('Auto-Play: ' + (m ? m.name : modeKey), 'good', 1800); }
+  };
+  function autoHalt() { const st = player.state; st.coastFwd = 0; st.coastBack = 0; st.coastTurn = 0; }
+  function autoWalkTo(tx, tz, dt) {
+    const st = player.state, p = player.position, TAU = Math.PI * 2;
+    let dh = Math.atan2(tx - p.x, tz - p.z) - st.heading;                       // bearing to target (heading: fwd = sin,cos)
+    while (dh > Math.PI) dh -= TAU; while (dh < -Math.PI) dh += TAU;
+    st.heading += dh * Math.min(1, dt * 7);                                     // ease toward it (no jerky snap)
+    if (st.heading > Math.PI) st.heading -= TAU; else if (st.heading < -Math.PI) st.heading += TAU;
+    player.impulseForward();                                                    // coast forward along the new heading
+  }
+  function autoHeal() {                                                         // combat survival: eat the smallest sufficient food when low
+    const st = player.state; if (st.hp / st.maxHp >= 0.45) return;
+    let best = null;
+    for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'consumable' && d.heal && (!best || d.heal < best.def.heal)) best = it; }
+    if (best) G.useItem(best.key);
+  }
+  function autoNodeKind(n) { return world.trees.includes(n) ? 'tree' : world.bushes.includes(n) ? 'bush' : world.oreNodes.includes(n) ? 'ore' : world.fishingSpots.includes(n) ? 'fish' : null; }
+  function autoGather(node, kind) { G.currentTarget = { kind, ref: node, x: node.x, z: node.z, label: '', dist: 0 }; doInteract(); }   // start the right channel for this node
+  function autoNearestEnemy() { let b = null, bd = Infinity; for (const en of G.entities.enemies) { if (!en.alive) continue; const d = dist2D(player.position.x, player.position.z, en.pos.x, en.pos.z); if (d < bd) { bd = d; b = en; } } return b; }
+  function autoCombatGoal(typeFilter) {
+    let e = G.combatTarget;
+    if (!e || !e.alive) e = typeFilter ? nearestEnemyOf(typeFilter) : autoNearestEnemy();
+    if (!e) return null;
+    return { x: e.pos.x, z: e.pos.z, range: Math.max(1.7, player.weapon().range - 0.4), act: () => { G.combatTarget = e; } };   // updateCombat lands the hits
+  }
+  function autoQuestGoal() {
+    const id = G.trackedQuest;
+    if (!id || G.quests.status(id) !== 'active') return null;
+    const npcR = G.interact.RANGE.npc - 0.3;
+    if (G.quests.isReady(id)) { const n = npcByKey(QUESTS[id].giver); return n ? { x: n.pos.x, z: n.pos.z, range: npcR, act: () => {} } : null; }   // arrive at giver — player taps to turn in
+    const def = QUESTS[id], objs = G.quests.objectives(id);
+    for (let i = 0; i < def.objectives.length; i++) {
+      if (objs[i].done) continue;
+      const o = def.objectives[i];
+      if (o.type === 'kill') return autoCombatGoal(o.enemy);
+      if (o.type === 'have') { const s = itemSource(o.item); if (!s) return null; const k = autoNodeKind(s); return { x: s.x, z: s.z, range: (k ? G.interact.RANGE[k] : 3) - 0.3, act: () => { if (k) autoGather(s, k); } }; }
+      if (o.type === 'visit') return { x: o.x, z: o.z, range: (o.r || 9) * 0.8, act: () => {} };                 // updateLocation fires notifyVisit on arrival
+      if (o.type === 'talk') { const n = npcByKey(o.npc); return n ? { x: n.pos.x, z: n.pos.z, range: npcR, act: () => {} } : null; }   // arrive at NPC — player taps to talk
+      return null;
+    }
+    return null;
+  }
+  function autoGoal(modeKey) {
+    const lvl = (k) => G.skills.level(k), R = G.interact.RANGE;
+    if (modeKey === 'woodcutting') { const n = nearestNode(world.trees, true);  return n ? { x: n.x, z: n.z, range: R.tree - 0.3, act: () => autoGather(n, 'tree') } : null; }
+    if (modeKey === 'foraging')    { const n = nearestNode(world.bushes, true); return n ? { x: n.x, z: n.z, range: R.bush - 0.3, act: () => autoGather(n, 'bush') } : null; }
+    if (modeKey === 'fishing')     { const n = nearestNode(world.fishingSpots, false); return n ? { x: n.x, z: n.z, range: R.fish - 0.4, act: () => autoGather(n, 'fish') } : null; }
+    if (modeKey === 'mining')      { const n = nearestNode(world.oreNodes.filter((o) => lvl('mining') >= (ORE_LEVEL[o.type] || 1)), true); return n ? { x: n.x, z: n.z, range: R.ore - 0.3, act: () => autoGather(n, 'ore') } : null; }
+    if (modeKey === 'combat')      return autoCombatGoal(null);
+    if (modeKey === 'questing')    return autoQuestGoal();
+    return null;
+  }
+  function autoStep(dt) {
+    const ap = G.autoplay;
+    if (!ap.on || mode !== 'world' || G.inInterior) return;
+    if (G.channel) return;                          // a gather is mid-swing — let updateChannel finish it
+    if (ap.mode === 'combat' || ap.mode === 'questing') autoHeal();
+    const goal = autoGoal(ap.mode);
+    if (!goal) return;                              // nothing to do right now (depleted / no target) — idle
+    const p = player.position;
+    if (Math.hypot(goal.x - p.x, goal.z - p.z) <= goal.range) { autoHalt(); goal.act(); }
+    else autoWalkTo(goal.x, goal.z, dt);
   }
 
   // ---------- HUD helpers ----------
@@ -1811,6 +1885,7 @@ try {
     if (econTick % 4 === 0) updateLighting();   // PERF: lighting every 4th frame (~15 Hz) — tod changes slowly (full cycle = 3 min)
     updateWeather(dt); if (econTick % 4 === 0) applyWeatherLight(); weatherGroup.visible = mode === 'world';   // PERF: weather lighting synced with tod lighting throttle
     if (mode === 'world') {
+      autoStep(dt);             // auto-play: steer toward + act on the chosen job before movement resolves
       player.update(dt, input);
       G.entities.update(dt, player);
       G.ui.updateBubbles(dt);   // advance + fade NPC speech bubbles
@@ -1901,7 +1976,7 @@ try {
     resume() { if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); } },
     setTod(t) { tod = ((t % 1) + 1) % 1; applyTimeOfDay(tod); return tod; },   // jump the clock (dev/preview)
     get tod() { return tod; },
-    step(n = 1) { for (let i = 0; i < n; i++) { updateLighting(); applyWeatherLight(); if (mode === 'world') { player.update(0.016, input); G.entities.update(0.016, player); G.ui.updateBubbles(0.016); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateTrawler(0.016); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { updateLighting(); applyWeatherLight(); if (mode === 'world') { autoStep(0.016); player.update(0.016, input); G.entities.update(0.016, player); G.ui.updateBubbles(0.016); world.tick(0.016); G.projectiles.update(0.016); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); updateGrave(0.016); updateMarket(0.016); updateColosseum(); updateTrawler(0.016); updateWeather(0.016); updateLocation(); G.currentTarget = G.interact.best(); } else if (mode === 'interior') { player.update(0.016, input); G.fx.update(0.016); updateChannel(0.016); updateCombat(); updateStatus(0.016); G.currentTarget = G.interact.best(); } player.updateCamera(engine.camera, 0.016); G.ui.setCompass(player.state.heading); updateMarkers(); engine.renderer.render(engine.scene, engine.camera); } },
     // PERF: benchmark hook — measures average frame time over N frames
     perf(n = 120) { const t = []; let i = 0; const fn = () => { const s = performance.now(); frame(); t.push(performance.now() - s); if (++i < n) requestAnimationFrame(fn); else { running = false; const avg = t.reduce((a, b) => a + b) / t.length; const fps = 1000 / avg; console.log(`perf: ${avg.toFixed(1)}ms avg (${fps.toFixed(0)} fps), min ${Math.min(...t).toFixed(1)}ms, max ${Math.max(...t).toFixed(1)}ms`); } }; running = false; setTimeout(() => { running = true; fn(); }, 100); },
     get drawCalls() { return engine.renderer.info.render.calls; },

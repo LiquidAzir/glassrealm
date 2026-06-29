@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { ITEMS, SHOP, PRAYERS, SPELLS, ACHIEVEMENTS, ENEMIES, WEAKNESS, ATK_STYLE } from './content.js';
+import { ITEMS, SHOP, PRAYERS, SPELLS, ACHIEVEMENTS, ENEMIES, WEAKNESS, ATK_STYLE, AUTO_MODES } from './content.js';
 import { WORLD_SCALE } from './scale.js';
 
-const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Spells', 'Quests', 'Pets', 'Mastery', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
+const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Spells', 'Quests', 'Auto', 'Pets', 'Mastery', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
 
 export function createUI(G) {
   const $ = (id) => document.getElementById(id);
@@ -173,7 +173,7 @@ export function createUI(G) {
   let tab = 0, row = 0;
   function renderMenu() {
     els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
-    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Spells: renderSpells, Quests: renderQuests, Pets: renderPets, Mastery: renderMastery, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
+    ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Spells: renderSpells, Quests: renderQuests, Auto: renderAuto, Pets: renderPets, Mastery: renderMastery, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
     if (TABS[tab] === 'Inventory') return G.inventory.list().length;
@@ -182,6 +182,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Spells') return SPELLS.length;
     if (TABS[tab] === 'Skills') return 4 + G.skills.DEFS.length;
     if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
+    if (TABS[tab] === 'Auto') return AUTO_MODES.length;
     if (TABS[tab] === 'Pets') return G.petRows().length;
     if (TABS[tab] === 'Mastery') return G.masteryRows().length + G.perkRows().length;
     if (TABS[tab] === 'Diary') return 6;
@@ -212,6 +213,8 @@ export function createUI(G) {
     } else if (TABS[tab] === 'Quests') {
       const act = G.quests.all().filter((q) => q.status === 'active'); const q = act[row];
       if (q) { G.trackQuest(q.id); renderMenu(); }
+    } else if (TABS[tab] === 'Auto') {
+      const m = AUTO_MODES[row]; if (m && G.setAutoplay) { G.setAutoplay(m.key); renderMenu(); }
     } else if (TABS[tab] === 'Pets') {
       const r = G.petRows()[row]; if (r) { G.setActivePet(r.kind); renderMenu(); }
     } else if (TABS[tab] === 'Mastery') {
@@ -266,6 +269,27 @@ export function createUI(G) {
       html += `<div class="row ${i === row ? 'sel' : ''}" style="${locked ? 'opacity:.5' : ''}"><span class="row-icon">${icon}</span><div class="row-main"><div class="row-title">${title}${equipped ? ' <span style="color:var(--gold)">✓</span>' : ''}</div><div class="row-sub">${sub}</div></div></div>`;
     });
     els.menuBody.innerHTML = html;
+  }
+  function renderAuto() {
+    const ap = G.autoplay || { on: false, mode: null };
+    let html = '<div class="section-head">Auto-Play · hands-free</div>';
+    html += AUTO_MODES.map((m, i) => {
+      const active = ap.on && ap.mode === m.key;
+      return `<div class="row ${row === i ? 'sel' : ''}" style="${active ? 'box-shadow:inset 0 0 0 2px #5ad07a;background:rgba(90,208,122,.10)' : ''}"><span class="row-icon">${m.icon}</span><div class="row-main"><div class="row-title">${m.name}${active ? ' · <span style="color:#7ce0a0">RUNNING</span>' : ''}</div><div class="row-sub">${m.sub}</div></div></div>`;
+    }).join('');
+    html += `<div class="section-head" style="opacity:.7">Tap a job to start. Tap it again — or swipe to move — to stop. Pauses while this menu is open; the glasses do the walking and the work.</div>`;
+    els.menuBody.innerHTML = html;
+  }
+  let autoTag = null;
+  function setAutoIndicator(text) {   // persistent status pill so you always know auto-play is running
+    if (!autoTag) {
+      autoTag = document.createElement('div');
+      autoTag.id = 'autoTag';
+      autoTag.style.cssText = 'position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:40;background:rgba(18,36,24,.86);border:1px solid #5ad07a;color:#cdeed6;font:600 12px/1 system-ui,sans-serif;padding:5px 11px;border-radius:999px;pointer-events:none;display:none;white-space:nowrap;box-shadow:0 0 12px rgba(90,208,122,.45)';
+      (document.getElementById('app') || document.body).appendChild(autoTag);
+    }
+    if (text) { autoTag.textContent = 'AUTO · ' + text; autoTag.style.display = 'block'; }
+    else autoTag.style.display = 'none';
   }
   function renderDiary() {
     const done = G.ach.unlocked;
@@ -532,7 +556,7 @@ export function createUI(G) {
 
   const api = {
     menuOpen: false,
-    setCompass, setHealth, setLocation, setPrayer, setSpec, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible, setChannel, hideChannel,
+    setCompass, setHealth, setLocation, setPrayer, setSpec, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible, setChannel, hideChannel, setAutoIndicator,
     hitsplat, xpDrop, levelBanner, sayAt, updateBubbles, clearBubbles,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,
