@@ -1388,7 +1388,6 @@ try {
   }
   function clearGrave() { if (G.grave && G.grave.mesh) world.group.remove(G.grave.mesh); G.grave = null; }
   function onDeath() {
-    if (G.autoplay && G.autoplay.on) G.setAutoplay(null);   // stop hands-free play on death (no death loops)
     G.stats.deaths = (G.stats.deaths || 0) + 1;
     player.state.activePrayer = null; player.state.poison = null;
     if (G.deathMode === 'safe') { G.ui.toast('You fell — and woke safely by the village hearth.', 'bad', 3000); return; }
@@ -1537,7 +1536,7 @@ try {
       return;
     }
     if (mode === 'world' || mode === 'interior') {
-      if (G.autoplay.on && a !== 'tap' && a !== 'doubletap') G.setAutoplay(null);   // grab the controls → auto-play disengages
+      // auto-play keeps running through manual swipes + opening the menu — only the Auto menu tab turns it off
       if (G.channel && a !== 'tap') cancelChannel();   // any move stops gathering
       if (a === 'up') player.impulseForward();
       else if (a === 'left') player.impulseTurn(-1);

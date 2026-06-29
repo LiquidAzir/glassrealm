@@ -277,7 +277,7 @@ export function createUI(G) {
       const active = ap.on && ap.mode === m.key;
       return `<div class="row ${row === i ? 'sel' : ''}" style="${active ? 'box-shadow:inset 0 0 0 2px #5ad07a;background:rgba(90,208,122,.10)' : ''}"><span class="row-icon">${m.icon}</span><div class="row-main"><div class="row-title">${m.name}${active ? ' · <span style="color:#7ce0a0">RUNNING</span>' : ''}</div><div class="row-sub">${m.sub}</div></div></div>`;
     }).join('');
-    html += `<div class="section-head" style="opacity:.7">Tap a job to start. Tap it again — or swipe to move — to stop. Pauses while this menu is open; the glasses do the walking and the work.</div>`;
+    html += `<div class="section-head" style="opacity:.7">Tap a job to start. Tap it again (or pick another) to stop — it keeps running through swipes, menus, and respawns until you stop it here. The glasses handle the walking and the work.</div>`;
     els.menuBody.innerHTML = html;
   }
   let autoTag = null;
