@@ -41,6 +41,12 @@ export function createInput(target = window) {
         if (e.repeat) break;
         resolveTap();
         break;
+      case 'Escape':
+        // Keyboard back/exit — closes any open overlay (menu/dialogue/picker).
+        e.preventDefault();
+        if (e.repeat) break;
+        emit('back');
+        break;
     }
   }
 

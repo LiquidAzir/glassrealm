@@ -3,5 +3,6 @@ Thumbs.db
 *.log
 favicon.spec.json
 node_modules/
+.claude/
 .wrangler/
 worker/.wrangler/

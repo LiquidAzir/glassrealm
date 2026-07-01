@@ -477,6 +477,8 @@ export const NPCS = [
 export const WANDERERS = [
   { kind: 'squad',  name: 'Hearth Watch', color: 0x8a93ad, helm: 0xc2ccd6, count: 4, speed: 2.3, loop: [{ x: -16, z: -8 }, { x: -16, z: -30 }, { x: 20, z: -30 }, { x: 20, z: -8 }] },
   { kind: 'squad',  name: 'Harbor Guard', color: 0x3a6a8a, helm: 0x2a4a5a, count: 3, speed: 2.2, loop: [{ x: 66, z: 178 }, { x: 66, z: 196 }, { x: 94, z: 196 }, { x: 94, z: 178 }] },
+  // Prisoner escort — three watchmen marching a bound captive to the warden's hall. Talk to the captive (or guards) for a story hook.
+  { kind: 'escort', name: 'Watch Escort', color: 0x6f7686, helm: 0x9aa2ad, count: 3, speed: 1.9, prisoner: { name: 'Wrenna', color: 0x8a7a5e }, loop: [{ x: -14, z: -10 }, { x: -14, z: -28 }, { x: 18, z: -28 }, { x: 18, z: -10 }] },
   { kind: 'wander', name: 'Villager',  color: 0x9a6a3a, home: { x: 12, z: -22 }, radius: 12, speed: 1.5 },
   { kind: 'wander', name: 'Monk',      color: 0x6a6a78, home: { x: -2, z: -6 },  radius: 9,  speed: 1.2 },
   { kind: 'wander', name: 'Merchant',  color: 0xc8a23a, home: { x: 32, z: 100 }, radius: 11, speed: 1.4 },
@@ -758,7 +760,7 @@ export const ENEMIES = {
   crag_golem:  { name: 'Crag Golem',  hp: 132, dmg: 24, speed: 2.8, xp: 270, color: 0x7a8290, aggro: 12, shape: 'humanoid', scale: 1.5, loot: { storm_shard: 1, iron_ore: 1 } },
   thruun:      { name: 'Stormcaller Thruun', hp: 410, dmg: 35, speed: 3.4, xp: 1060, color: 0xbfe6ff, aggro: 20, shape: 'humanoid', scale: 2.4, boss: true, loot: { gold: 360, tempest_bow: 1, storm_shard: 5, coal: 6 }, rare: { item: 'storm_amulet', chance: 0.3 } },
   // Moonlit Glade / Feywild Hollow
-  wisp:      { name: 'Fae Wisp',  hp: 62,  dmg: 18, speed: 5.0, xp: 185, color: 0xc6a8ff, aggro: 13, shape: 'beast', scale: 0.6, loot: { fae_dust: 1 } },
+  wisp:      { name: 'Fae Wisp',  hp: 62,  dmg: 18, speed: 5.0, xp: 185, color: 0xc6a8ff, aggro: 13, shape: 'wisp', scale: 0.9, loot: { fae_dust: 1 } },
   thornling: { name: 'Thornling', hp: 92,  dmg: 20, speed: 3.2, xp: 225, color: 0x6a4a9a, aggro: 12, shape: 'humanoid', scale: 1.2, loot: { fae_dust: 1, herb: 1 } },
   hollow_king: { name: 'The Hollow King', hp: 430, dmg: 36, speed: 3.8, xp: 1160, color: 0xb04acf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 400, faewild_staff: 1, fae_dust: 5, ruby: 2 }, rare: { item: 'fae_crown', chance: 0.3 } },
 
@@ -806,7 +808,7 @@ export const ENEMIES = {
   heart_of_hoarfrost:  { name: 'The Heart of Hoarfrost', hp: 300, dmg: 32, speed: 3.0, xp: 1000, color: 0x9bf2ff, aggro: 20, shape: 'beast', scale: 2.2, boss: true, loot: { gold: 420, aurora_quartz: 6, sapphire: 2, bones: 4 } },
   the_reckoner:        { name: 'The Reckoner',         hp: 300, dmg: 34, speed: 3.2, xp: 1050, color: 0xc8a6ff, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 440, amethyst_wisp: 6, emerald: 2, bones: 4 } },
   // --- Cindughol (obsidian caldera — "The Glass That Remembers" saga) ---
-  glass_wisp:          { name: 'Glass-Wisp',     hp: 60,  dmg: 15, speed: 4.6, xp: 165, color: 0x6fd0e0, aggro: 13, shape: 'beast',    loot: { obsidian_tear: 1, bones: 1 } },
+  glass_wisp:          { name: 'Glass-Wisp',     hp: 60,  dmg: 15, speed: 4.6, xp: 165, color: 0x6fd0e0, aggro: 13, shape: 'wisp',     loot: { obsidian_tear: 1, bones: 1 } },
   cinderglass_stalker: { name: 'Cinderglass Stalker', hp: 84, dmg: 20, speed: 4.2, xp: 235, color: 0xc04828, aggro: 15, shape: 'humanoid', loot: { molten_glass: 1, obsidian_tear: 1, bones: 1 } },
   the_glasswake:       { name: 'The Glasswake',  hp: 320, dmg: 34, speed: 3.1, xp: 1100, color: 0x80e0f0, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 460, obsidian_shard: 4, molten_glass: 4, ruby: 2, bones: 4 }, rare: { item: 'ashen_signet', chance: 0.25 } },
   // --- Frontier dungeon bosses (Expansion IV Batch 5; one per new realm) ---
@@ -2077,6 +2079,28 @@ export const NPC_VOICE = {
   bittersong_baron: { day: ["Every grain that leaves these pans pays a toll. A small one. A fair one. Mine.", "Sing while you rake — a happy crew never reads the ledger.", "A face the mirror hasn't kept yet! Rare, this far south."], night: ["The pans glow loudest when the town's asleep. That's when I do my best counting.", "Drowned silver under the rose, and not a soul listening close enough to hear it ring."] },
   wrenn_mirrorwalk: { day: ["Fastest way to the silver pans is straight over the Causeway. Fastest don't mean wisest.", "Folk pay me to cross 'cause they've all looked into the mirror once and decided not to again.", "Stick to the planks I marked."], night: ["Crossed at midnight and my reflection took a step I didn't.", "Don't wave at yourself on the Causeway after dark. Sometimes it waves first."] },
 };
+// Lines spoken when you TALK to ambient guards / a prisoner (see G.talkToMob in main.js).
+export const GUARD_LINES = [
+  'Move along, keeper. The watch holds the road.',
+  "A quiet shift — and I'll thank the hearth for it.",
+  "Eyes sharp past the treeline. Boars don't knock.",
+  'We keep the lamps lit so the dark keeps its distance.',
+  'All quiet. See that it stays that way.',
+];
+export const ESCORT_GUARD_LINES = [
+  "Step back, keeper. This one's bound for the warden's hall.",
+  "Don't talk to the prisoner. Captain's orders.",
+  'Caught lifting from the stores. The hearth feeds all — but not thieves.',
+  "Keep your distance. We've a long march to the cells yet.",
+];
+export const PRISONER_LINES = [
+  "Keeper — please. I didn't do what they say.",
+  "Slip the knot, I beg you. They'll have my hands for a loaf of bread.",
+  "You're the keeper, aren't you? Folk say you're fair. Hear me out.",
+  "Don't let them take me to the warden. He doesn't ask — he just decides.",
+];
+export const PRISONER_LORE = "My name's Wrenna. I took bread, yes — for the dock children, not for myself. The new captain calls it theft, and the watch does as he says. The old hearth would have fed them and asked after their mother. Something's turned in this town, keeper… and not for the better. Remember my name, if nothing else.";
+
 // Generic voices for the ambient WANDERERS (keyed by their content.js `name`).
 export const WANDER_VOICE = {
   Villager: { day: ["Fine day for it, isn't it?", "Heard the elder's looking for help again.", "Mind the boars past the treeline.", "Off to the market, me."], night: ["Best be getting home.", "Dark comes quick this time of year.", "Lamps lit. All's well.", "Quiet night. I'll take it."], any: ["Keeper, is it? We're glad of you."] },

@@ -54,6 +54,9 @@ export function createDialogue(G) {
     render();
   }
   function open(tree, cb) { treeId = tree; onClose = cb || null; G.ui.showDialogue(); goto('root'); }
+  // Ad-hoc dialogue from a plain node object (no DIALOGUE tree needed) — used for
+  // ambient guards / the prisoner. Choices use { to: null } to close or { node } to advance inline.
+  function openNode(node, cb) { treeId = '__adhoc'; onClose = cb || null; G.ui.showDialogue(); current = (typeof node === 'function') ? node(G) : node; choiceIdx = 0; render(); }
   function move(dir) {
     const c = visibleChoices();
     if (!c.length) return;
@@ -65,8 +68,9 @@ export function createDialogue(G) {
     if (!c.length) { close(); return; }
     const ch = c[choiceIdx];
     if (ch.action) ch.action(G);
+    if (ch.node) { current = (typeof ch.node === 'function') ? ch.node(G) : ch.node; choiceIdx = 0; render(); return; }   // inline ad-hoc branch
     goto(ch.to !== undefined ? ch.to : null);
   }
 
-  return { open, move, select, close, get active() { return !!current; } };
+  return { open, openNode, move, select, close, get active() { return !!current; } };
 }

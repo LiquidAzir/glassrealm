@@ -64,7 +64,7 @@ export function createControls({ app, canvas, input, notify }) {
   // Glasses deliver input as arrow keys with no pointer — skip all touch/mouse
   // wiring there so on-device behaviour is exactly as before (only fit() applies).
   const hasPointer = (window.matchMedia && (matchMedia('(pointer: coarse)').matches || matchMedia('(pointer: fine)').matches));
-  if (!hasPointer) return { fit, isTouch: false };
+  if (!hasPointer) return { fit, isTouch: false, touchUIAvailable: false, isTouchUIOn: () => false, toggleTouchUI: () => false };
 
   // ---- canvas swipe / tap (works for finger swipes AND mouse drags) ----
   let sx = 0, sy = 0, down = false, moved = false;
@@ -120,8 +120,10 @@ export function createControls({ app, canvas, input, notify }) {
   toggle.id = 'tcToggle'; toggle.textContent = '🎮'; toggle.title = 'Toggle touch controls';
   app.appendChild(toggle);
   function apply() { pad.classList.toggle('hidden', !on); toggle.classList.toggle('dim', !on); document.body.classList.toggle('controls-on', on); }
-  toggle.addEventListener('pointerdown', (e) => { e.preventDefault(); on = !on; try { localStorage.setItem(UIKEY, on ? '1' : '0'); } catch (e2) {} apply(); });
+  function setOn(v) { on = !!v; try { localStorage.setItem(UIKEY, on ? '1' : '0'); } catch (e2) {} apply(); return on; }
+  toggle.addEventListener('pointerdown', (e) => { e.preventDefault(); setOn(!on); });
   apply();
 
-  return { fit, isTouch: TOUCH };
+  // touchUI* lets the in-game menu (Diary tab) toggle the on-screen d-pad/buttons too.
+  return { fit, isTouch: TOUCH, touchUIAvailable: true, isTouchUIOn: () => on, toggleTouchUI: () => setOn(!on) };
 }

@@ -15,6 +15,11 @@ const HAIR = [0x2a2330, 0x5c4326, 0x8a8a92, 0x6e4a2b, 0xb5602a];
 const _matCache = {};
 const lmat = (c) => { if (_matCache[c]) return _matCache[c]; const m = rimLight(new THREE.MeshLambertMaterial({ color: c, flatShading: true })); _matCache[c] = m; return m; };
 const mkBox = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); return me; };
+// shared low-poly primitives for the enemy archetype models below
+const mkCone = (rb, h, m, x, y, z, rx = 0, rz = 0) => { const me = new THREE.Mesh(new THREE.ConeGeometry(rb, h, 6), m); me.position.set(x, y, z); if (rx) me.rotation.x = rx; if (rz) me.rotation.z = rz; return me; };
+const mkIco = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(x, y, z); return me; };
+const legAt = (g, x, y, z, w, h, m) => { const p = new THREE.Group(); p.position.set(x, y, z); p.add(mkBox(w, h, w, m, 0, -h / 2, 0)); g.add(p); return p; };   // hip-pivoted leg (swings in the walk cycle)
+const glowMat = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: o != null, opacity: o == null ? 1 : o });   // self-lit (pops on the additive display)
 
 // A proper bipedal person: hip-pivoted legs + shoulder-pivoted arms (with skin hands),
 // a clothed torso, a head, and hair — limb pivots exposed via userData.anim for walking.
@@ -73,7 +78,335 @@ function makeHumanoid(def) {
   return g;
 }
 
-const makeEnemyMesh = (def) => (def.shape === 'humanoid' ? makeHumanoid(def) : makeBeast(def));
+// A drifting fae spirit: a bright self-lit core (glows on the additive display), a
+// translucent aura, and a few trailing motes — no legs; it hovers + swirls (see the
+// `float` branch in update). Distinct from the quadruped beast so wisps don't read as sheep.
+function makeWisp(def) {
+  const g = new THREE.Group();
+  const col = def.color || 0xc6a8ff;
+  const core = new THREE.Group(); core.position.y = 1.15; g.add(core);   // the bobbing/swirling body sits here
+  const glow = new THREE.MeshBasicMaterial({ color: col });
+  core.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), glow));                                           // bright core
+  const aura = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 0), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22 }));
+  core.add(aura);                                                                                                   // soft pulsing halo
+  for (const [x, y, z, r] of [[-0.42, -0.2, -0.28, 0.16], [0.4, 0.1, 0.24, 0.13], [0.05, -0.5, -0.36, 0.11], [-0.2, 0.45, 0.3, 0.1]]) {
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), glow); m.position.set(x, y, z); core.add(m);     // trailing motes (swirl with the core)
+  }
+  g.userData.anim = { float: true, core, aura, spin: true, hoverY: 1.15, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// Enemy archetype models — one distinct silhouette per creature family so a
+// scorpion no longer reads like a wolf. Same-family variants (e.g. grey/frost/
+// blight wolves) share a builder and differ by colour + scale. Each sets a
+// userData.anim describing how update() animates it: biped (legL/R + armL/R),
+// quad/multi-leg (legs[]), or float (a hovering `core` child group).
+// ---------------------------------------------------------------------------
+
+// Canine — wolves, hounds, fanged beasts. Lean quadruped with snout, ears, tail.
+function makeCanine(def) {
+  const g = new THREE.Group(), m = lmat(def.color), d = lmat(0x2a2018);
+  g.add(mkBox(1.3, 0.7, 0.7, m, 0, 0.95, 0));                                   // body
+  g.add(mkBox(0.5, 0.46, 0.5, m, 0.78, 1.06, 0));                              // head
+  g.add(mkBox(0.34, 0.26, 0.32, d, 1.06, 0.96, 0));                            // muzzle
+  g.add(mkCone(0.1, 0.24, m, 0.66, 1.42, 0.16)); g.add(mkCone(0.1, 0.24, m, 0.66, 1.42, -0.16));   // ears
+  g.add(mkCone(0.16, 0.55, m, -0.82, 1.1, 0, 0, -1.1));                         // tail (raised, back)
+  const legs = [[-0.45, 0.27], [0.45, 0.27], [-0.45, -0.27], [0.45, -0.27]].map(([x, z]) => legAt(g, x, 0.62, z, 0.18, 0.64, d));
+  g.userData.anim = { legs, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Panther — sleek low big-cat / shadow-stalker. Long body, long trailing tail.
+function makePanther(def) {
+  const g = new THREE.Group(), m = lmat(def.color);
+  g.add(mkBox(1.55, 0.5, 0.55, m, 0, 0.72, 0));                                // long low body
+  g.add(mkBox(0.44, 0.42, 0.46, m, 0.9, 0.8, 0));                              // head
+  g.add(mkBox(0.18, 0.16, 0.16, lmat(0xf0e6c0), 1.12, 0.76, 0));               // pale muzzle
+  g.add(mkCone(0.08, 0.18, m, 0.78, 1.06, 0.14)); g.add(mkCone(0.08, 0.18, m, 0.78, 1.06, -0.14));   // ears
+  g.add(mkCone(0.12, 0.95, m, -0.92, 0.7, 0, 0, -1.65));                        // long tail
+  const legs = [[-0.52, 0.21], [0.52, 0.21], [-0.52, -0.21], [0.52, -0.21]].map(([x, z]) => legAt(g, x, 0.5, z, 0.15, 0.52, m));
+  g.userData.anim = { legs, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Boar — bulky tusked quadruped with a bristly mane ridge.
+function makeBoarFoe(def) {
+  const g = new THREE.Group(), m = lmat(def.color), d = lmat(0x241c16), w = lmat(0xf2ead0);
+  g.add(mkBox(1.3, 0.85, 0.85, m, 0, 0.95, 0));                                // body
+  g.add(mkBox(0.34, 0.4, 0.9, d, 0, 1.38, 0));                                 // mane ridge
+  g.add(mkBox(0.64, 0.6, 0.62, m, 0.82, 0.86, 0));                             // head
+  g.add(mkCone(0.24, 0.32, d, 1.2, 0.78, 0, 0, -Math.PI / 2));                  // snout (+x)
+  g.add(mkCone(0.05, 0.28, w, 1.0, 0.66, 0.18, 0, 0.6)); g.add(mkCone(0.05, 0.28, w, 1.0, 0.66, -0.18, 0, 0.6));   // tusks
+  const legs = [[-0.42, 0.34], [0.42, 0.34], [-0.42, -0.34], [0.42, -0.34]].map(([x, z]) => legAt(g, x, 0.62, z, 0.2, 0.64, d));
+  g.userData.anim = { legs, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Scorpion — low armoured body, forward pincers, a tail curled over the back with a stinger. 6 legs (front 4 trot).
+function makeScorpion(def) {
+  const g = new THREE.Group(), m = lmat(def.color), d = lmat(0x6a4a28);
+  g.add(mkBox(1.0, 0.38, 0.7, m, 0, 0.5, 0));                                  // abdomen
+  g.add(mkBox(0.5, 0.34, 0.5, m, 0.6, 0.5, 0));                                // cephalothorax
+  for (const s of [1, -1]) { g.add(mkBox(0.42, 0.14, 0.14, m, 0.92, 0.5, 0.28 * s)); g.add(mkBox(0.24, 0.28, 0.26, m, 1.18, 0.5, 0.34 * s)); }   // pincer arms + claws
+  const tail = new THREE.Group(); tail.position.set(-0.5, 0.55, 0); g.add(tail);
+  let px = 0, py = 0;
+  for (let i = 0; i < 5; i++) { const sz = 0.22 - i * 0.022; tail.add(mkBox(sz, 0.2, sz, m, px, py, 0)); px -= 0.15; py += 0.18; }
+  tail.add(mkCone(0.1, 0.3, d, px + 0.02, py + 0.08, 0, 0, 1.4));               // stinger
+  const legs = [[-0.18, 0.42], [0.22, 0.42], [-0.18, -0.42], [0.22, -0.42], [0.46, 0.44], [0.46, -0.44]].map(([x, z]) => legAt(g, x, 0.4, z, 0.07, 0.42, d));
+  g.userData.anim = { legs, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Serpent / wyrm — legless, stacked coils rising to a reared, fanged head. Sways idly.
+function makeSerpent(def) {
+  const g = new THREE.Group(), m = lmat(def.color), d = lmat(0x1f5a26);
+  const body = new THREE.Group(); g.add(body);
+  [[-0.7, 0.4, 0.66], [-0.3, 0.5, 0.62], [0.1, 0.64, 0.56], [0.45, 0.92, 0.48], [0.72, 1.28, 0.42]].forEach(([x, y, s]) => body.add(mkBox(s, s, s, m, x, y, 0)));
+  body.add(mkBox(0.52, 0.44, 0.52, m, 0.96, 1.56, 0));                          // head
+  body.add(mkCone(0.18, 0.32, d, 1.24, 1.52, 0, 0, -Math.PI / 2));              // snout
+  body.add(mkCone(0.04, 0.2, lmat(0xffffff), 1.08, 1.32, 0.1, 0, 0.5)); body.add(mkCone(0.04, 0.2, lmat(0xffffff), 1.08, 1.32, -0.1, 0, 0.5));   // fangs
+  g.userData.anim = { legs: [], biped: false, sway: body };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Bat — small furry body with membrane wings; hovers and flaps.
+function makeBat(def) {
+  const g = new THREE.Group(), m = lmat(def.color), d = lmat(0x2a2230);
+  const core = new THREE.Group(); core.position.y = 1.4; g.add(core);
+  core.add(mkIco(0.3, m, 0, 0, 0));                                            // body
+  core.add(mkCone(0.09, 0.18, d, 0.05, 0.26, 0.12)); core.add(mkCone(0.09, 0.18, d, 0.05, 0.26, -0.12));   // ears
+  const wingM = glowMat(def.color, 0.5);
+  const mkWing = (s) => { const p = new THREE.Group(); p.add(mkBox(0.55, 0.05, 0.6, wingM, 0, 0, 0.36 * s)); core.add(p); return p; };
+  const wings = [mkWing(1), mkWing(-1)];
+  g.userData.anim = { float: true, core, hoverY: 1.4, hoverAmp: 0.2, wings, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Raptor — upright bird (roc / harrier): two legs, beak, tail feathers, flapping wings.
+function makeRaptor(def) {
+  const g = new THREE.Group(), m = lmat(def.color), beak = lmat(0xe0a23a), d = lmat(0x4a3a2a);
+  g.add(mkBox(0.7, 0.66, 0.5, m, 0, 1.05, 0));                                 // body
+  g.add(mkBox(0.32, 0.34, 0.32, m, 0.2, 1.55, 0));                             // head
+  g.add(mkCone(0.1, 0.28, beak, 0.44, 1.55, 0, 0, -Math.PI / 2));              // beak
+  g.add(mkCone(0.2, 0.6, m, -0.52, 1.0, 0, 0, -1.5));                          // tail feathers
+  const mkWing = (s) => { const p = new THREE.Group(); p.position.set(0, 1.15, 0); p.add(mkBox(1.0, 0.1, 0.5, m, 0, 0, 0.5 * s)); g.add(p); return p; };
+  const wings = [mkWing(1), mkWing(-1)];
+  const legs = [legAt(g, 0, 0.7, 0.16, 0.08, 0.7, d), legAt(g, 0, 0.7, -0.16, 0.08, 0.7, d)];
+  g.userData.anim = { legs, biped: false, wings };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Crab — wide shell, eyestalks, two big forward claws, side legs.
+function makeCrab(def) {
+  const g = new THREE.Group(), m = lmat(def.color), d = lmat(0x7a3a2a), eye = lmat(0x201010);
+  g.add(mkBox(1.1, 0.5, 0.82, m, 0, 0.58, 0));                                 // shell
+  g.add(mkIco(0.1, eye, 0.32, 0.78, 0.22)); g.add(mkIco(0.1, eye, 0.32, 0.78, -0.22));   // eyestalks
+  for (const s of [1, -1]) { g.add(mkBox(0.4, 0.16, 0.16, m, 0.58, 0.5, 0.42 * s)); g.add(mkBox(0.3, 0.36, 0.3, m, 0.88, 0.5, 0.48 * s)); }   // claw arm + claw
+  const legs = [[-0.3, 0.52], [0.12, 0.52], [-0.3, -0.52], [0.12, -0.52]].map(([x, z]) => legAt(g, x, 0.46, z, 0.08, 0.46, d));
+  g.userData.anim = { legs, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Imp — small biped demon (horns + tail), built on the person rig so it walks.
+function makeImp(def) {
+  const g = buildPerson({ cloth: def.color, skin: def.color, hair: null });
+  const horn = lmat(0x2a1810);
+  g.add(mkCone(0.07, 0.24, horn, 0.13, 2.08, 0, 0, -0.5)); g.add(mkCone(0.07, 0.24, horn, -0.13, 2.08, 0, 0, 0.5));   // horns
+  g.add(mkCone(0.1, 0.55, lmat(def.color), 0, 0.7, -0.32, -1.4, 0));            // tail
+  g.scale.setScalar((def.scale || 1) * 0.82);
+  return g;
+}
+
+// Golem — bulky blocky construct with a glowing core eye. Walks (biped rig).
+function makeGolem(def) {
+  const g = new THREE.Group(), m = lmat(def.color);
+  const legL = legAt(g, -0.3, 0.92, 0, 0.36, 0.92, m), legR = legAt(g, 0.3, 0.92, 0, 0.36, 0.92, m);
+  g.add(mkBox(1.15, 1.0, 0.82, m, 0, 1.55, 0));                                // torso
+  g.add(mkBox(0.52, 0.46, 0.52, m, 0, 2.26, 0));                               // head
+  g.add(mkIco(0.14, glowMat(0xfff0a0), 0, 2.3, 0.27));                          // core eye
+  const armL = new THREE.Group(); armL.position.set(-0.72, 2.0, 0); armL.add(mkBox(0.36, 0.95, 0.36, m, 0, -0.48, 0)); g.add(armL);
+  const armR = new THREE.Group(); armR.position.set(0.72, 2.0, 0); armR.add(mkBox(0.36, 0.95, 0.36, m, 0, -0.48, 0)); g.add(armR);
+  g.userData.anim = { legL, legR, armL, armR, biped: true };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Skeleton — gaunt bone biped: a ribcage plate + jaw over the person rig.
+function makeSkeleton(def) {
+  const bone = def.color || 0xe8e4d8;
+  const g = buildPerson({ cloth: bone, skin: bone, hair: null, weaponMat: lmat(0xc8ccd2) });
+  g.add(mkBox(0.52, 0.5, 0.36, lmat(0xf0ecdd), 0, 1.15, 0.04));                 // ribcage plate
+  g.add(mkBox(0.22, 0.12, 0.2, lmat(0xd8d2c2), 0, 1.66, 0.18));                 // jaw
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Wraith — robed spectre that floats, no legs; tapers to a smoke point and sways.
+function makeWraith(def) {
+  const g = new THREE.Group(), col = def.color;
+  const core = new THREE.Group(); core.position.y = 1.2; g.add(core);
+  const robe = glowMat(col, 0.5);
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.6, 6), robe); body.rotation.x = Math.PI; body.position.y = 0; core.add(body);   // apex points down (smoke)
+  core.add(mkIco(0.26, glowMat(0xeaf0ff, 0.85), 0, 0.78, 0));                   // pale head
+  for (const s of [1, -1]) { const a = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.6, 5), robe); a.position.set(0.44 * s, 0.18, 0); a.rotation.z = 0.6 * s; core.add(a); }   // sleeves
+  g.userData.anim = { float: true, core, hoverY: 1.2, hoverAmp: 0.16, sway: core, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Crystal — floating cluster of glowing shards; bobs and slowly spins.
+function makeCrystal(def) {
+  const g = new THREE.Group(), glow = glowMat(def.color, 0.85);
+  const core = new THREE.Group(); core.position.y = 1.1; g.add(core);
+  [[0, 0, 0, 0.55, 0], [0.22, 0.1, 0.16, 0.34, 0.5], [-0.2, 0.06, -0.13, 0.32, -0.6], [0.06, -0.1, 0.24, 0.28, 0.3], [-0.12, 0.13, 0.2, 0.26, -0.3]]
+    .forEach(([x, y, z, h, rz]) => { const c = new THREE.Mesh(new THREE.ConeGeometry(h * 0.42, h, 5), glow); c.position.set(x, y, z); c.rotation.z = rz; core.add(c); });
+  g.userData.anim = { float: true, core, spin: true, hoverY: 1.1, hoverAmp: 0.14, biped: false };
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Myconid — fungal humanoid with a big mushroom cap. Walks (biped rig).
+function makeMyconid(def) {
+  const g = buildPerson({ cloth: def.color, skin: 0xe8dcc0, hair: null });
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.56, 0.5, 7), lmat(def.color)); cap.position.y = 2.12; g.add(cap);   // mushroom cap
+  g.add(mkIco(0.07, lmat(0xf2e6cc), 0.18, 2.04, 0.26)); g.add(mkIco(0.06, lmat(0xf2e6cc), -0.15, 2.1, 0.22));   // pale cap spots
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Harpy — winged person; the wings flap while it strides/dives.
+function makeHarpy(def) {
+  const g = buildPerson({ cloth: def.color, skin: 0xe6c79a, hair: 0x2a2330 });
+  const mkWing = (s) => { const p = new THREE.Group(); p.position.set(0, 1.45, 0.18 * s); p.add(mkBox(0.95, 0.1, 0.5, lmat(def.color), 0, 0, 0.48 * s)); g.add(p); return p; };
+  g.userData.anim.wings = [mkWing(1), mkWing(-1)];
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Siren / drowned — finned aquatic humanoid (fin-ears + a dorsal back-fin).
+function makeSiren(def) {
+  const g = buildPerson({ cloth: def.color, skin: 0x9ad6c0, hair: 0x2a6a5a });
+  for (const s of [1, -1]) g.add(mkCone(0.13, 0.32, lmat(def.color), 0.34 * s, 1.84, -0.08, 0, 1.3 * s));   // fin ears
+  g.add(mkBox(0.1, 0.75, 0.5, lmat(def.color), 0, 1.2, -0.26));                 // dorsal fin
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// --- Humanoid foe variants — so bandits, goblins, cultists and caster-bosses
+//     don't all read as the same person. Each is the buildPerson rig + props. ---
+
+// Goblin — short green raider with big ears and a club.
+function makeGoblin(def) {
+  const g = buildPerson({ cloth: def.color, skin: 0x6f9a4a, hair: null, weaponMat: lmat(0x6e4a2b) });
+  for (const s of [1, -1]) g.add(mkCone(0.08, 0.36, lmat(0x6f9a4a), 0.34 * s, 1.84, -0.04, 0, 1.2 * s));   // pointed ears
+  g.userData.anim.armR.add(mkBox(0.2, 0.2, 0.2, lmat(0x6e4a2b), 0, -0.96, 0));                              // club head
+  g.scale.setScalar((def.scale || 1) * 0.95);
+  return g;
+}
+
+// Rogue — hooded bandit / stalker with a short blade and a shadowed cowl.
+function makeRogue(def) {
+  const g = buildPerson({ cloth: def.color, skin: SKIN[0], hair: null });
+  g.add(mkBox(0.44, 0.36, 0.48, lmat(0x2a2330), 0, 1.92, 0));     // hood
+  g.add(mkBox(0.32, 0.16, 0.1, lmat(0x14111a), 0, 1.84, 0.27));   // shadowed face
+  g.userData.anim.armR.add(mkBox(0.08, 0.46, 0.12, lmat(0xc8ccd2), 0, -0.7, 0));   // dagger
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Pirate — tricorn hat, sash, and a cutlass (brigands, drowned captains).
+function makePirate(def) {
+  const g = buildPerson({ cloth: def.color, skin: SKIN[2], hair: HAIR[1], weaponMat: lmat(0xd8dde4) });
+  g.add(mkBox(0.54, 0.1, 0.5, lmat(0x1a1510), 0, 2.02, 0));       // hat brim
+  g.add(mkBox(0.34, 0.2, 0.34, lmat(0x1a1510), 0, 2.14, 0));      // hat crown
+  g.add(mkBox(0.7, 0.12, 0.42, lmat(0xb03030), 0, 1.0, 0.02));    // red sash
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Cultist — deep hood hiding the face (a glowing eye) over a robe, holding a staff.
+function makeCultist(def) {
+  const g = buildPerson({ cloth: def.color, skin: 0x101010, hair: null });
+  g.add(mkBox(0.46, 0.42, 0.5, lmat(def.color), 0, 1.9, 0));      // deep hood
+  g.add(mkIco(0.07, glowMat(0xff7a3a), 0, 1.88, 0.27));           // glowing eye
+  const ah = g.userData.anim.armR;
+  ah.add(mkBox(0.07, 1.3, 0.07, lmat(0x3a2a1a), 0, -0.5, 0)); ah.add(mkIco(0.12, glowMat(0xffcf6a), 0, -1.16, 0));   // staff + gem
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Warden — robed caster-boss with a horned crown and a tall glowing staff.
+function makeWarden(def) {
+  const g = buildPerson({ cloth: def.color, skin: 0xcdb9d6, hair: null });
+  g.add(mkBox(0.5, 0.44, 0.52, lmat(def.color), 0, 1.92, 0));     // crowned hood
+  for (const s of [1, -1]) g.add(mkCone(0.06, 0.36, lmat(0xf0e6a0), 0.2 * s, 2.16, 0, 0, 0.45 * s));   // crown horns
+  const ah = g.userData.anim.armR;
+  ah.add(mkBox(0.08, 1.7, 0.08, lmat(0x4a3a2a), 0, -0.65, 0)); ah.add(mkIco(0.17, glowMat(def.color), 0, -1.5, 0));   // staff + orb
+  g.scale.setScalar(def.scale || 1);
+  return g;
+}
+
+// Prisoner — a bound, ragged captive escorted by guards. Not an enemy; talkable.
+function makePrisoner(def) {
+  const g = buildPerson({ cloth: (def && def.color) || 0x8a7a66, skin: SKIN[1], hair: HAIR[3] });
+  g.add(mkBox(0.32, 0.12, 0.14, lmat(0x5a4226), 0, 1.2, 0.34));   // rope binding the wrists in front
+  g.userData.anim.bound = true;                                   // keeps the arms forward (see mob walk-cycle)
+  return g;
+}
+
+// Which archetype each enemy uses. Keys absent here fall back to def.shape
+// (generic 'humanoid' people-with-weapons, or 'beast'/'wisp').
+const SHAPE_BUILDERS = { humanoid: makeHumanoid, beast: makeBeast, wisp: makeWisp, wolf: makeCanine, panther: makePanther, boar: makeBoarFoe, scorpion: makeScorpion, serpent: makeSerpent, bat: makeBat, raptor: makeRaptor, crab: makeCrab, imp: makeImp, golem: makeGolem, skeleton: makeSkeleton, wraith: makeWraith, crystal: makeCrystal, myconid: makeMyconid, harpy: makeHarpy, siren: makeSiren, goblin: makeGoblin, rogue: makeRogue, pirate: makePirate, cultist: makeCultist, warden: makeWarden };
+const ENEMY_SHAPE = {
+  // canines & fanged beasts
+  wolf: 'wolf', frost_wolf: 'wolf', blight_wolf: 'wolf', ash_hound: 'wolf', lava_hound: 'wolf', ember_boss: 'wolf',
+  jungle_panther: 'panther', shade_stalker: 'panther',
+  boar: 'boar',
+  scorpion: 'scorpion', shard_skitter: 'scorpion',
+  // serpents / wyrms / worms
+  serpent: 'serpent', sandwyrm: 'serpent', jorath: 'serpent', deep_lurker: 'serpent', glimmer_leech: 'serpent', the_glassmaw: 'serpent',
+  glimmer_bat: 'bat',
+  roc_fledgling: 'raptor', gale_harrier: 'raptor', stormcrown: 'raptor',
+  marsh_crab: 'crab', reef_reaver: 'crab', the_brinemother: 'crab',
+  magma_imp: 'imp', scorchling: 'imp',
+  crystal_sprite: 'crystal', heart_of_hoarfrost: 'crystal',
+  // golems / constructs
+  crystal_golem: 'golem', crag_golem: 'golem', stoneward: 'golem', obsidian_sentinel: 'golem', prism_tyrant: 'golem', cinder_colossus: 'golem', chime_warden: 'golem',
+  // bony undead
+  skeleton: 'skeleton', grave_husk: 'skeleton', bonelord: 'skeleton', ashen_revenant: 'skeleton',
+  // spectral undead (float)
+  wraith: 'wraith', frost_wraith: 'wraith', edgewraith: 'wraith', salt_wraith: 'wraith', barrow_wight: 'wraith', the_dreamward: 'wraith', glacier_wight: 'wraith', the_reckoner: 'wraith', the_lantern_drowned: 'wraith', the_hollowed_warden: 'wraith',
+  // fungal
+  myconid_warden: 'myconid', spore_thrall: 'myconid', pollen_drifter: 'myconid', the_chorus: 'myconid', thornling: 'myconid',
+  // winged folk
+  storm_harpy: 'harpy', sky_warden: 'harpy',
+  // finned / drowned folk
+  lure_siren: 'siren', sea_witch: 'siren', drowned_king: 'siren', coral_warden: 'siren',
+  // goblinoids
+  goblin: 'goblin', goblin_brute: 'goblin', warchief: 'goblin',
+  // hooded rogues / stalkers
+  bandit: 'rogue', cinderglass_stalker: 'rogue',
+  // pirates / brigands
+  brigand: 'pirate', drowned_captain: 'pirate',
+  // robed cultists / priests
+  cinder_cultist: 'cultist', tide_priest: 'cultist',
+  // robed caster-bosses (horned crown + staff)
+  frost_warden: 'warden', vurak: 'warden', thruun: 'warden', hollow_king: 'warden', pyraxis: 'warden', resona: 'warden', the_glasswake: 'warden', the_rimewright: 'warden',
+};
+function makeEnemyMesh(def, key) {
+  const shape = (key && ENEMY_SHAPE[key]) || def.shape || 'beast';
+  return (SHAPE_BUILDERS[shape] || makeBeast)(def);
+}
 
 // --- Animals: farm livestock + wild creatures. Distinct low-poly meshes; wander/graze; prey flee; hens & ducks lay eggs. ---
 const ANIMAL_DEF = {
@@ -215,14 +548,12 @@ export function createEntities(scene, world, G) {
   // ambient mobile NPCs — patrolling guard squads (formation) + lone wanderers
   const mobs = [];
   WANDERERS.forEach((def, di) => {
-    if (def.kind === 'squad') {
+    if (def.kind === 'squad' || def.kind === 'escort') {
       const squad = { loop: def.loop, members: [] };
-      for (let k = 0; k < def.count; k++) {
-        const g = makeMob({ color: def.color, helm: def.helm, soldier: true, seed: di * 7 + k });
-        const s0 = def.loop[0]; g.position.set(s0.x, world.height(s0.x, s0.z), s0.z); scene.add(g);
-        const m = { def, group: g, squad, idx: k, heading: 0, walkPhase: Math.random() * TAU, speed: def.speed, loopI: 0, get pos() { return g.position; } };
-        squad.members.push(m); mobs.push(m);
-      }
+      const s0 = def.loop[0];
+      const addMember = (g, extra) => { g.position.set(s0.x, world.height(s0.x, s0.z), s0.z); scene.add(g); const m = Object.assign({ def, group: g, squad, idx: squad.members.length, heading: 0, walkPhase: Math.random() * TAU, speed: def.speed, loopI: 0, get pos() { return g.position; } }, extra); squad.members.push(m); mobs.push(m); };
+      for (let k = 0; k < def.count; k++) addMember(makeMob({ color: def.color, helm: def.helm, soldier: true, seed: di * 7 + k }), null);
+      if (def.prisoner) addMember(makePrisoner(def.prisoner), { prisoner: true });   // escort: a bound captive walks hemmed in by the guards
     } else {
       const g = makeMob({ color: def.color, soldier: !!def.soldier, helm: def.helm, seed: di * 5 });
       g.position.set(def.home.x, world.height(def.home.x, def.home.z), def.home.z); scene.add(g);
@@ -349,6 +680,16 @@ export function createEntities(scene, world, G) {
     if (ok(px, pz + sz)) { group.position.z = pz + sz; return true; }
     return false;
   }
+  // Steer toward `heading`, fanning out to ever-wider angles when the direct path is
+  // blocked, so ambient folk route AROUND fences/walls instead of pressing into them.
+  // Returns the heading actually travelled (to face that way), or null if boxed in.
+  function seekStep(group, px, pz, heading, spd, dt, gate) {
+    for (const off of [0, 0.6, -0.6, 1.15, -1.15, 1.7, -1.7, 2.4, -2.4]) {
+      const h = heading + off, sx = Math.sin(h) * spd * dt, sz = Math.cos(h) * spd * dt;
+      if (stepSlide(group, px, pz, sx, sz, gate)) return h;
+    }
+    return null;
+  }
 
   // companion pet — one tamed animal (or a rare boss pet) that trails a step behind the player
   let pet = null;
@@ -356,7 +697,7 @@ export function createEntities(scene, world, G) {
     if (pet) { scene.remove(pet.group); pet = null; }
     if (!kind) return;
     let g;
-    if (kind.indexOf('pet_') === 0) { const def = ENEMIES[kind.slice(4)]; if (!def) return; g = makeEnemyMesh(def); g.scale.setScalar((def.scale || 1) * 0.42); }
+    if (kind.indexOf('pet_') === 0) { const def = ENEMIES[kind.slice(4)]; if (!def) return; g = makeEnemyMesh(def, kind.slice(4)); g.scale.setScalar((def.scale || 1) * 0.42); }
     else { if (!ANIMAL_DEF[kind]) return; g = makeAnimal(kind); g.scale.multiplyScalar(0.85); }
     scene.add(g);
     pet = { group: g, kind, walkPhase: 0, snap: true };
@@ -366,7 +707,7 @@ export function createEntities(scene, world, G) {
   function spawnEnemy(key, x, z) {
     if (!world.isWalkable(x, z)) { outer: for (let r = 4; r <= 40; r += 4) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (world.isWalkable(nx, nz)) { x = nx; z = nz; break outer; } } }   // keep spawns out of the sea
     const def = ENEMIES[key];
-    const group = makeEnemyMesh(def);
+    const group = makeEnemyMesh(def, key);
     group.position.set(x, world.height(x, z), z);
     scene.add(group);
     const e = {
@@ -486,7 +827,15 @@ export function createEntities(scene, world, G) {
       if (moving) e.walkPhase += dt * 9;
       e.group.rotation.z = moving ? Math.sin(e.walkPhase) * 0.05 : e.group.rotation.z * (1 - Math.min(1, dt * 8));
       const anim = e.group.userData.anim;
-      if (anim) {
+      if (anim && anim.float) {
+        // floating creature (wisp/wraith/crystal/bat) — always bobs even when idle
+        const base = anim.hoverY != null ? anim.hoverY : 1.15, amp = anim.hoverAmp || 0.13;
+        anim.core.position.y = base + Math.sin(T * 2 + e.home.x) * amp;
+        if (anim.spin) anim.core.rotation.y += dt * 1.1;                                  // wisps/crystals slowly rotate
+        if (anim.sway) anim.sway.rotation.z = Math.sin(T * 1.8 + e.home.x) * 0.1;         // wraiths drift side to side
+        if (anim.aura) anim.aura.scale.setScalar(1 + Math.sin(T * 3 + e.home.x) * 0.09);
+        if (anim.wings) { const f = Math.sin(T * 9 + e.home.x) * 0.6; anim.wings[0].rotation.x = f; anim.wings[1].rotation.x = -f; }
+      } else if (anim) {
         const gait = moving ? Math.sin(e.walkPhase) * 0.55 : 0;
         const k = Math.min(1, dt * 10);
         if (anim.biped) {
@@ -494,10 +843,14 @@ export function createEntities(scene, world, G) {
           anim.legR.rotation.x += (-gait - anim.legR.rotation.x) * k;
           anim.armL.rotation.x += (-gait - anim.armL.rotation.x) * k;
           if (e.atkAnim <= 0) anim.armR.rotation.x += (gait - anim.armR.rotation.x) * k;
-        } else {
+        } else if (anim.legs && anim.legs.length >= 4) {
           anim.legs[0].rotation.x = gait; anim.legs[3].rotation.x = gait;     // diagonal trot
           anim.legs[1].rotation.x = -gait; anim.legs[2].rotation.x = -gait;
+        } else if (anim.legs && anim.legs.length === 2) {
+          anim.legs[0].rotation.x = gait; anim.legs[1].rotation.x = -gait;    // two-legged stride (birds)
         }
+        if (anim.wings) { const f = 0.3 + Math.sin(T * 7 + e.home.x) * 0.45; anim.wings[0].rotation.x = f; anim.wings[1].rotation.x = -f; }   // harpy/raptor wing-flap
+        if (anim.sway) anim.sway.rotation.z = Math.sin(T * 2.2 + e.home.x) * 0.12;        // serpent reared-head sway
       }
       e.group.rotation.x = e.atkAnim > 0 ? -0.5 * Math.sin((1 - e.atkAnim / ATK_ANIM) * Math.PI) : e.group.rotation.x * (1 - Math.min(1, dt * 10));
       e.group.scale.setScalar((e.hurtFlash > 0 ? 1.14 : 1) * e.baseScale);
@@ -529,7 +882,8 @@ export function createEntities(scene, world, G) {
           const wp = m.squad.loop[m.loopI]; tx = wp.x; tz = wp.z;
           if (dist2D(m.pos.x, m.pos.z, tx, tz) < 2.2) m.loopI = (m.loopI + 1) % m.squad.loop.length;
         } else {
-          const L = m.squad.members[0], lh = L.heading, back = 2.2 * Math.ceil(m.idx / 2), side = (m.idx % 2 ? 1.4 : -1.4);
+          const L = m.squad.members[0], lh = L.heading;
+          const back = m.prisoner ? 2.2 : 2.2 * Math.ceil(m.idx / 2), side = m.prisoner ? 0 : (m.idx % 2 ? 1.4 : -1.4);   // the prisoner walks centred, hemmed in by the guards
           tx = L.pos.x - Math.sin(lh) * back + Math.cos(lh) * side;
           tz = L.pos.z - Math.cos(lh) * back - Math.sin(lh) * side;
           stop = 0.7;
@@ -544,9 +898,17 @@ export function createEntities(scene, world, G) {
       const dx = tx - m.pos.x, dz = tz - m.pos.z, dd = Math.hypot(dx, dz);
       let moving = false;
       if (dd > stop) {
-        m.heading = Math.atan2(dx, dz);
-        const sx = Math.sin(m.heading) * spd * dt, sz = Math.cos(m.heading) * spd * dt;
-        if (stepSlide(m.group, m.pos.x, m.pos.z, sx, sz)) moving = true;   // soldiers/wanderers slide along walls instead of phasing through
+        const desired = Math.atan2(dx, dz);
+        const used = seekStep(m.group, m.pos.x, m.pos.z, desired, spd, dt);   // route around fences/walls rather than pressing into them
+        if (used != null) { moving = true; m.heading = used; m.stuckT = 0; }
+        else {
+          m.heading = desired; m.stuckT = (m.stuckT || 0) + dt;              // fully boxed in
+          if (m.stuckT > 2.2) {   // give up on an unreachable goal so the squad never pins to a fence forever
+            m.stuckT = 0;
+            if (m.squad && m.idx === 0) m.loopI = (m.loopI + 1) % m.squad.loop.length;   // leader: skip to the next patrol waypoint
+            else if (!m.squad) { m.target = null; m.pauseT = 0; }                          // wanderer: pick a fresh spot
+          }
+        }
       }
       m.group.position.y = world.height(m.pos.x, m.pos.z);
       m.group.rotation.y = m.heading;
@@ -555,7 +917,8 @@ export function createEntities(scene, world, G) {
       if (a) {
         const gait = moving ? Math.sin(m.walkPhase) * 0.5 : 0, k = Math.min(1, dt * 10);
         a.legL.rotation.x += (gait - a.legL.rotation.x) * k; a.legR.rotation.x += (-gait - a.legR.rotation.x) * k;
-        a.armL.rotation.x += (-gait - a.armL.rotation.x) * k; a.armR.rotation.x += (gait - a.armR.rotation.x) * k;
+        if (a.bound) { a.armL.rotation.x = -1.2; a.armR.rotation.x = -1.2; }   // prisoner: wrists bound forward (no arm-swing)
+        else { a.armL.rotation.x += (-gait - a.armL.rotation.x) * k; a.armR.rotation.x += (gait - a.armR.rotation.x) * k; }
       }
     }
     // ambient animals — wander then pause to graze; wild prey bolt from the player; hens/ducks lay eggs

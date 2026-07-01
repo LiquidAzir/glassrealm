@@ -4,7 +4,7 @@ import { dist2D } from './util.js';
 // equipped weapon (a bow/staff lets you target far foes), and ranged/magic styles
 // prioritise enemies so nearby trees/NPCs don't steal a tap mid-fight.
 export function createInteraction(G) {
-  const RANGE = { tree: 3.4, bush: 3.0, ore: 3.2, fish: 4.6, station: 3.8, plot: 3.2, stall: 3.2, shortcut: 3.2, npc: 3.8, discovery: 3.8, ferry: 4.2, dig: 8, tame: 3.0, enemy: 2.7 };
+  const RANGE = { tree: 3.4, bush: 3.0, ore: 3.2, fish: 4.6, station: 3.8, plot: 3.2, stall: 3.2, shortcut: 3.2, npc: 3.8, mob: 3.6, discovery: 3.8, ferry: 4.2, dig: 8, tame: 3.0, enemy: 2.7 };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   function nearestEnemy(p, range) {
@@ -44,6 +44,7 @@ export function createInteraction(G) {
     for (const sc of G.world.shortcuts) if (near(sc.x, sc.z)) consider('shortcut', sc, sc.x, sc.z, `Shortcut: ${sc.name} (Agility ${sc.level})`);
     for (const f of G.world.ferries) if (near(f.x, f.z)) consider('ferry', f, f.x, f.z, 'Take the ferry');
     for (const n of G.entities.npcs) if (near(n.pos.x, n.pos.z)) consider('npc', n, n.pos.x, n.pos.z, 'Talk to ' + n.def.name);
+    for (const m of (G.entities.mobs || [])) if (near(m.pos.x, m.pos.z)) consider('mob', m, m.pos.x, m.pos.z, m.prisoner ? 'Talk to the prisoner' : 'Talk to ' + (m.def.name || 'the watch'));   // ambient guards / wanderers / prisoner
     for (const a of (G.entities.animals || [])) if (near(a.pos.x, a.pos.z) && !(G.pets && G.pets.has(a.kind))) consider('tame', a, a.pos.x, a.pos.z, 'Tame ' + cap(a.kind));
     for (const d of G.world.discoveries) {
       if (!near(d.x, d.z)) continue;

@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE, FACTIONS, AUTO_MODES } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE, FACTIONS, AUTO_MODES, WANDER_VOICE, GUARD_LINES, ESCORT_GUARD_LINES, PRISONER_LINES, PRISONER_LORE } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -34,13 +34,13 @@ try {
   const cloud = createCloud(); G.cloud = cloud;
   // a Restart sets this flag so we DON'T re-pull the just-wiped save from the cloud (which would skip the class picker)
   let freshStart = false; try { freshStart = !!sessionStorage.getItem('glassrealm.fresh'); if (freshStart) sessionStorage.removeItem('glassrealm.fresh'); } catch (e) {}
-  if (cloud.enabled && !freshStart) { try { const remote = await cloud.pull(); if (remote) mergeRemoteSave(remote); } catch (e) {} }
+  if (cloud.enabled && !freshStart) { try { const remote = await cloud.pull(); if (remote && mergeRemoteSave(remote)) cloud.markSynced(remote); } catch (e) {} }
   const saved = loadSave();
 
   const world = createWorld(engine.scene);
   const player = createPlayer(engine.scene, world);
   const input = createInput();
-  createControls({ app: document.getElementById('app'), canvas, input, notify: (m) => { if (G.ui) G.ui.toast(m, 'good', 1800); } });
+  G.controls = createControls({ app: document.getElementById('app'), canvas, input, notify: (m) => { if (G.ui) G.ui.toast(m, 'good', 1800); } });
 
   G.engine = engine; G.world = world; G.player = player; G.input = input;
   G.skills = createSkills(saved && saved.skills, saved && saved.prestige);
@@ -383,6 +383,32 @@ try {
     setMode('dialogue'); G.ui.hidePrompt();
     G.quests.notifyTalk(n.def.key); checkQuestReady();   // 'talk' objectives complete on conversation
     G.dialogue.open(n.def.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else if (G.pendingSlayerShop) { G.pendingSlayerShop = false; G.openSlayerShop(); } else setMode(G.inInterior ? 'interior' : 'world'); });
+  };
+  // Talk to an ambient mob — guard squads, lone wanderers, or an escorted prisoner.
+  // These have no quest dialogue tree; build a one-off node from their flavour pools.
+  G.talkToMob = (m) => {
+    setMode('dialogue'); G.ui.hidePrompt();
+    const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+    const isNight = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);
+    let speaker, text, choices;
+    if (m.prisoner) {
+      speaker = (m.def.prisoner && m.def.prisoner.name) || 'Prisoner';
+      text = pick(PRISONER_LINES);
+      choices = [
+        { label: '“Who are you?”', node: { speaker, text: PRISONER_LORE, choices: [{ label: '(Say nothing — and move on)', to: null }] } },
+        { label: '(Leave)', to: null },
+      ];
+    } else if (m.squad && m.def.kind === 'escort') {
+      speaker = m.def.name || 'Watchman'; text = pick(ESCORT_GUARD_LINES); choices = [{ label: '(Move along)', to: null }];
+    } else if (m.squad) {
+      speaker = m.def.name || 'Town Watch'; text = pick(GUARD_LINES); choices = [{ label: '(Farewell)', to: null }];
+    } else {
+      speaker = m.def.name || 'Townsfolk';
+      const v = WANDER_VOICE[m.def.name];
+      const pool = v ? ((isNight && v.night) ? v.night : (v.day || v.any || [''])).concat(v.any || []) : ['…'];
+      text = pick(pool); choices = [{ label: '(Farewell)', to: null }];
+    }
+    G.dialogue.openNode({ speaker, text, choices }, () => setMode(G.inInterior ? 'interior' : 'world'));
   };
 
   const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal', mithril: 'mithril_ore', essence: 'rune_essence' };
@@ -1528,6 +1554,8 @@ try {
     if (G.ui.syncOpen()) { G.ui.hideSync(); return; }   // the cloud-sync link panel: any input dismisses it
     // direct menu toggle (touch ☰ button / future bindings) — no wiggle needed
     if (a === 'menu') { if (mode === 'world' || mode === 'interior') openMenu(); else exitOverlay(); return; }
+    // keyboard Escape: pure "back" — closes any open overlay, no-op in the world (never opens the menu)
+    if (a === 'back') { if (mode !== 'world' && mode !== 'interior') exitOverlay(); return; }
     // ↑↓↑↓ wiggle: opens the menu in the world (so a stray swipe-down never opens it) and closes any overlay
     if ((a === 'up' || a === 'down') && backGesture(a)) {
       backSeq = [];
@@ -1582,6 +1610,7 @@ try {
     else if (t.kind === 'shortcut') G.useShortcut(t.ref);
     else if (t.kind === 'ferry') G.useFerry(t.ref);
     else if (t.kind === 'npc') G.talkTo(t.ref);
+    else if (t.kind === 'mob') G.talkToMob(t.ref);
     else if (t.kind === 'tame') G.tameAnimal(t.ref);
     else if (t.kind === 'discovery') G.findDiscovery(t.ref);
     else if (t.kind === 'dig') G.digClue();
@@ -1934,11 +1963,16 @@ try {
     requestAnimationFrame(frame);
   }
 
+  /* cloud-write-reduce-v1: 15s autosave is LOCAL ONLY (free, uncapped). Cloud writes are
+     decoupled — a 5-min safety-net push + hide/pagehide flush. Dedup/throttle/backoff live
+     in cloud.push(). This cuts ~240 KV writes/hr during steady play to ~0. */
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { running = false; input.clearHeld(); if (!wiping) G.save.save(); }
+    if (document.hidden) { running = false; input.clearHeld(); if (!wiping) { G.save.save(); if (G.cloud && G.cloud.enabled) G.cloud.push(G.save.snapshot(), true); } }
     else if (!running) { running = true; engine.clock.getDelta(); requestAnimationFrame(frame); }
   });
+  window.addEventListener('pagehide', () => { if (!wiping) { G.save.save(); if (G.cloud && G.cloud.enabled) G.cloud.push(G.save.snapshot(), true); } });
   setInterval(() => { if (!wiping) G.save.save(); }, 15000);
+  setInterval(() => { if (!wiping && G.cloud && G.cloud.enabled) G.cloud.push(G.save.snapshot(), false); }, 300000);
 
   // initial HUD + reveal
   applyMaxHp();

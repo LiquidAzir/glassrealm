@@ -72,7 +72,11 @@ export function createSave(G) {
     };
   }
   return {
-    save() { try { const snap = snapshot(); localStorage.setItem(KEY, JSON.stringify(snap)); if (G.cloud) G.cloud.push(snap); } catch (e) {} },
+    /* cloud-write-reduce-v1: save() is LOCAL ONLY now (localStorage). Cloud push is
+       decoupled and driven by main.js (5-min safety net + hide/pagehide flush). This
+       stops the 15s autosave from exhausting the shared Cloudflare KV daily write cap. */
+    save() { try { const snap = snapshot(); localStorage.setItem(KEY, JSON.stringify(snap)); } catch (e) {} },
+    snapshot,   // exposed so main.js can feed the cloud safety-net / flush pushes
     clear() { try { localStorage.removeItem(KEY); } catch (e) {} },
     // Portable save string so the same game can move across glasses / phone / PC.
     exportCode() { try { return btoa(unescape(encodeURIComponent(JSON.stringify(snapshot())))); } catch (e) { return ''; } },

@@ -185,7 +185,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Auto') return AUTO_MODES.length;
     if (TABS[tab] === 'Pets') return G.petRows().length;
     if (TABS[tab] === 'Mastery') return G.masteryRows().length + G.perkRows().length;
-    if (TABS[tab] === 'Diary') return 6;
+    if (TABS[tab] === 'Diary') return (G.controls && G.controls.touchUIAvailable) ? 7 : 6;
     if (TABS[tab] === 'Tasks') return G.diaryRows().length;
     return 0;
   }
@@ -228,6 +228,7 @@ export function createUI(G) {
       else if (row === 3 && G.importSave) G.importSave();
       else if (row === 4 && G.copySyncLink) G.copySyncLink();
       else if (row === 5 && G.cycleDeathMode) { G.cycleDeathMode(); renderMenu(); }
+      else if (row === 6 && G.controls && G.controls.touchUIAvailable) { G.controls.toggleTouchUI(); renderMenu(); }
     } else if (TABS[tab] === 'Tasks') {
       const r = G.diaryRows()[row]; if (r && r.ready) { G.diaryClaim(r.region, r.tierIdx); renderMenu(); }
     }
@@ -302,6 +303,10 @@ export function createUI(G) {
     html += `<div class="row ${row === 4 ? 'sel' : ''}"><span class="row-icon">☁️</span><div class="row-main"><div class="row-title">Cloud sync: ${cloudOn ? 'ON' : 'off'}</div><div class="row-sub">${cloudOn ? 'tap to copy your sync link for other devices' : 'enable in config.js (see /worker)'}</div></div></div>`;
     const safe = G.deathMode === 'safe';
     html += `<div class="row ${row === 5 ? 'sel' : ''}"><span class="row-icon">⚰️</span><div class="row-main"><div class="row-title">Death: ${safe ? 'Safe' : 'Standard'}</div><div class="row-sub">${safe ? 'no penalty on death' : 'drop your goods to a gravestone — run back to reclaim'} · tap to toggle</div></div></div>`;
+    if (G.controls && G.controls.touchUIAvailable) {   // hide the on-screen d-pad/buttons when playing on keyboard / controller / glasses
+      const ton = G.controls.isTouchUIOn();
+      html += `<div class="row ${row === 6 ? 'sel' : ''}"><span class="row-icon">🎮</span><div class="row-main"><div class="row-title">Touch controls: ${ton ? 'ON' : 'OFF'}</div><div class="row-sub">on-screen d-pad &amp; buttons · tap to toggle</div></div></div>`;
+    }
     html += `<div class="section-head">Achievements · ${done.size}/${ACHIEVEMENTS.length}</div>`;
     html += ACHIEVEMENTS.map((a) => { const u = done.has(a.id); return `<div class="row" style="${u ? '' : 'opacity:.55'}"><span class="row-icon">${u ? '🏆' : '🔒'}</span><div class="row-main"><div class="row-title">${a.name}</div><div class="row-sub">${a.desc}</div></div></div>`; }).join('');
     els.menuBody.innerHTML = html;
