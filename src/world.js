@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TAU, clamp, smoothstep, mulberry32, dist2D, distToSeg } from './util.js';
 import { DISCOVERIES, NPCS, WANDERERS, ENEMY_SPAWNS, QUESTS, CLUE_SPOTS } from './content.js';
 import { WORLD_SCALE as WS } from './scale.js';
+import { rimLight } from './shaders.js';
 
 // ============================================================================
 // MODULAR WORLD — one contiguous heightfield (no loading zones).
@@ -1320,7 +1321,16 @@ export function createWorld(scene, seed = 1337) {
   // meshes (water bob / shimmer / forge-fire / orbs / moving ferries, enumerated from tick() above) are
   // explicitly re-enabled so their per-frame transforms still apply.
   group.updateMatrixWorld(true);
-  group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = false; });
+  // Give the whole world the same fresnel rim the characters/entities/interiors already get, so
+  // terrain, trees, rocks and buildings read as silhouettes against the see-through background
+  // instead of dissolving into it. Applied once here (rimLight is idempotent, so shared/cached
+  // materials are safe); the sea is left alone — it's self-lit + transparent and owns a wave shader.
+  group.traverse((o) => {
+    if (!o.isMesh) return;
+    o.matrixAutoUpdate = false;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) if (m && m.isMeshLambertMaterial && m !== water.material) rimLight(m);
+  });
   const _live = (m) => { if (m) m.matrixAutoUpdate = true; };
   _live(water);
   for (const s of shimMeshes) _live(s.m);

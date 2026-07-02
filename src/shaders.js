@@ -5,6 +5,8 @@
 // instead of dissolving into it. Applied only to LIT (Lambert) materials — they carry the `normal`
 // and `vViewPosition` the rim needs. Kept subtle; tune `strength` to taste.
 export function rimLight(material, strength = 0.5, tint = [0.04, 0.07, 0.10], power = 3.0) {
+  if (material._rim) return material;   // idempotent: a shared/cached material wrapped twice would double-apply the rim
+  material._rim = true;
   const prev = material.onBeforeCompile;
   material.onBeforeCompile = (sh) => {
     if (prev) prev(sh);
