@@ -125,11 +125,15 @@ export function createPlayer(scene, world) {
     trim.position.set(0, 1.6, -0.34); capeGroup.add(trim);   // gold collar trim
   }
 
-  // right arm: pivots at the shoulder so it can swing; holds the weapon
+  // right arm: pivots at the shoulder so it can swing; an elbow (forearm) lets the hand lift the
+  // weapon UP IN FRONT at rest instead of leaving it dangling low at the side. The elbow stays
+  // straight during attacks (forearm rotation → 0), so every swing reads exactly as before.
   const rightArm = new THREE.Group(); rightArm.position.set(0.5, 1.5, 0); body.add(rightArm);
-  rightArm.add(mkBox(0.2, 0.62, 0.22, tunic, 0, -0.31, 0));  // upper arm
-  const hand = new THREE.Group(); hand.position.set(0, -0.62, 0); rightArm.add(hand);
-  hand.rotation.x = 0.22;   // weapon carried at a slight forward "ready" tilt rather than dead-vertical
+  rightArm.add(mkBox(0.2, 0.34, 0.22, tunic, 0, -0.155, 0));  // upper arm (shoulder → elbow)
+  const forearm = new THREE.Group(); forearm.position.set(0, -0.31, 0); rightArm.add(forearm);   // elbow pivot
+  forearm.add(mkBox(0.2, 0.34, 0.22, tunic, 0, -0.155, 0));   // forearm (elbow → wrist)
+  const hand = new THREE.Group(); hand.position.set(0, -0.31, 0); forearm.add(hand);
+  hand.rotation.x = 0.22;   // wrist tilt (re-aimed per-pose in the animation loop)
   hand.add(mkBox(0.18, 0.18, 0.18, skin, 0, 0, 0));          // fist
   const gripPivot = new THREE.Group(); hand.add(gripPivot);   // per-weapon held orientation (tilt / roll / grip offset) — wraps the holder so the flip + meshes below stay untouched
   const weaponHolder = new THREE.Group(); gripPivot.add(weaponHolder);
@@ -172,10 +176,11 @@ export function createPlayer(scene, world) {
     state.weaponHands = g.hands || 1;
     state.gripRest = g.rest || 'ready';
     state.gripLeft = g.lg || 0;
+    state.gripTilt = GRIP_FWD * (g.tilt || 0);   // the ready-guard pose cocks the wrist to cancel this, so every weapon holds ~vertical
   }
   function resetGrip() {   // unarmed → neutral fist, no held weapon
     gripPivot.rotation.set(0, 0, 0); gripPivot.position.set(0, 0, 0); weaponHolder.position.y = 0;
-    state.weaponHands = 1; state.gripRest = 'ready'; state.gripLeft = 0;
+    state.weaponHands = 1; state.gripRest = 'ready'; state.gripLeft = 0; state.gripTilt = 0;
   }
   function setWeaponMesh(key) {
     clearHolder(); resetGrip();
@@ -183,7 +188,7 @@ export function createPlayer(scene, world) {
     // only reskin to a REAL weapon of the SAME combat style — keeps the attack animation matching the silhouette + a stale/invalid key can't crash the model lookup
     if (cw && (!weaponOf(cw) || !weaponOf(key) || weaponOf(cw).style !== weaponOf(key).style)) cw = null;
     const dispKey = cw || key;
-    if (!dispKey) { weaponTint = 0xdfe6ef; return; }   // unarmed → just fists; a soft pale swoosh for punches (not stale colour / pure white)
+    if (!dispKey) { weaponTint = 0xdfe6ef; state.armed = false; return; }   // unarmed → just fists; a soft pale swoosh for punches (not stale colour / pure white)
     const it = weaponOf(dispKey);
     const md = WEAPON_MODEL[dispKey] || [it.style === 'ranged' ? 'bow' : it.style === 'magic' ? 'staff' : 'sword', 0xcdd6e0];
     const dye = cosmetic && cosmetic.dyes ? cosmetic.dyes.weapon : null;
@@ -191,6 +196,7 @@ export function createPlayer(scene, world) {
     weaponTint = tint;   // swing trail tints to match the displayed blade
     buildWeaponModel(md[0], tint);
     applyGrip(md[0]);
+    state.armed = true;
   }
   function buildArmor(key) {
     while (armorGroup.children.length) armorGroup.remove(armorGroup.children[0]);
@@ -289,7 +295,7 @@ export function createPlayer(scene, world) {
     moving: false, bob: 0,
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
     swingDir: 0, hurt: 0, hurtDir: 0,   // alternate swing direction each stroke + flinch reaction (driven by playHurt)
-    weaponHands: 1, gripRest: 'ready', gripLeft: 0, hasShield: false,   // held-weapon pose (set by setWeaponMesh / refreshEquipment)
+    weaponHands: 1, gripRest: 'ready', gripLeft: 0, gripTilt: 0, armed: false, hasShield: false,   // held-weapon pose (set by setWeaponMesh / refreshEquipment)
     equipment: { weapon: null, armor: null, amulet: null, ring: null, shield: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
     combatStance: 'accurate',   // attack stance (accurate/aggressive/defensive/controlled)
@@ -403,6 +409,8 @@ export function createPlayer(scene, world) {
       rightArm.rotation.x += (-0.4 * k2 - rightArm.rotation.x) * gk;
       armL.rotation.z += (0.4 * k2 - armL.rotation.z) * gk;
       rightArm.rotation.z += (-0.45 * k2 - rightArm.rotation.z) * gk;
+      forearm.rotation.x += (0 - forearm.rotation.x) * gk;              // straighten the elbow — flinch reads on the shoulder
+      forearm.rotation.z += (0 - forearm.rotation.z) * gk;
       legL.rotation.x += (0.3 * k2 - legL.rotation.x) * gk;              // stagger-step
       legR.rotation.x += (0.3 * k2 - legR.rotation.x) * gk;
       hand.rotation.x += (0.22 - hand.rotation.x) * gk;
@@ -458,6 +466,8 @@ export function createPlayer(scene, world) {
       }
       rightArm.rotation.x = rArmX;
       rightArm.rotation.z += (rArmZ - rightArm.rotation.z) * gk;
+      forearm.rotation.x += (0 - forearm.rotation.x) * gk;             // straight elbow through the swing → identical arc to the one-segment arm
+      forearm.rotation.z += (0 - forearm.rotation.z) * gk;
       armL.rotation.x += (aLX - armL.rotation.x) * gk;
       armL.rotation.z += (aLZ - armL.rotation.z) * gk;
       body.rotation.y += (twist - body.rotation.y) * gk;               // torso wind-up + whip
@@ -477,9 +487,14 @@ export function createPlayer(scene, world) {
       legL.rotation.x += (gait - legL.rotation.x) * gk;                // legs return to the stride
       legR.rotation.x += (-gait - legR.rotation.x) * gk;
 
+      // one-handed melee/magic carries lift UP IN FRONT (ready guard); bows/flail ('low') and unarmed
+      // keep the natural low arm-swing. Two-handers keep their shouldered/planted/cradled poses.
+      const lift = state.armed && !twoH && !state.toolActive && state.gripRest !== 'low';
       if (twoH) {
         rightArm.rotation.x += ((r2hX + breath * 0.03) - rightArm.rotation.x) * gk;
         rightArm.rotation.z += (r2hZ - rightArm.rotation.z) * gk;
+        forearm.rotation.x += (0 - forearm.rotation.x) * gk;           // straight elbow: two-handers keep their tuned one-segment pose
+        forearm.rotation.z += (0 - forearm.rotation.z) * gk;
         if (leftGrips) {                                               // planted polearm: off-hand stays on the haft
           armL.rotation.x += ((l2hX + breath * 0.02) - armL.rotation.x) * gk;
           armL.rotation.z += (l2hZ - armL.rotation.z) * gk;
@@ -487,15 +502,29 @@ export function createPlayer(scene, world) {
           armL.rotation.x += (-gait - armL.rotation.x) * gk;
           armL.rotation.z += (0 - armL.rotation.z) * gk;
         }
-      } else {
+        hand.rotation.x += ((0.22 + (state.moving ? Math.abs(Math.sin(state.bob)) * 0.14 : breath * 0.03)) - hand.rotation.x) * gk;
+      } else if (lift) {                                               // ready guard: upper arm by the body, elbow up, blade held ~vertical in front
+        const bob = state.moving ? Math.abs(Math.sin(state.bob)) * 0.05 : breath * 0.03;
+        const foreX = -1.15 - bob;
+        rightArm.rotation.x += (-0.2 - rightArm.rotation.x) * gk;      // upper arm hangs near the body...
+        rightArm.rotation.z += (-0.12 - rightArm.rotation.z) * gk;     // ...drawn slightly in toward the belt line
+        forearm.rotation.x += (foreX - forearm.rotation.x) * gk;       // ...elbow bends up to bring the hand in front
+        forearm.rotation.z += (0 - forearm.rotation.z) * gk;
+        const wrist = 0.12 - (-0.2) - foreX - state.gripTilt;          // cock the wrist so the blade holds ~vertical (a touch forward) whatever the arm bend
+        hand.rotation.x += (wrist - hand.rotation.x) * gk;
+        armL.rotation.x += (-gait * 1.1 - armL.rotation.x) * gk;       // the free off-hand swings with the stride
+        armL.rotation.z += (0 - armL.rotation.z) * gk;
+      } else {                                                         // unarmed, or bow/flail carried low: natural arm swing, straight elbow
         const targX = (state.moving ? gait * 0.34 : breath * 0.05) - 0.1;
         const targZ = state.moving ? Math.sin(state.bob * 0.5) * 0.05 : breath * 0.035;
         rightArm.rotation.x += (targX - rightArm.rotation.x) * gk;
         rightArm.rotation.z += (targZ - rightArm.rotation.z) * gk;
+        forearm.rotation.x += (0 - forearm.rotation.x) * gk;
+        forearm.rotation.z += (0 - forearm.rotation.z) * gk;
         armL.rotation.x += (-gait * 1.1 - armL.rotation.x) * gk;        // counter-swing, a touch bigger than the legs
         armL.rotation.z += (0 - armL.rotation.z) * gk;
+        hand.rotation.x += ((0.22 + (state.moving ? Math.abs(Math.sin(state.bob)) * 0.14 : breath * 0.03)) - hand.rotation.x) * gk;
       }
-      hand.rotation.x += ((0.22 + (state.moving ? Math.abs(Math.sin(state.bob)) * 0.14 : breath * 0.03)) - hand.rotation.x) * gk;
 
       // settle the secondary channels back to neutral / idle life
       body.rotation.y += (0 - body.rotation.y) * gk;
