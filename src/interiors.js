@@ -45,6 +45,7 @@ const INT_PAL = {
   umbral:   { floor: 0x3a3248, wall: 0x5a4a6a, beam: 0x282038, rug: 0x4a3a6a, lamp: 0xb08adf },
   saltmarsh:{ floor: 0x8a6a6a, wall: 0xe8c0c8, beam: 0x5a4a4a, rug: 0xd07a8a, lamp: 0xf08fb8 },
   royal:    { floor: 0x8a7048, wall: 0xcdc2a4, beam: 0x5a4632, rug: 0x8a2438, lamp: 0xffdf9a },
+  necro:    { floor: 0x3a3a42, wall: 0x565662, beam: 0x2a2a30, rug: 0x2f4a3a, lamp: 0x7cffb0 },
 };
 const PAL = (b) => INT_PAL[b] || INT_PAL.grass;
 
@@ -213,9 +214,44 @@ export function createInteriors(scene) {
     cache['castle|' + biome] = { group: g, stations, solids, lamp: 0xffdf9a, bounds: { minX: IX - HX + 1.2, maxX: IX + HX - 1.2, minZ: IZ - HZ + 1.2, maxZ: IZ + HZ - 1.2, y: FY }, entry: { x: IX, z: IZ + HZ - 3.5 } };
   }
 
+  // The Necropolis cathedral interior — a haunted nave: a spectral consecration altar and the
+  // High Priest at the head, pews/tombs down a green aisle, a tomb-vault, and will-o'-wisp light.
+  function buildCathedral(biome) {
+    const g = new THREE.Group(); root.add(g); g.visible = false;
+    const stations = [], solids = [];
+    const P = { floor: mat(0x3a3a42), wall: mat(0x565662), beam: mat(0x2a2a30), stone: mat(0x44454e), rug: mat(0x2f5a44) };
+    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
+    const wallSolids = (x0, z0, x1, z1) => { const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 2)); for (let i = 0; i <= n; i++) { const t = i / n; solid(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.2); } };
+    const st = (o) => stations.push(Object.assign({ y: FY }, o, { x: IX + o.x, z: IZ + o.z }));
+    const ghost = (x, z, color) => { const cl = mat(color); box(0.2, 0.7, 0.2, P.beam, x - 0.16, 0.35, z); box(0.2, 0.7, 0.2, P.beam, x + 0.16, 0.35, z); box(0.64, 0.78, 0.4, cl, x, 1.1, z); box(0.18, 0.56, 0.2, cl, x - 0.44, 1.18, z); box(0.18, 0.56, 0.2, cl, x + 0.44, 1.18, z); ico(0.3, mat(0xd8e8dc), x, 1.75, z); solid(x, z, 0.8); };
+    const candle = (x, z) => { box(0.14, 1.4, 0.14, P.beam, x, 0.7, z); ico(0.18, glow(0x7cffb0), x, 1.5, z); };
+    const HX = 11, HZ = 20, WH = 8;
+    box(HX * 2, 0.3, HZ * 2, P.floor, 0, 0, 0);
+    box(HX * 2, WH, 0.5, P.wall, 0, WH / 2, -HZ); box(0.5, WH, HZ * 2, P.wall, -HX, WH / 2, 0); box(0.5, WH, HZ * 2, P.wall, HX, WH / 2, 0);
+    const dg = 4, sseg = (HX * 2 - dg) / 2; box(sseg, WH, 0.5, P.wall, -(dg / 2 + sseg / 2), WH / 2, HZ); box(sseg, WH, 0.5, P.wall, (dg / 2 + sseg / 2), WH / 2, HZ); box(dg + 1.4, 2, 0.5, P.wall, 0, WH - 1, HZ);
+    for (let i = -4; i <= 4; i++) box(HX * 2, 0.3, 0.3, P.beam, 0, WH - 0.2, i * HZ / 4.5);
+    for (const wz of [-12, -4, 4, 12]) { box(0.16, 3.6, 1.6, glow(0x7cffb0), -HX + 0.3, 4.2, wz); box(0.16, 3.6, 1.6, glow(0x7cffb0), HX - 0.3, 4.2, wz); }   // tall spectral windows
+    box(3.4, 3.4, 0.16, glow(0x9bffcf), 0, 5, -HZ + 0.32);   // rose window behind the altar
+    box(4, 0.05, HZ * 2 - 3, P.rug, 0, 0.18, 0);
+    st({ kind: 'exit', label: 'Exit to Gravehallow', x: 0, z: HZ - 2 });
+    wallSolids(-HX, -HZ, HX, -HZ); wallSolids(-HX, -HZ, -HX, HZ); wallSolids(HX, -HZ, HX, HZ); wallSolids(-HX, HZ, -(dg / 2), HZ); wallSolids(dg / 2, HZ, HX, HZ);
+    box(6, 0.5, 3, P.stone, 0, 0.25, -16); box(2.2, 1.2, 1.4, P.stone, 0, 0.85, -16); ico(0.42, glow(0x7cffb0), 0, 1.9, -16);   // consecration altar
+    for (const dx of [-2.8, 0, 2.8]) solid(dx, -14.6, 1.5);
+    st({ kind: 'altar', label: 'Consecration Altar', x: 0, z: -13 });
+    ghost(3, -13, 0xbfe0d0); st({ kind: 'talk', label: 'Speak with the High Priest', x: 3, z: -11.6, dialogue: 'highpriest', npcKey: 'highpriest' });
+    candle(-4.5, -16); candle(4.5, -16);
+    for (const tz of [-6, 2, 10]) for (const tx of [-6, 6]) { box(3, 0.9, 1.2, P.beam, tx, 0.55, tz); solid(tx, tz, 1.4); }   // pews / tombs
+    for (const cz of [-10, 0, 10]) { candle(-9, cz); candle(9, cz); }
+    box(1.7, 1.9, 1.1, mat(0x55585f), -8.5, 0.95, -16); ico(0.4, glow(0x7cffb0), -8.5, 2.0, -16); solid(-8.5, -16, 1.1); st({ kind: 'bank', label: 'Tomb Vault', x: -8.5, z: -14.4 });
+    for (const lz of [-8, 0, 8]) ico(0.5, glow(0x7cffb0), 0, WH - 1.5, lz);   // chandeliers
+    cache['cathedral|' + biome] = { group: g, stations, solids, lamp: 0x7cffb0, bounds: { minX: IX - HX + 1.2, maxX: IX + HX - 1.2, minZ: IZ - HZ + 1.2, maxZ: IZ + HZ - 1.2, y: FY }, entry: { x: IX, z: IZ + HZ - 3.5 } };
+  }
+
   function enter(type, biome) {
     const key = type + '|' + biome;
-    if (!cache[key]) { if (type === 'castle') buildCastle(biome); else buildType(type, biome); }
+    if (!cache[key]) { if (type === 'castle') buildCastle(biome); else if (type === 'cathedral') buildCathedral(biome); else buildType(type, biome); }
     for (const k in cache) cache[k].group.visible = (k === key);
     lamp.color.setHex(cache[key].lamp);   // warm/cold/ember light to match the region
     root.visible = true;

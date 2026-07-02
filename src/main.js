@@ -1325,7 +1325,7 @@ try {
   };
 
   // ---------- enter / exit buildings ----------
-  const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge', castle: 'Crownhaven Castle' };
+  const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge', castle: 'Crownhaven Castle', cathedral: 'Gravehallow Cathedral' };
   G.enterBuilding = (door) => {
     cancelChannel(); clearCombat();
     G.returnPos = { x: door.x, z: door.z, heading: player.state.heading };

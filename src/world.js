@@ -42,6 +42,8 @@ const BIOMES = {
   // Undercity — near-black cavern rock (reads transparent on the additive display, so
   // only the glowing fungi / crystal veins / lava show) with luminous green+violet growth
   cavern:    { sea: 0x08080e, sand: 0x201d28, low: 0x2a2634, low2: 0x231f2c, high: 0x38324a, peak: 0x6a5a92, fol: [0x7cffb0, 0x9b6bff], trunk: 0x2a2634 },
+  // Necropolis — cold graveyard stone + spectral green will-o'-wisp light
+  necro:     { sea: 0x0a0c12, sand: 0x2c2c32, low: 0x33343c, low2: 0x2b2c34, high: 0x45464f, peak: 0x8a9a94, fol: [0x4a6a54, 0x7cffb0], trunk: 0x3a3a40 },
 };
 
 const REGIONS = [
@@ -75,6 +77,8 @@ const REGIONS = [
   { key: 'crownhaven', x: 0, z: 262, r: 56, biome: 'royal', village: { name: 'Crownhaven', x: 0, z: 262, hut: [0xcdd2dc, 0x6a4a9a], smithy: true, castle: true }, tree: 'pine', nTree: 26, nBush: 12, nRock: 10, nFish: 6, ore: [['iron', 4]] },
   // --- The Undercity: a vast deep cavern you delve into — fungal grottoes, crystal deeps, lava galleries, a deep-folk hold. Depth-tiered ore + foes (built custom). ---
   { key: 'undercity', x: 300, z: 60, r: 48, biome: 'cavern', undercity: true, tree: 'mushroom', nTree: 26, nBush: 0, nRock: 24, nFish: 0, ore: [] },
+  // --- The Necropolis: Gravehallow, a fog-drowned city of the dead — a gothic cathedral, crypts, ghosts with unfinished business, and a lich. ---
+  { key: 'gravehallow', x: -120, z: -200, r: 40, biome: 'necro', village: { name: 'Gravehallow', x: -120, z: -200, hut: [0x565662, 0x2f4a3a], cathedral: true }, tree: 'pine', nTree: 18, nBush: 4, nRock: 16, nFish: 0, ore: [['coal', 3]] },
 ];
 // Region links with a transition TYPE: 'causeway' = rustic plank land bridge (the classic),
 // 'isthmus' = a wide natural land neck where the islands nearly merge (clean, no built deck),
@@ -103,6 +107,8 @@ const BRIDGE_LINKS = [
   ['crownhaven', 'saltcrest', 'span'], ['crownhaven', 'cinderbreak', 'causeway'],
   // The Undercity — a cave-mouth passage from the jungle's edge
   ['undercity', 'jungle', 'causeway'],
+  // The Necropolis — a foggy causeway from the lagoon, an ice-shelf from the aurora shelf
+  ['gravehallow', 'lagoon', 'causeway'], ['gravehallow', 'aurorath', 'iceshelf'],
 ];
 // One signature landmark per region (offsets are raw, scaled by WS at build time).
 const REGION_SIG = {
@@ -854,6 +860,7 @@ export function createWorld(scene, seed = 1337) {
     umbral:   { bldR: 14, svcR: 7.2, lampN: 5, plaza: () => totem,           farmA: 1.50 },
     saltmarsh:{ bldR: 15, svcR: 7.6, lampN: 5, plaza: () => fountain,        farmA: 0.70 },
     royal:    { bldR: 27, svcR: 18,  lampN: 10, plaza: () => statue,          farmA: 1.30 },
+    necro:    { bldR: 24, svcR: 17,  lampN: 8,  plaza: () => statue,          farmA: 2.10 },
   };
   const PLAZA_ARG = {                                  // biome-specific centerpiece tints (water / canopy / crystal / totem)
     desert: [0x3fb8d0], coast: [0x2fb8e0], lagoon: [0x6fe6c8], saltmarsh: [0xf08fb8],
@@ -933,13 +940,38 @@ export function createWorld(scene, seed = 1337) {
     for (let i = 0; i < 4; i++) { const a = i / 4 * TAU, p = at(-R * 0.72 + Math.cos(a) * 6, Math.sin(a) * 6); lampPost(p.x, p.z); }
     waystone('ws_undercity', 'Undercity Descent', camp.x - 3, camp.z - 6);
   }
+  // The Necropolis cathedral: a gothic mausoleum — a tall nave + steep roof, corner spires,
+  // a bell tower, a glowing spectral rose window, and a graveyard of tombstones + wisps. The
+  // grand door leads into the cathedral interior (nave, consecration altar, tomb-vault, the priest).
+  function cathedral(cx, cz) {
+    const y0 = height(cx, cz);
+    const stone = lmat(0x565662), stone2 = lmat(0x44454e), dark = lmat(0x2a2a30), roofc = lmat(0x33343c);
+    const box = (w, h, d, m, x, y, z, ry) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(cx + x, y0 + y, cz + z); if (ry) me.rotation.y = ry; group.add(me); return me; };
+    const glowb = (geo, c, x, y, z, op) => { const mt = new THREE.MeshBasicMaterial({ color: c }); if (op != null) { mt.transparent = true; mt.opacity = op; } const me = new THREE.Mesh(geo, mt); me.position.set(cx + x, y0 + y, cz + z); group.add(me); return me; };
+    const spire = (x, z, h) => { box(1.4, h, 1.4, stone, x, h / 2, z); const rf = new THREE.Mesh(new THREE.ConeGeometry(1.1, 3, 6), roofc); rf.position.set(cx + x, y0 + h + 1.5, cz + z); group.add(rf); glowb(new THREE.IcosahedronGeometry(0.2, 0), 0x7cffb0, x, h + 3, z); solids.push({ x: cx + x, z: cz + z, r: 1.1 }); };
+    box(9, 12, 15, stone, 0, 6, -1);                                            // nave
+    const naveRoof = new THREE.Mesh(new THREE.ConeGeometry(6.6, 6, 4), roofc); naveRoof.position.set(cx, y0 + 15, cz - 1); naveRoof.rotation.y = Math.PI / 4; group.add(naveRoof);
+    box(3, 7, 13, stone2, -6, 3.5, -1); box(3, 7, 13, stone2, 6, 3.5, -1);      // side aisles
+    spire(-6, -8, 9); spire(6, -8, 9); spire(-6, 6, 8); spire(6, 6, 8);          // corner spires
+    box(5, 16, 4, stone, 0, 8, 8);                                              // front bell tower
+    const bellRoof = new THREE.Mesh(new THREE.ConeGeometry(3.4, 5, 4), roofc); bellRoof.position.set(cx, y0 + 18, cz + 8); bellRoof.rotation.y = Math.PI / 4; group.add(bellRoof);
+    glowb(new THREE.IcosahedronGeometry(0.4, 0), 0x7cffb0, 0, 20.5, 8);          // spectral beacon
+    glowb(new THREE.CircleGeometry(1.6, 12), 0x7cffb0, 0, 11, 10.05, 0.85);      // rose window
+    box(3, 4.5, 0.4, dark, 0, 2.4, 10.1);                                       // shadowed doorway recess
+    for (const s of [-1, 1]) { const strut = box(0.4, 5, 0.5, stone2, s * 5.4, 5, -1); strut.rotation.z = s * 0.3; }   // buttress struts
+    solids.push({ x: cx, z: cz - 1, r: 5.5 }); solids.push({ x: cx, z: cz + 8, r: 2.8 }); solids.push({ x: cx - 6, z: cz - 1, r: 2.2 }); solids.push({ x: cx + 6, z: cz - 1, r: 2.2 });
+    for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, r = 11 + (i % 3) * 1.5, x = Math.cos(a) * r, z = Math.sin(a) * r, py = height(cx + x, cz + z), th = (i % 2) ? 1.6 : 2.2; box((i % 2) ? 0.8 : 1.2, th, 0.4, stone2, x, th / 2, z, a); solids.push({ x: cx + x, z: cz + z, r: 0.6 }); if (i % 4 === 0) { glowb(new THREE.IcosahedronGeometry(0.16, 0), 0x7cffb0, x, 1.6, z); ambientEmitters.push({ x: cx + x, y: py + 1, z: cz + z, color: 0x7cffb0, every: 1.6, opts: { n: 2, spread: 1, up: 2, life: 2.4 } }); } }   // tombstones + wisps
+    ambientEmitters.push({ x: cx, y: y0 + 3, z: cz - 1, color: 0x7cffb0, every: 0.9, opts: { n: 3, spread: 5, up: 4, life: 2.4 } });
+    const dz = 12; stations.push({ kind: 'door', label: 'Enter the Cathedral', x: cx, z: cz + dz, y: height(cx, cz + dz), building: 'cathedral', biome: 'necro' });
+  }
   for (const v of villages) {
     const L = LAYOUT[v.biome] || LAYOUT.grass;
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
     const bldR = v.castle ? 27 : L.bldR, svcR = v.castle ? 18 : L.svcR, lampN = v.castle ? 10 : L.lampN;
     for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * bldR, v.z + Math.sin(a) * bldR, v.x, v.z, types[i], v.hut, v.biome); }
-    // centrepiece: the great castle for the capital, else the biome's plaza feature
+    // centrepiece: the great castle for the capital, the cathedral for the necropolis, else the biome's plaza feature
     if (v.castle) castle(v.x, v.z);
+    else if (v.cathedral) cathedral(v.x, v.z);
     else { const pf = L.plaza(); const args = PLAZA_ARG[v.biome]; if (args) pf(v.x, v.z, ...args); else pf(v.x, v.z); }
     // service stations spread evenly on an inner ring so each sits in its own clear sector (easy to navigate)
     const svc = [

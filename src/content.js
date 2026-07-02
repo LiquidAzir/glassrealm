@@ -194,6 +194,7 @@ export const ITEMS = {
   gold_amulet:   { name: 'Gold Amulet',   icon: '📿', type: 'amulet', bonus: { melee: 4, maxhp: 15 }, desc: 'A heavy gold pendant. +4 melee, +15 max HP.' },
   crown_signet:  { name: 'Crown Signet',  icon: '💠', type: 'amulet', bonus: { melee: 6, def: 6, maxhp: 20 }, desc: "The King's own seal, given to the Champion of Crownhaven. +6 melee, +6 defence, +20 max HP." },
   deepstone_amulet: { name: 'Deepstone Amulet', icon: '📿', type: 'amulet', bonus: { melee: 7, def: 5, maxhp: 25 }, desc: 'Cut from the deep-folk hold at the delve\'s heart. +7 melee, +5 defence, +25 max HP.' },
+  spectral_shroud:  { name: 'Spectral Shroud',  icon: '📿', type: 'amulet', bonus: { magic: 8, def: 5, maxhp: 15 }, desc: 'Woven from grave-mist, taken from the Pale Lich. +8 magic, +5 defence, +15 max HP.' },
 
   // ---- Hearty meals (a cooking activity — combine ingredients for big heals, see MEALS) ----
   fish_stew:       { name: 'Fisher’s Stew',   icon: '🍲', type: 'consumable', heal: 45,  desc: 'A warming stew. Restores 45 HP.' },
@@ -624,6 +625,8 @@ export const NPCS = [
   // Expansion III — Saltcrest Harbor (south) + Amberfell (north)
   { key: 'delvemaster', name: 'Delve Master Korrin', color: 0xffb84a, pos: { x: 265, z: 58 }, dialogue: 'delvemaster' },
   { key: 'deepdelver',  name: 'Deep-Miner Yorda',   color: 0x8af0ff, pos: { x: 262, z: 63 }, dialogue: 'deepdelver' },
+  { key: 'ghostsentinel', name: 'Sentinel Aldous',  color: 0xbfe0d0, pos: { x: -108, z: -190 }, dialogue: 'ghostsentinel' },
+  { key: 'ghostmaid',     name: 'Pale Isolde',      color: 0xd0e8dc, pos: { x: -132, z: -190 }, dialogue: 'ghostmaid' },
   { key: 'harbormaster', name: 'Harbourmaster Dell', color: 0x6fd0ff, pos: { x: 86, z: 185 },  dialogue: 'harbormaster' },
   { key: 'corsair',      name: 'Old Corsair Sabine', color: 0xe0c060, pos: { x: 74, z: 185 },  dialogue: 'saga_corsair' },
   { key: 'amberwarden',  name: 'Warden Rowan',       color: 0xe0852e, pos: { x: 56, z: -160 }, dialogue: 'amberwarden' },
@@ -1006,6 +1009,8 @@ export const ENEMIES = {
   the_brinemother:     { name: 'The Brinemother',     hp: 380, dmg: 38, speed: 3.1, xp: 1120, color: 0xf08fb8, aggro: 20, shape: 'beast',    scale: 2.2, boss: true, loot: { gold: 520, brinesong_trident: 1, brine_silver: 6, pearl: 3, bones: 4 } },
   // --- The Undercity: the Deepwarden holds the Deep-Folk Hold at the delve's core ---
   the_deepwarden:      { name: 'The Deepwarden',      hp: 480, dmg: 40, speed: 3.2, xp: 1240, color: 0xb08adf, aggro: 20, shape: 'warden', scale: 2.3, boss: true, loot: { gold: 460, runite_bar: 3, ruby: 2, emerald: 2, bones: 4 }, rare: { item: 'deepstone_amulet', chance: 0.35 } },
+  // --- The Necropolis: the Pale Lich in the Gravehallow crypts ---
+  the_pale_lich:       { name: 'The Pale Lich',       hp: 470, dmg: 38, speed: 3.0, xp: 1220, color: 0xbfe0d0, aggro: 20, shape: 'warden', scale: 2.2, boss: true, loot: { gold: 440, bone_shard: 6, ruby: 2, emerald: 2, bones: 5 }, rare: { item: 'spectral_shroud', chance: 0.35 } },
 };
 
 // ---------- Combat triangle ----------
@@ -1032,7 +1037,7 @@ export const WEAKNESS = {
   glimmer_leech: 'ranged', the_dreamward: 'ranged', frost_wraith: 'magic', glacier_wight: 'melee', heart_of_hoarfrost: 'magic', shade_stalker: 'melee', edgewraith: 'magic', the_reckoner: 'ranged', salt_wraith: 'magic',
   glass_wisp: 'ranged', cinderglass_stalker: 'magic', the_glasswake: 'ranged',
   the_lantern_drowned: 'ranged', the_rimewright: 'magic', the_glassmaw: 'magic', the_hollowed_warden: 'ranged', the_brinemother: 'magic',
-  the_deepwarden: 'ranged',
+  the_deepwarden: 'ranged', the_pale_lich: 'magic',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -1047,7 +1052,7 @@ export const ATK_STYLE = {
   frost_wraith: 'magic', the_dreamward: 'magic', heart_of_hoarfrost: 'magic', the_reckoner: 'magic',
   the_glasswake: 'magic',
   the_lantern_drowned: 'magic', the_glassmaw: 'ranged', the_hollowed_warden: 'magic',
-  the_deepwarden: 'magic',
+  the_deepwarden: 'magic', the_pale_lich: 'magic',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -1080,6 +1085,10 @@ export const AUTO_MODES = [
 ];
 
 export const ENEMY_SPAWNS = [
+  // The Necropolis — undead haunt the Gravehallow graveyard; the Pale Lich holds the crypt
+  { enemy: 'the_pale_lich', x: -120, z: -216 },
+  { enemy: 'wraith', x: -102, z: -210 }, { enemy: 'wraith', x: -138, z: -210 }, { enemy: 'wraith', x: -120, z: -230 }, { enemy: 'wraith', x: -106, z: -188 },
+  { enemy: 'skeleton', x: -135, z: -190 }, { enemy: 'skeleton', x: -108, z: -224 }, { enemy: 'grave_husk', x: -142, z: -200 }, { enemy: 'grave_husk', x: -98, z: -200 }, { enemy: 'grave_husk', x: -120, z: -178 },
   // The Undercity — depth-tiered foes: fungal grottoes (outer) → crystal deeps → lava galleries → the Deepwarden at the core
   { enemy: 'the_deepwarden', x: 300, z: 60 },
   { enemy: 'magma_imp', x: 315, z: 60 }, { enemy: 'lava_hound', x: 285, z: 60 }, { enemy: 'scorchling', x: 300, z: 75 }, { enemy: 'magma_imp', x: 300, z: 45 },
@@ -1247,6 +1256,25 @@ export const QUESTS = {
     desc: 'Descend past the lava galleries to the Deep-Folk Hold and end the Deepwarden.',
     objectives: [{ id: 'boss', type: 'kill', enemy: 'the_deepwarden', count: 1 }],
     rewards: { xp: { combat: 820, defence: 260 }, items: { gold: 500, deepstone_amulet: 1 } },
+  },
+  // --- The Necropolis: Gravehallow's vigil (High Priest + a bound sentinel) ---
+  q_necro1: {
+    name: 'Rest for the Restless', giver: 'highpriest', startsAvailable: true,
+    desc: 'Lay five unquiet wraiths to rest in the Gravehallow graveyard.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'wraith', count: 5 }],
+    rewards: { xp: { prayer: 300, combat: 220 }, items: { gold: 150 } },
+  },
+  q_necro2: {
+    name: "The Sentinel's Rest", giver: 'ghostsentinel', requires: 'q_necro1',
+    desc: 'Bring Sentinel Aldous two grave-iron from the grave-husks to reforge his blade.',
+    objectives: [{ id: 'g', type: 'have', item: 'grave_iron', count: 2 }],
+    rewards: { xp: { prayer: 340 }, items: { gold: 180, rune_ring: 1 } },
+  },
+  q_necro3: {
+    name: 'The Pale Lich', saga: true, giver: 'highpriest', requires: 'q_necro1',
+    desc: 'Descend into the deep crypt and banish the Pale Lich haunting Gravehallow.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'the_pale_lich', count: 1 }],
+    rewards: { xp: { prayer: 400, combat: 640 }, items: { gold: 460, spectral_shroud: 1 } },
   },
   q_mine: {
     name: 'Coal for the Forge', giver: 'miner', startsAvailable: true,
@@ -1599,6 +1627,45 @@ function questGiver(name, qid, cfg) {
 }
 
 export const DIALOGUE = {
+  // --- The Necropolis: the High Priest (cathedral 'talk' station) + graveyard ghosts ---
+  highpriest: {
+    root: (G) => {
+      const s1 = G.quests.status('q_necro1');
+      if (s1 === 'available') return node('High Priest Mordecai', 'Peace, living one. Gravehallow is a kind city — to the dead. But wraiths rise unquiet from the tombs of late. Lay five to rest with steel, and the vigil will hold a while longer.',
+        [{ label: 'I’ll quiet them.', action: (g) => g.quests.accept('q_necro1'), to: 'a1' }, { label: 'Why do the dead wake?', to: 'lore' }, end('Not now.')]);
+      if (s1 === 'active') { if (G.quests.isReady('q_necro1')) return node('High Priest Mordecai', 'The wraiths are stilled. The graves breathe easier — as do I. Bless you.', [{ label: 'What troubles them?', action: (g) => g.quests.complete('q_necro1'), to: 'd1' }]); return node('High Priest Mordecai', 'The wraiths still drift among the stones. Steel and prayer both serve.', [end('Aye.')]); }
+      const s3 = G.quests.status('q_necro3');
+      if (s1 === 'complete' && s3 === 'available') return node('High Priest Mordecai', 'It is the Pale Lich — an old bishop who would not lie down. He sits in the deep crypt and calls the dead up after him. Banish him, and Gravehallow may finally sleep.',
+        [{ label: 'I will banish him.', action: (g) => g.quests.accept('q_necro3'), to: 'a3' }, { label: 'Who was he?', to: 'lich' }, end('Soon.')]);
+      if (s3 === 'active') { if (G.quests.isReady('q_necro3')) return node('High Priest Mordecai', 'The Lich is unmade — I felt the vigil settle like snow. Take his shroud; may it guard the living better than it did the dead.', [{ label: 'Thank you, Father.', action: (g) => g.quests.complete('q_necro3'), to: 'd3' }]); return node('High Priest Mordecai', 'The Pale Lich holds the deep crypt still. Consecrate yourself at the altar before you descend — and pray against his magic.', [end('I will.')]); }
+      if (s3 === 'complete') return node('High Priest Mordecai', 'The one who laid the Lich to rest. Gravehallow keeps its dead — and its debts. You are welcome here always.', [{ label: 'Why do the dead wake?', to: 'lore' }, end('Rest well.')]);
+      return node('High Priest Mordecai', 'Kneel at the altar to consecrate yourself; the tomb-vault will keep your goods safe among the honoured dead.', [{ label: 'Why do the dead wake?', to: 'lore' }, end('Farewell.')]);
+    },
+    a1: node('High Priest Mordecai', 'Five wraiths. They drift where the mist is thickest, among the outer stones.', [end('Understood.')]),
+    d1: node('High Priest Mordecai', 'A sickness at the city’s heart. But that is a graver errand — speak with me again when the wraiths no longer plague us.', [end('I will.')]),
+    a3: node('High Priest Mordecai', 'The crypt lies north, past the tombs. Go with the vigil’s blessing.', [end('I go.')]),
+    d3: node('High Priest Mordecai', 'Sleep, Gravehallow. Sleep at last.', [end('Rest.')]),
+    lore: node('High Priest Mordecai', 'The dead here were always restful — we tend them, sing to them, keep the vigil. Something down in the old crypt has soured that peace. The mist remembers grief, and grief, unquieted, walks.', [end('Grim.')]),
+    lich: node('High Priest Mordecai', 'Mordent, they called him — a bishop who loved his flock so fiercely he could not bear to follow them into death. So he stayed. Love turned to hunger; hunger to this. Pity him, then end him.', [end('I understand.')]),
+  },
+  ghostsentinel: {
+    root: (G) => {
+      const s = G.quests.status('q_necro2');
+      if (s === 'locked') return node('Sentinel Aldous', 'I stood this gate a hundred years and cannot leave it… my blade broke when the graves first stirred. Without it I cannot rest. But you are not ready to help me yet — quiet the wraiths first, the Priest will tell you.', [end('I will return.')]);
+      if (s === 'available') return node('Sentinel Aldous', 'You’ve stilled the wraiths — I felt it. Now hear me: reforge my blade. The grave-husks carry shards of grave-iron; bring me two, and I may finally stand down.',
+        [{ label: 'I’ll bring the iron.', action: (g) => g.quests.accept('q_necro2'), to: 'a2' }, end('Later.')]);
+      if (s === 'active') { if (G.inventory.count('grave_iron') >= 2) return node('Sentinel Aldous', 'Grave-iron… yes. I feel the weight of a blade again. My watch is ended. Thank you, living one — take a soldier’s thanks and his old ring.', [{ label: 'Rest now, sentinel.', action: (g) => g.quests.complete('q_necro2'), to: 'd2' }]); return node('Sentinel Aldous', `${2 - G.inventory.count('grave_iron')} more grave-iron. The husks among the tombs bear it.`, [end('On it.')]); }
+      return node('Sentinel Aldous', 'The gate is quiet now. Go well — and remember Aldous kept his watch to the last.', [end('I will.')]);
+    },
+    a2: node('Sentinel Aldous', 'Two grave-iron from the husks. My thanks reach past the grave.', [end('Understood.')]),
+    d2: node('Sentinel Aldous', 'The mist takes me kindly. Farewell…', [end('Farewell.')]),
+  },
+  ghostmaid: {
+    root: () => node('Pale Isolde', 'You can see me? How long since anyone… I only wished to be remembered. Walk gently here — every stone was someone loved.',
+      [{ label: 'What happened to you?', to: 'tale' }, { label: 'Any counsel?', to: 'counsel' }, end('Rest, Isolde.')]),
+    tale: node('Pale Isolde', 'A fever, one winter, and a name that faded from every tongue but the Priest’s. It is a small grief. But the small griefs are what the mist is made of.', [end('I’ll remember you.')]),
+    counsel: node('Pale Isolde', 'The Lich was kind, once. Kindness that will not let go turns to something else. When you face him… be kinder than he could be. End it clean.', [end('I will.')]),
+  },
   // --- The Undercity: the Delvers' Camp ---
   delvemaster: {
     root: (G) => {
@@ -2312,7 +2379,7 @@ export const SHOP = {
     adamant_sword: 260, adamant_armor: 320, adamant_shield: 260, runite_sword: 560, runite_armor: 680, runite_shield: 560,
     oak_longbow: 40, willow_bow: 75, maple_bow: 130, yew_longbow: 240, magic_bow: 430,
     silver_ring: 55, silver_amulet: 90, gold_ring: 160, gold_amulet: 230,
-    deepstone_amulet: 300,
+    deepstone_amulet: 300, spectral_shroud: 300,
   },
 };
 
