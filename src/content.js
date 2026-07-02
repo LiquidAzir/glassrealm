@@ -197,6 +197,20 @@ export const ITEMS = {
   spectral_shroud:  { name: 'Spectral Shroud',  icon: '📿', type: 'amulet', bonus: { magic: 8, def: 5, maxhp: 15 }, desc: 'Woven from grave-mist, taken from the Pale Lich. +8 magic, +5 defence, +15 max HP.' },
   forgeheart_amulet:{ name: 'Forgeheart Amulet', icon: '📿', type: 'amulet', bonus: { melee: 8, def: 6, maxhp: 20 }, desc: 'A still-warm core cut from the Magma Titan. +8 melee, +6 defence, +20 max HP.' },
   smugglers_charm:  { name: "Smuggler's Charm",  icon: '📿', type: 'amulet', bonus: { ranged: 8, def: 5, maxhp: 18 }, desc: 'The Harbor Baron\'s own luck-piece, cut from black coral. +8 ranged, +5 defence, +18 max HP.' },
+  // ---- Whisperspire (the Athenaeum): arcane rewards + investigation materials ----
+  athenaeum_amulet: { name: 'Athenaeum Amulet', icon: '📿', type: 'amulet', bonus: { magic: 7, def: 4, maxhp: 12 }, desc: 'A warding-medallion of the arcane college. +7 magic, +4 defence, +12 max HP.' },
+  runewaker_staff:  { name: 'Runewaker Staff', icon: '🪄', type: 'weapon', style: 'magic', skill: 'magic', bonus: 23, range: 15, speed: 0.66, desc: "Cut from the Unbound's own focus. +23 magic." },
+  binders_orb:      { name: "Binder's Orb",    icon: '🔮', type: 'amulet', bonus: { magic: 9, maxhp: 18 }, desc: 'A caged mind screams inside the glass — and lends you its power. +9 magic, +18 max HP.' },
+  wards_seal:       { name: "Warden's Seal",   icon: '📿', type: 'amulet', bonus: { magic: 6, def: 6, maxhp: 22 }, desc: "The Athenaeum's last ward, worn as a pendant. +6 magic, +6 defence, +22 max HP." },
+  torn_index_page:  { name: 'Torn Index-Page', icon: '📄', type: 'material', desc: 'A page the library is unwriting — the ink crawls off it as you watch.' },
+  warded_sigil:     { name: 'Warded Sigil',    icon: '🔯', type: 'material', desc: 'A ward-glyph prised from an ink-wraith. It hums against a dead name.' },
+  // ---- Hollowmere (the Fen in Fever): fen rewards + cure materials ----
+  fenwardens_charm: { name: "Fen-Warden's Charm", icon: '📿', type: 'amulet', bonus: { def: 7, maxhp: 22 }, desc: 'Bog-oak and heron-bone, proof against the grey rot. +7 defence, +22 max HP.' },
+  bogwood_maul:     { name: 'Bogwood Maul',    icon: '🔨', type: 'weapon', style: 'melee', skill: 'combat', bonus: 24, range: 2.9, speed: 0.42, desc: "Petrified fen-oak, torn from the Rotmother's nest. +24 melee." },
+  emberbrand_torch: { name: 'Emberbrand Torch', icon: '🔥', type: 'amulet', bonus: { melee: 8, ranged: 4, def: 2 }, desc: 'Kept alight from the fire that cleansed the fen. +8 melee, +4 ranged, +2 defence.' },
+  greenmend_totem:  { name: 'Greenmend Totem', icon: '🌿', type: 'amulet', bonus: { def: 6, maxhp: 30 }, desc: "The witch's cleansing-rite, bound in a river-stone. +6 defence, +30 max HP." },
+  feverweed:        { name: 'Feverweed',       icon: '🌾', type: 'material', desc: 'A grey marsh-reed that thrives where the water sickens. Bitter, and telling.' },
+  toad_bile:        { name: 'Toad-Bile',       icon: '🧪', type: 'material', desc: 'Drawn from a blight-toad. Foul — but the old fen-cure needs it.' },
 
   // ---- Hearty meals (a cooking activity — combine ingredients for big heals, see MEALS) ----
   fish_stew:       { name: 'Fisher’s Stew',   icon: '🍲', type: 'consumable', heal: 45,  desc: 'A warming stew. Restores 45 HP.' },
@@ -655,6 +669,13 @@ export const NPCS = [
   { key: 'salma_brinewright', name: 'Salma Tidewright',   color: 0xf08fb8, pos: { x: -148, z: 224 }, dialogue: 'salma_brinewright' },
   { key: 'bittersong_baron', name: 'Cael Bittersong',     color: 0xffe6f4, pos: { x: -152, z: 219 }, dialogue: 'bittersong_baron' },
   { key: 'wrenn_mirrorwalk', name: 'Wrenn Mirrorwalk',    color: 0xd86fa0, pos: { x: -150, z: 227 }, dialogue: 'wrenn_mirrorwalk' },
+  // --- Whisperspire: the Athenaeum's scholars (saga giver + two witnesses whose stories don't line up) ---
+  { key: 'perenna', name: 'Archivist Perenna', color: 0xc6a8ff, pos: { x: -246, z: -108 }, dialogue: 'perenna' },
+  { key: 'kestrel', name: 'Apprentice Kestrel', color: 0x9bf2ff, pos: { x: -240, z: -112 }, dialogue: 'kestrel' },
+  { key: 'vaunt',   name: 'Magister Vaunt',    color: 0x8a6ab0, pos: { x: -252, z: -110 }, dialogue: 'vaunt' },
+  // --- Hollowmere: the fen-town's carers (the physician who treats the fever, the witch who knows its cure) ---
+  { key: 'corvin', name: 'Physician Corvin',   color: 0x6fb0a0, pos: { x: 358, z: 146 }, dialogue: 'corvin' },
+  { key: 'yarrow', name: 'Hedge-witch Yarrow', color: 0x8ab06a, pos: { x: 364, z: 154 }, dialogue: 'yarrow' },
 ];
 
 // Ambient mobile NPCs (not quest-givers): patrolling guard squads + lone wanderers
@@ -691,6 +712,14 @@ export const WANDERERS = [
   { kind: 'wander', name: 'Pickpocket',     color: 0x4a3f5a, home: { x: 164, z: 220 }, radius: 13, speed: 2.3 },
   { kind: 'wander', name: 'Fence’s Runner', color: 0x6a5acf, home: { x: 178, z: 208 }, radius: 11, speed: 1.8 },
   { kind: 'wander', name: 'Cloaked Figure', color: 0x2a2f44, home: { x: 172, z: 224 }, radius: 8,  speed: 1.2 },
+  // --- Whisperspire: robed scholars of the Athenaeum, uneasy since the wards began to fail ---
+  { kind: 'wander', name: 'Scholar', color: 0x8a7ab0, home: { x: -244, z: -110 }, radius: 9,  speed: 1.2 },
+  { kind: 'wander', name: 'Scribe',  color: 0x9bf2ff, home: { x: -248, z: -114 }, radius: 8,  speed: 1.3 },
+  { kind: 'wander', name: 'Novice',  color: 0xc6a8ff, home: { x: -240, z: -118 }, radius: 12, speed: 1.9 },
+  // --- Hollowmere: fen-folk of the stilt-town, wary and fever-thinned ---
+  { kind: 'wander', name: 'Reed-cutter', color: 0x6a7a4a, home: { x: 356, z: 152 }, radius: 9,  speed: 1.3 },
+  { kind: 'wander', name: 'Bog-fisher',  color: 0x4a6a5a, home: { x: 362, z: 148 }, radius: 10, speed: 1.4 },
+  { kind: 'wander', name: 'Fen-child',   color: 0x8ab06a, home: { x: 360, z: 156 }, radius: 13, speed: 2.2 },
 ];
 
 // Tameable animals → companion pets. One pet follows you at a time and grants its perk
@@ -1029,6 +1058,16 @@ export const ENEMIES = {
   cutthroat:     { name: 'Cutthroat',     hp: 98,  dmg: 21, speed: 4.9, xp: 245, color: 0x3a3f5a, aggro: 15, shape: 'humanoid', loot: { gold: 30, bones: 1 } },
   dock_enforcer: { name: 'Dock Enforcer', hp: 156, dmg: 26, speed: 3.0, xp: 265, color: 0x4a4258, aggro: 12, shape: 'humanoid', scale: 1.35, loot: { gold: 34, bones: 1 } },
   the_harbor_baron: { name: 'The Harbor Baron', hp: 470, dmg: 39, speed: 3.6, xp: 1260, color: 0x6a5acf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 560, ruby: 3, emerald: 2, sapphire: 2, bones: 4 }, rare: { item: 'smugglers_charm', chance: 0.35 } },
+  // --- Whisperspire: the Athenaeum's wards have failed — its books walk, its ink hunts, a summoned thing wears a dead magister's face ---
+  living_tome:  { name: 'Living Tome',  hp: 92,  dmg: 20, speed: 4.4, xp: 235, color: 0x9b7bff, aggro: 13, shape: 'beast',    scale: 0.9, loot: { torn_index_page: 1, gold: 14 } },
+  ink_wraith:   { name: 'Ink-Wraith',   hp: 104, dmg: 24, speed: 3.4, xp: 258, color: 0x4a4a8a, aggro: 14, shape: 'humanoid',             loot: { warded_sigil: 1, rune_essence: 1 } },
+  rune_golem:   { name: 'Rune-Golem',   hp: 168, dmg: 26, speed: 2.6, xp: 280, color: 0x6a6ab0, aggro: 11, shape: 'golem',    scale: 1.4, loot: { gold: 30, rune_essence: 2 } },
+  the_unbound:  { name: 'The Unbound',  hp: 520, dmg: 40, speed: 3.4, xp: 1320, color: 0xc6a8ff, aggro: 20, shape: 'warden',   scale: 2.3, boss: true, loot: { gold: 520, rune_essence: 6, sapphire: 3, emerald: 2 }, rare: { item: 'runewaker_staff', chance: 0.3 } },
+  // --- Hollowmere: the fen festers — plague-rats, blight-toads, bog-lurkers, and the Rotmother brooding in the shrine ---
+  plague_rat:   { name: 'Plague-Rat',   hp: 64,  dmg: 16, speed: 5.0, xp: 165, color: 0x6a6a52, aggro: 13, shape: 'beast',    scale: 0.7, poison: 4, loot: { feverweed: 1, bones: 1 } },
+  blight_toad:  { name: 'Blight-Toad',  hp: 118, dmg: 22, speed: 3.0, xp: 250, color: 0x5a7a3a, aggro: 11, shape: 'beast',    scale: 1.1, poison: 6, loot: { toad_bile: 1, meat: 1 } },
+  fen_lurker:   { name: 'Fen-Lurker',   hp: 138, dmg: 25, speed: 3.2, xp: 268, color: 0x3a4a34, aggro: 13, shape: 'humanoid', scale: 1.3, loot: { gold: 26, feverweed: 1 } },
+  the_rotmother:{ name: 'The Rotmother', hp: 500, dmg: 40, speed: 2.8, xp: 1300, color: 0x7a8a3a, aggro: 20, shape: 'beast', scale: 2.6, boss: true, poison: 8, loot: { gold: 500, toad_bile: 4, emerald: 2, ruby: 2, bones: 4 }, rare: { item: 'bogwood_maul', chance: 0.3 } },
 };
 
 // ---------- Combat triangle ----------
@@ -1056,6 +1095,10 @@ export const WEAKNESS = {
   glass_wisp: 'ranged', cinderglass_stalker: 'magic', the_glasswake: 'ranged',
   the_lantern_drowned: 'ranged', the_rimewright: 'magic', the_glassmaw: 'magic', the_hollowed_warden: 'ranged', the_brinemother: 'magic',
   the_deepwarden: 'ranged', the_pale_lich: 'magic', the_magma_titan: 'magic', the_harbor_baron: 'melee',
+  // Whisperspire — spread across all three styles; the fast tomes fall to arrows, the golem to magic, the casters to steel
+  living_tome: 'ranged', ink_wraith: 'melee', rune_golem: 'magic', the_unbound: 'ranged',
+  // Hollowmere — swarming rats to arrows, the armoured lurker to magic, the toad to steel; the rot purges with the arcane
+  plague_rat: 'ranged', blight_toad: 'melee', fen_lurker: 'magic', the_rotmother: 'magic',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -1071,6 +1114,7 @@ export const ATK_STYLE = {
   the_glasswake: 'magic',
   the_lantern_drowned: 'magic', the_glassmaw: 'ranged', the_hollowed_warden: 'magic',
   the_deepwarden: 'magic', the_pale_lich: 'magic', the_harbor_baron: 'ranged',
+  ink_wraith: 'magic', the_unbound: 'magic',   // Whisperspire casters hurl arcane bolts
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -1103,6 +1147,16 @@ export const AUTO_MODES = [
 ];
 
 export const ENEMY_SPAWNS = [
+  // Whisperspire — the wards have failed; walking books and hunting ink haunt the academy, the Unbound waits in the sealed vault
+  { enemy: 'the_unbound', x: -252, z: -124 },
+  { enemy: 'living_tome', x: -232, z: -108 }, { enemy: 'living_tome', x: -258, z: -104 }, { enemy: 'living_tome', x: -240, z: -128 }, { enemy: 'living_tome', x: -262, z: -120 },
+  { enemy: 'ink_wraith', x: -228, z: -118 }, { enemy: 'ink_wraith', x: -250, z: -100 }, { enemy: 'ink_wraith', x: -266, z: -110 },
+  { enemy: 'rune_golem', x: -238, z: -96 }, { enemy: 'rune_golem', x: -260, z: -132 },
+  // Hollowmere — plague-things prowl the fen; the Rotmother broods in the sunken shrine
+  { enemy: 'the_rotmother', x: 368, z: 138 },
+  { enemy: 'plague_rat', x: 348, z: 144 }, { enemy: 'plague_rat', x: 372, z: 158 }, { enemy: 'plague_rat', x: 350, z: 160 }, { enemy: 'plague_rat', x: 374, z: 142 },
+  { enemy: 'blight_toad', x: 344, z: 152 }, { enemy: 'blight_toad', x: 378, z: 150 }, { enemy: 'blight_toad', x: 356, z: 168 },
+  { enemy: 'fen_lurker', x: 340, z: 144 }, { enemy: 'fen_lurker', x: 376, z: 164 },
   // Duskport — cutthroats work the lantern-lit alleys; the Harbor Baron holds court at the wharf
   { enemy: 'the_harbor_baron', x: 186, z: 228 },
   { enemy: 'cutthroat', x: 158, z: 206 }, { enemy: 'cutthroat', x: 182, z: 200 }, { enemy: 'cutthroat', x: 160, z: 226 }, { enemy: 'cutthroat', x: 190, z: 210 },
@@ -1341,6 +1395,70 @@ export const QUESTS = {
     desc: "Break into the wharf and end the Harbor Baron's grip on Duskport for good.",
     objectives: [{ id: 'boss', type: 'kill', enemy: 'the_harbor_baron', count: 1 }],
     rewards: { xp: { combat: 820, thieving: 360 }, items: { gold: 560, smugglers_charm: 1 } },
+  },
+  // --- Whisperspire: "The Vanishing Index" — an investigation into a library unwriting itself (Archivist Perenna) ---
+  q_spire1: {
+    name: 'The Vanishing Index', saga: true, giver: 'perenna', startsAvailable: true, reqSkills: { combat: 30 },
+    desc: "The Athenaeum's Index is unwriting itself and the wards are failing — books wake and walk the stacks. Search the Reading Hall, put down the living tomes, and recover the torn pages before the ink crawls off them for good.",
+    objectives: [
+      { id: 'hall', type: 'visit', x: -238, z: -118, r: 9, name: 'the Reading Hall' },
+      { id: 'tome', type: 'kill', enemy: 'living_tome', count: 5 },
+      { id: 'page', type: 'have', item: 'torn_index_page', count: 4 },
+    ],
+    rewards: { xp: { magic: 280, combat: 220 }, items: { gold: 200 } },
+  },
+  q_spire2: {
+    name: 'The Vanishing Index — The Sixth Signature', saga: true, giver: 'perenna', requires: 'q_spire1', reqSkills: { combat: 34, magic: 15 },
+    desc: "The ward-ledger names six who opened the vault the night the wards broke. Hear the apprentice who saw someone at the vault, press Magister Vaunt on his alibi, and prise warded sigils from the ink-wraiths that guard the deep stacks — so Perenna can read the sixth signature.",
+    objectives: [
+      { id: 'kestrel', type: 'talk', npc: 'kestrel', name: 'Apprentice Kestrel' },
+      { id: 'vaunt', type: 'talk', npc: 'vaunt', name: 'Magister Vaunt' },
+      { id: 'wraith', type: 'kill', enemy: 'ink_wraith', count: 4 },
+      { id: 'sigil', type: 'have', item: 'warded_sigil', count: 3 },
+    ],
+    rewards: { xp: { magic: 360, combat: 260 }, items: { gold: 280, athenaeum_amulet: 1 } },
+  },
+  q_spire3: {
+    name: 'The Vanishing Index — The Unbound Hour', saga: true, giver: 'perenna', requires: 'q_spire2', reqSkills: { combat: 40, magic: 20 },
+    desc: "The sixth signature belongs to a magister a year dead — something wears his face, and it has summoned the Unbound to devour the library and be reborn in its knowledge. Descend to the Sealed Vault, banish the Unbound, and return to Perenna to decide what becomes of the thing you've caught.",
+    objectives: [
+      { id: 'vault', type: 'visit', x: -252, z: -124, r: 9, name: 'the Sealed Vault' },
+      { id: 'boss', type: 'kill', enemy: 'the_unbound', count: 1 },
+      { id: 'perenna', type: 'talk', npc: 'perenna', name: 'Archivist Perenna' },
+    ],
+    rewards: { xp: { magic: 820, combat: 600 }, items: { gold: 560 } },
+  },
+  // --- Hollowmere: "The Grey Fever" — an outbreak mystery + a cure + a hard choice (Physician Corvin) ---
+  q_fen1: {
+    name: 'The Grey Fever', saga: true, giver: 'corvin', startsAvailable: true, reqSkills: { combat: 30 },
+    desc: "Hollowmere is burning up with the grey fever, and Physician Corvin no longer believes it's natural. Go to the fouled well where the sickness spreads thickest, cull the plague-rats carrying it through the stilts, and bring back feverweed for him to study.",
+    objectives: [
+      { id: 'well', type: 'visit', x: 354, z: 150, r: 9, name: 'the Fouled Well' },
+      { id: 'rat', type: 'kill', enemy: 'plague_rat', count: 5 },
+      { id: 'weed', type: 'have', item: 'feverweed', count: 3 },
+    ],
+    rewards: { xp: { herblore: 220, combat: 200 }, items: { gold: 200 } },
+  },
+  q_fen2: {
+    name: 'The Grey Fever — Three Simples', saga: true, giver: 'corvin', requires: 'q_fen1', reqSkills: { combat: 34, herblore: 15 },
+    desc: "The water's poisoned from upstream, and only the hedge-witch remembers the old fen-cure. Hear Yarrow's three simples, render toad-bile from the blight-toads breeding in the shallows, and gather the feverweed the brew needs — so a cure can be set against the rot at last.",
+    objectives: [
+      { id: 'yarrow', type: 'talk', npc: 'yarrow', name: 'Hedge-witch Yarrow' },
+      { id: 'toad', type: 'kill', enemy: 'blight_toad', count: 4 },
+      { id: 'bile', type: 'have', item: 'toad_bile', count: 3 },
+      { id: 'weed', type: 'have', item: 'feverweed', count: 4 },
+    ],
+    rewards: { xp: { herblore: 340, combat: 260 }, items: { gold: 280, fenwardens_charm: 1 } },
+  },
+  q_fen3: {
+    name: 'The Grey Fever — The Rotmother', saga: true, giver: 'corvin', requires: 'q_fen2', reqSkills: { combat: 42 },
+    desc: "Yarrow was right: the rot has a mother, brooding in the drowned shrine out in the marsh and birthing the blight into the water. Wade to the shrine, end the Rotmother, and stand with Corvin to decide how Hollowmere is saved — by fire, or by the slow rite.",
+    objectives: [
+      { id: 'shrine', type: 'visit', x: 368, z: 138, r: 10, name: 'the drowned shrine' },
+      { id: 'boss', type: 'kill', enemy: 'the_rotmother', count: 1 },
+      { id: 'corvin', type: 'talk', npc: 'corvin', name: 'Physician Corvin' },
+    ],
+    rewards: { xp: { herblore: 400, combat: 820 }, items: { gold: 560 } },
   },
   q_mine: {
     name: 'Coal for the Forge', giver: 'miner', startsAvailable: true,
@@ -1744,6 +1862,80 @@ export const DIALOGUE = {
     d3: node('Guildmaster Vessa', 'Duskport’s in good hands — yours, and mine watching yours. Don’t be a stranger.', [end('Never.')]),
     lore: node('Guildmaster Vessa', 'Nobody runs Duskport, love — that’s rather the point of it. The crown’s writ stops at the causeway. Down here it’s the guild, the tides, and whatever you can hold onto. Keep to the shadows and the lanterns keep to you.', [end('Fair enough.')]),
     baron: node('Guildmaster Vessa', 'Some deposed harbourmaster from up the coast who decided a knife in the dark pays better than a ledger. He’s not wrong about that. But he took my docks — and that I can’t forgive.', [end('Understood.')]),
+  },
+  // --- Whisperspire: Archivist Perenna runs "The Vanishing Index" (branching finale); Kestrel + Vaunt are the witnesses ---
+  perenna: sagaDialogue('Archivist Perenna', [
+    { id: 'q_spire1',
+      intro: "You came. Good — I've stopped trusting the post. The Athenaeum's Index is unwriting itself: titles fade off the spines, whole catalogues blank by morning, and the wards that kept the dangerous books ASLEEP are failing one by one. Now the books wake and walk. Go into the Reading Hall, put the loudest of them down, and bring me the torn pages before the ink crawls off them entirely. I need to see what's being erased.",
+      accept: "I'll search the Reading Hall.",
+      active: "The tomes are worst where the wards are thinnest — the Reading Hall, past the blank shelves. Bring me the torn pages; the ink still holds a little truth.",
+      done: "These pages… they aren't decaying. They're being UNBOUND — deliberately, one ward-thread at a time, by someone who knows exactly which knots to pull. This is no rot. It's a theft, and a patient one." },
+    { id: 'q_spire2',
+      intro: "Every soul who opens the deep vault signs the ward-ledger in living ink. The night the wards first broke, SIX signed — and I can account for five. Find the sixth. Kestrel keeps the late candle and sees who comes and goes; she's frightened, so be gentle. Magister Vaunt will tell you he was abed — press him. And the ink-wraiths in the deep stacks are woven from the stolen ward-threads; prise their sigils loose and I can read the sixth name off them.",
+      accept: "I'll find the sixth signer.",
+      active: "Hear Kestrel, press Vaunt, and bring me warded sigils from the ink-wraiths. Six signed; I have five.",
+      done: "I've read the sigils against the ledger, and I am cold to the bone. The sixth signature is Magister Aldous Fenn's — his own hand, unmistakable. But Aldous Fenn died a year ago this winter. I buried him myself. Something is wearing a dead man's name, and his face, and it has had a year alone inside my library." },
+    { id: 'q_spire3',
+      intro: "Hear me before you go down. Whatever wears Fenn's face has spent a year unbinding the Index for ONE purpose: to summon the Unbound — a thing of pure hunger that eats knowledge and is reborn as whatever it devours. It means to become the Athenaeum entire. It's in the Sealed Vault now, half-born. Loose arrows at its shell if you can — magic only feeds it. End it, then come back to me: for when it dies, everything it swallowed comes loose, and someone must choose what to do with all that loosed knowing.",
+      accept: "I'll go down to the vault.",
+      active: "The Unbound is in the Sealed Vault, below the blank shelves. Loose arrows at it — magic only feeds it. Then return to me.",
+      done: "It's unmade — and every scrap of knowledge it ever swallowed is loose in the air of the vault, a whole drowned library screaming to be read. I cannot hold that and warden the college both. So the choice is yours, who put the thing down: shall I BIND the loosed knowing into a focus for you to carry — a caged, screaming mind, but a mighty one — or SEAL it all away forever, and hang the last ward at your throat as proof the Athenaeum still stands?",
+      choices: [
+        { label: "Bind it — I'll carry the knowing.", outcome: 'bind', grant: { binders_orb: 1 }, say: "Perenna binds the loosed library into a sphere of black glass and folds it into your hands. It is warm, and it is SCREAMING, very faintly, always — but what it knows is yours now." },
+        { label: "Seal it away — let it rest.", outcome: 'seal', grant: { wards_seal: 1 }, say: "Perenna speaks the last ward and the loosed knowing folds itself into silence. The dangerous books sleep again. She hangs the Warden's Seal at your throat — the college's thanks, and its trust." },
+      ] },
+  ], (G) => G.sagaChoices && G.sagaChoices.q_spire3 === 'bind'
+    ? "The Index writes itself true again, and you carry a screaming glass that knows a thousand dead books. Perenna watches you leave the way one watches a loaded thing — with respect, and a little fear."
+    : "The Index writes itself true again, and the Athenaeum sleeps sound behind its last ward. Perenna keeps the late candle now, and calls you the college's friend — the one who let the dangerous knowing lie."),
+  kestrel: { root: (G) => {
+    const s = G.quests.status('q_spire2');
+    if (s === 'active') return node('Apprentice Kestrel', "You're Perenna's investigator? Then I'll say it once, quietly: the night the wards broke, I saw Magister FENN at the vault door, plain as I see you. I know his stoop, his grey gloves. I said nothing because — well. Everyone knows Magister Fenn passed last winter. So either I'm mad, or I watched a dead man sign the ledger. Please don't tell Vaunt I told you. He frightens me lately.",
+      [{ label: 'Why does Vaunt frighten you?', to: 'vaunt' }, end('Thank you, Kestrel.')]);
+    if (s === 'complete' || (G.quests.status('q_spire3') === 'complete')) return node('Apprentice Kestrel', "You put the thing down. I can keep the late candle again without watching the door. Thank you — truly.", [end('Rest easy.')]);
+    return node('Apprentice Kestrel', "I only keep the candles and re-shelve the sleeping books. Ask the Archivist about the real trouble — she carries it heavier than any of us.", [end('Farewell.')]);
+  },
+    vaunt: node('Apprentice Kestrel', "He never used to work the late vault. This past year he's there every night, and he comes out… wrong. Cold. Like a corridor after you've said something you shouldn't have. That's all I know. That's all.", [end('I understand.')]),
+  },
+  vaunt: { root: (G) => {
+    const s = G.quests.status('q_spire2');
+    if (s === 'active') return node('Magister Vaunt', "Perenna sent you to interrogate ME? Absurd. I was abed the night the wards broke — ask my… no. No, there's no one to ask, is there. Very well, the truth: I was at the vault. I let a colleague in after hours, as I have all year, because he asked it of me and because he was my FRIEND. Aldous Fenn. I know how that sounds. I know what they say he is now. But the man at that door knows things only Aldous ever knew, and I could not turn his face away. If that makes me a fool, or worse — then I am one.",
+      [{ label: 'Fenn is dead, Magister.', to: 'dead' }, end("I'll tell Perenna.")]);
+    return node('Magister Vaunt', "I keep the deep vault and my own counsel. Whatever Perenna is chasing, I've said my piece to the apprentice and I'll say no more of it.", [end('Farewell.')]);
+  },
+    dead: node('Magister Vaunt', "You think I don't KNOW that? I signed the condolence roll. I wept. And a month later he knocked at the vault in his grey gloves and spoke of things only we two ever knew — and I wanted my friend back so badly I let the door swing wide. Whatever comes of this is on my hands as much as its. Tell Perenna. I'm done hiding it.", [end('I will.')]),
+  },
+  // --- Hollowmere: Physician Corvin runs "The Grey Fever" (branching finale); Yarrow gives the cure + names the source ---
+  corvin: sagaDialogue('Physician Corvin', [
+    { id: 'q_fen1',
+      intro: "Don't breathe too deep here — half of Hollowmere's abed with the grey fever and I've buried three this week. I've dosed them every way I know and it does NOTHING, and a fever that laughs at every remedy isn't a fever, it's a poisoning. It's worst by the old well. Go there, put down the plague-rats carrying it through the stilt-walks, and bring me feverweed off the banks — that reed only grows where the water's turned, and it'll tell me how far the turning's gone.",
+      accept: "I'll go to the well.",
+      active: "The well, the rats, and three stalks of feverweed from where the water runs greyest. Go on — and wash your hands after.",
+      done: "It's as I feared, and worse. This isn't sickness in the PEOPLE — it's sickness in the WATER, seeping down from upstream, and no draught I can mix out-races a poisoned well. I'm a physician, not a witch. But I know one, gods help my pride." },
+    { id: 'q_fen2',
+      intro: "There's a hedge-witch keeps to the far reeds — Yarrow. The town calls her a fraud; the town is wrong. She knows the OLD fen-cure, from before there was a physician here to sneer at her. Go and hear her three simples. She'll want toad-bile from the blight-toads in the shallows — vile work, but the cure needs it — and more feverweed than I first asked. Bring it all together and we'll set a real cure against this at last.",
+      accept: "I'll find Yarrow.",
+      active: "Hear Yarrow's three simples, render toad-bile from the blight-toads, and gather the feverweed. All of it, or the cure won't take.",
+      done: "Yarrow's cure holds — I've dosed the worst cases and their fever is BREAKING, green things be thanked. But she told you the same thing she told me, didn't she. A cure only bails the boat. The rot has a source, and it's alive, and it's close." },
+    { id: 'q_fen3',
+      intro: "Yarrow named it and I'll not pretend I didn't hear: a Rotmother, brooding in the drowned shrine out past the deep reeds, birthing the blight into the water faster than any cure can bail it. The cure buys us weeks, no more. Someone has to wade out to that shrine and END her. I'd go myself if I thought I'd come back. Put the Rotmother down — then come to me, because how we finish this will cost Hollowmere either way, and you should be the one to name the price.",
+      accept: "I'll wade out to the shrine.",
+      active: "The drowned shrine, past the deep reeds. End the Rotmother — then come back to me.",
+      done: "She's dead. The water will run clean again come the season. But the nest is still down there, seeded through the marsh, and it wakes again in a few years unless we act. Yarrow says there are two ways. We BURN it — fire the whole nest, and the rot never returns — but the feverweed and the rare fen-herbs burn with it, and they're the only trade this poor town has. Or we CLEANSE it slow, by her rite: the herbs live, the town keeps its living — but the rot may one day creep back, your children's trouble, not ours. You put the mother down. You choose how it ends.",
+      choices: [
+        { label: "Burn the nest — end it for good.", outcome: 'burn', grant: { emberbrand_torch: 1 }, say: "The marsh-nest goes up in green fire and the rot dies with it, root and seed. Hollowmere breathes clean — poorer, its herb-trade ash, but SAFE, for good. Corvin lifts a brand from the blaze and presses it, still warm, into your hand." },
+        { label: "Cleanse it slow — spare the herbs.", outcome: 'cleanse', grant: { greenmend_totem: 1 }, say: "You and Yarrow work the long cleansing-rite until the shrine goes quiet and green. The fen keeps its herbs and its living — and its old danger, sleeping. Yarrow binds the rite into a river-stone totem and gives it you: a mend, and a warning." },
+      ] },
+  ], (G) => G.sagaChoices && G.sagaChoices.q_fen3 === 'burn'
+    ? "The fen runs clear and cold, and the herb-banks are black stubble. Hollowmere is safe, and a little hungrier, and Corvin says your name like a hard mercy."
+    : "The fen runs clear and green, the herb-banks heavy again — and every few years Yarrow walks out to the shrine to sing the rot back down. It holds. It holds because you chose to keep it holding."),
+  yarrow: { root: (G) => {
+    const s = G.quests.status('q_fen2');
+    if (s === 'active') return node('Hedge-witch Yarrow', "So the physician sends his errand-runner to the fraud at last. Sit. The old cure is three simples: feverweed for the fever, toad-bile to bind it, and clean water — which is the hard one, isn't it, when the water's the wound. Bring me the first two; I'll mind the third. But hear the rest, for Corvin won't want to say it: a cure is a BUCKET, child. The boat's still holed. There's a Rotmother in the drowned shrine, and she is the hole. No draught un-sinks a boat.",
+      [{ label: 'A Rotmother?', to: 'rot' }, end("I'll bring the simples.")]);
+    if (G.quests.status('q_fen3') === 'complete') return node('Hedge-witch Yarrow', "The mother's dead and the water's turning sweet. You did what the physician couldn't and what I was too old to. The fen remembers that sort of thing. So will I.", [end('Be well, Yarrow.')]);
+    return node('Hedge-witch Yarrow', "Mind the reeds, and don't drink standing water. The fen's kinder to those who mind it.", [end('Farewell.')]);
+  },
+    rot: node('Hedge-witch Yarrow', "Old as the shrine, older than the town. Every few generations she wakes and broods and the fen goes grey, and every few generations someone brave or foolish wades out and puts her back down. Killing her is the easy half. It's what you do with the NEST after that splits families down the middle — fire or mercy, and neither is free. But that's a bridge for when you've the strength to cross it.", [end('I understand.')]),
   },
   // --- The Necropolis: the High Priest (cathedral 'talk' station) + graveyard ghosts ---
   highpriest: {
@@ -2498,6 +2690,8 @@ export const SHOP = {
     oak_longbow: 40, willow_bow: 75, maple_bow: 130, yew_longbow: 240, magic_bow: 430,
     silver_ring: 55, silver_amulet: 90, gold_ring: 160, gold_amulet: 230,
     deepstone_amulet: 300, spectral_shroud: 300, forgeheart_amulet: 320, smugglers_charm: 300,
+    athenaeum_amulet: 260, runewaker_staff: 340, binders_orb: 340, wards_seal: 320, fenwardens_charm: 280, bogwood_maul: 340, emberbrand_torch: 320, greenmend_totem: 320,
+    torn_index_page: 8, warded_sigil: 14, feverweed: 6, toad_bile: 10,
   },
 };
 
@@ -2645,6 +2839,14 @@ export const WANDER_VOICE = {
   Pickpocket: { day: ["Nice purse. Shame to lose it.", "Quick fingers, quicker feet — that's the trade.", "Bump into me and count your coins after."], night: ["Crowds thin at night. Slim pickings.", "You'll never feel it, promise."], any: ["Guild takes a cut of everything, even a smile."] },
   'Fence’s Runner': { day: ["Got goods? The Fence pays fair — for here.", "No names, no papers, no trouble.", "Vessa wants this delivered quiet. Out of my way."], night: ["Running the night's take to the vault.", "Don't follow me, and we'll stay friends."], any: ["The Fence buys what honest shops won't."] },
   'Cloaked Figure': { day: ["…", "The Baron watches the wharf. So do others.", "Speak softly here. Walls have knives."], night: ["Some of us prefer the dark. Don't ask why.", "You saw nothing tonight."], any: ["Duskport keeps its secrets. Keep yours."] },
+  // --- Whisperspire scholars ---
+  Scholar: { day: ["Don't touch the shelves that hum — those are the awake ones.", "Another catalogue gone blank overnight. It's not natural.", "The Archivist hasn't slept in a week, and neither have the books."], night: ["I read by warded candle now. Safer.", "The stacks whisper after dark. They didn't used to."], any: ["Knowledge is the only thing worth guarding this well."] },
+  Scribe:  { day: ["I copy the pages before they fade — a losing race, most days.", "My ink won't stay on the vellum lately. Yours would?", "Six signed the ledger. Everyone's counting to six."], night: ["The Index unwrites fastest at midnight. I've watched it.", "Wardlight only, past dusk. Rules are rules."], any: ["Every book we lose, we lose forever. Mind that."] },
+  Novice:  { day: ["I'm not allowed in the deep stacks. Which is the only place I want to go.", "Did a book really EAT a shelf? Everyone says so.", "Magister Vaunt shooed me from the vault. He looked scared."], night: ["Bed by the bell, or the walking books get you — that's what they tell the little ones.", "I heard something sign its name in the dark."], any: ["One day I'll be an Archivist. If there's a library left."] },
+  // --- Hollowmere fen-folk ---
+  'Reed-cutter': { day: ["Water's gone grey again down the south bank. Bad sign.", "Cut reeds all my life; never seen the fen turn like this.", "Don't drink standing water, stranger. Learned that the hard way."], night: ["Wisps are thick tonight. Keep to the planks.", "You hear the shrine out there? Best not to listen."], any: ["The fen gives and the fen takes. Lately it just takes."] },
+  'Bog-fisher':  { day: ["Nets come up empty or come up wrong. Fish are sick as the folk.", "Physician says boil the water twice. I boil it thrice.", "My wife's abed with the grey. The witch's cure broke her fever, bless her."], night: ["Frogs went quiet a month back. Never a good sign, quiet frogs.", "Something big moves in the deep reeds after dark."], any: ["Stilts keep the house dry. Nothing keeps out the fever."] },
+  'Fen-child':   { day: ["Mum says don't go past the last plank. So I only went a LITTLE past.", "I saw a toad big as a dog! Truly!", "Are you here to fix the water? The old witch says someone will."], night: ["I'm not scared of the wisps. Much.", "Gran sings the marsh-song so the rot stays asleep."], any: ["When I'm big I'll cut reeds like my da."] },
 };
 // Reactive barks: NPCs notice the PLAYER — a fresh boss kill ({boss} filled in), the weather,
 // your wounds, the weapon on your back. Shared pools (varied so they don't read identically).

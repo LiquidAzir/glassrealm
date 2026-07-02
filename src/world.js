@@ -48,6 +48,10 @@ const BIOMES = {
   basalt:    { sea: 0x1a0a08, sand: 0x3a2420, low: 0x2a1e1c, low2: 0x241a18, high: 0x3e2e2a, peak: 0xff7a3d, fol: [0xff7a3a, 0xffb04a], trunk: 0x2a1a16 },
   // Duskport — an eternal-dusk harbour of deep indigo, lit gold + violet by a thousand lanterns
   nocturne:  { sea: 0x0a1424, sand: 0x2a2e3e, low: 0x1e2436, low2: 0x1a2030, high: 0x2e3650, peak: 0x8a6ad6, fol: [0x3a5a7a, 0xffce6a], trunk: 0x2a2e3e },
+  // Whisperspire — a lonely academy isle of near-black stone lit by violet rune-fire and cyan wardlight
+  arcane:    { sea: 0x0a0a1a, sand: 0x24243a, low: 0x1e1e34, low2: 0x1a1a2e, high: 0x30304e, peak: 0x9b7bff, fol: [0x4a4a8a, 0x9bf2ff], trunk: 0x24243a },
+  // Hollowmere — a fever-struck fen of dark bog-water and sickly moss, pricked by will-o'-wisp green
+  fen:       { sea: 0x0e1410, sand: 0x2a3226, low: 0x243024, low2: 0x1e281e, high: 0x36402e, peak: 0x6a7a4a, fol: [0x3a5a32, 0x8ab06a], trunk: 0x2a2a1e },
 };
 
 const REGIONS = [
@@ -87,6 +91,10 @@ const REGIONS = [
   { key: 'karakvol', x: 250, z: -160, r: 42, biome: 'basalt', village: { name: 'Karak-Vol', x: 250, z: -160, hut: [0x3e2e2a, 0xff7a3a], smithy: true, hold: true }, peak: { x: 258, z: -172, r: 14, h: 13 }, tree: 'cactus', nTree: 8, nBush: 0, nRock: 24, nFish: 0, ore: [['iron', 5], ['coal', 5], ['adamant', 2]] },
   // --- Duskport: a lantern-lit thieves' harbour — a black-market row, a thieves' guildhall, rooftop runs, and a heist. ---
   { key: 'duskport', x: 170, z: 215, r: 38, biome: 'nocturne', village: { name: 'Duskport', x: 170, z: 215, hut: [0x2a3040, 0xffce6a], smithy: true, guildhall: true }, tree: 'palm', nTree: 12, nBush: 4, nRock: 8, nFish: 5, ore: [['iron', 3]] },
+  // --- Whisperspire: a lonely arcane academy on a rune-lit isle — a library whose Index is unwriting itself, scholars who lie, and a thing that wears a dead magister's face. ---
+  { key: 'whisperspire', x: -245, z: -115, r: 34, biome: 'arcane', village: { name: 'Whisperspire', x: -245, z: -115, hut: [0x3a3a5a, 0x9b7bff] }, peak: { x: -252, z: -124, r: 12, h: 10 }, tree: 'pine', nTree: 20, nBush: 6, nRock: 14, nFish: 3, ore: [['coal', 3], ['gem_rock', 2]] },
+  // --- Hollowmere: a fever-struck stilt-town in a poisoned fen — a physician, a hedge-witch, a fouled well, and the Rotmother brooding in a sunken shrine. ---
+  { key: 'hollowmere', x: 360, z: 150, r: 32, biome: 'fen', village: { name: 'Hollowmere', x: 360, z: 150, hut: [0x3a4a3a, 0x8ab06a] }, tree: 'palm', nTree: 22, nBush: 10, nRock: 6, nFish: 6, ore: [['coal', 2]] },
 ];
 // Region links with a transition TYPE: 'causeway' = rustic plank land bridge (the classic),
 // 'isthmus' = a wide natural land neck where the islands nearly merge (clean, no built deck),
@@ -121,6 +129,10 @@ const BRIDGE_LINKS = [
   ['karakvol', 'duskmere', 'causeway'], ['karakvol', 'skyreach', 'pass'],
   // Duskport — a causeway from honest Saltcrest, a smugglers' run from the badlands
   ['duskport', 'saltcrest', 'causeway'], ['duskport', 'badlands', 'causeway'],
+  // Whisperspire — a grand stone span from the highlands, an arcane gate paired with the abyss-edge
+  ['whisperspire', 'highland', 'span'], ['whisperspire', 'sablon', 'gate'],
+  // Hollowmere — a bog causeway from the deep delve's mouth, a ferry across from the glass isle
+  ['hollowmere', 'undercity', 'causeway'], ['hollowmere', 'cindughol', 'ferry'],
 ];
 // One signature landmark per region (offsets are raw, scaled by WS at build time).
 const REGION_SIG = {
@@ -739,6 +751,27 @@ export function createWorld(scene, seed = 1337) {
     const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: 0xffe066 })); cap.position.set(x, y + 4.9, z); group.add(cap);
     solids.push({ x, z, r: 1.2 });
   }
+  function spire(x, z) {                                 // Whisperspire — a tall rune-banded academy tower crowned with a pulsing ward-orb
+    const y = height(x, z);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.8, 1.2, 8), lmat(0x2a2a44)); base.position.set(x, y + 0.6, z); group.add(base);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.8, 7.5, 8), lmat(0x35355a)); shaft.position.set(x, y + 4.9, z); group.add(shaft);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.3, 2.4, 8), lmat(0x2a2a44)); cap.position.set(x, y + 9.8, z); group.add(cap);
+    for (let i = 0; i < 3; i++) { const band = new THREE.Mesh(new THREE.TorusGeometry(1.15 - i * 0.18, 0.09, 6, 12), new THREE.MeshBasicMaterial({ color: 0x9b7bff })); band.rotation.x = Math.PI / 2; band.position.set(x, y + 3.2 + i * 2.2, z); group.add(band); }   // rune-bands
+    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.6, 0), new THREE.MeshBasicMaterial({ color: 0x9bf2ff })); orb.position.set(x, y + 11.5, z); group.add(orb);
+    shimMeshes.push({ m: orb, baseY: y + 11.5, seed: x, kind: 'pulse' });
+    for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; const mote = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial({ color: 0x9b7bff })); const my = y + 6 + (i % 2) * 1.3; mote.position.set(x + Math.cos(a) * 2.3, my, z + Math.sin(a) * 2.3); group.add(mote); shimMeshes.push({ m: mote, baseY: my, seed: x + i * 13, kind: 'pulse' }); }   // orbiting rune-motes
+    solids.push({ x, z, r: 2.6 });
+  }
+  function sunkenShrine(x, z) {                          // Hollowmere — a half-drowned mossy shrine, its rot-pool glowing sickly green
+    const y = height(x, z);
+    const slab = new THREE.Mesh(new THREE.CylinderGeometry(3.0, 3.2, 0.5, 8), lmat(0x2e3a2a)); slab.position.set(x, y + 0.25, z); group.add(slab);
+    const pool = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.16, 10), new THREE.MeshBasicMaterial({ color: 0x6ad07a })); pool.position.set(x, y + 0.52, z); group.add(pool);
+    shimMeshes.push({ m: pool, baseY: y + 0.52, seed: x, kind: 'pulse' });
+    const angs = [0.3, 1.5, 2.9, 4.2, 5.4];
+    for (let i = 0; i < angs.length; i++) { const a = angs[i], h = 2.2 + (i % 3) * 0.7; const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, h, 6), lmat(0x3a4636)); pil.position.set(x + Math.cos(a) * 2.4, y + h / 2, z + Math.sin(a) * 2.4); pil.rotation.z = (i % 2 ? 0.16 : -0.11); group.add(pil); if (i < 3) { const capm = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.3, 0.7), lmat(0x2e3a2a)); capm.position.set(x + Math.cos(a) * 2.4, y + h, z + Math.sin(a) * 2.4); group.add(capm); } }   // broken pillars, a few still capped
+    for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.4; const wy = y + 1.2 + (i % 2) * 0.8; const wisp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), new THREE.MeshBasicMaterial({ color: 0x8ad07a })); wisp.position.set(x + Math.cos(a) * 3.4, wy, z + Math.sin(a) * 3.4); group.add(wisp); shimMeshes.push({ m: wisp, baseY: wy, seed: x + i * 7, kind: 'pulse' }); }   // will-o'-wisps
+    solids.push({ x, z, r: 3.0 });
+  }
   function lampPost(x, z) {
     const y = height(x, z);
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 2.6, 6), lmat(0x40434a)); post.position.set(x, y + 1.3, z); group.add(post);
@@ -879,6 +912,8 @@ export function createWorld(scene, seed = 1337) {
     necro:    { bldR: 24, svcR: 17,  lampN: 8,  plaza: () => statue,          farmA: 2.10 },
     basalt:   { bldR: 24, svcR: 16,  lampN: 8,  plaza: () => brazier,         farmA: 2.20 },
     nocturne: { bldR: 22, svcR: 13,  lampN: 12, plaza: () => fountain,        farmA: 2.40 },
+    arcane:   { bldR: 18, svcR: 10,  lampN: 7,  plaza: () => spire,           farmA: 1.10 },
+    fen:      { bldR: 15, svcR: 7.6, lampN: 6,  plaza: () => sunkenShrine,    farmA: 0.60 },
   };
   const PLAZA_ARG = {                                  // biome-specific centerpiece tints (water / canopy / crystal / totem)
     desert: [0x3fb8d0], coast: [0x2fb8e0], lagoon: [0x6fe6c8], saltmarsh: [0xf08fb8],
