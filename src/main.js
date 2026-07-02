@@ -15,7 +15,7 @@ import { loadSave, createSave, mergeRemoteSave } from './save.js';
 import { createEconomy } from './economy.js';
 import { createFarm } from './farm.js';
 import { createCloud } from './cloud.js';
-import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE, FACTIONS, AUTO_MODES, WANDER_VOICE, GUARD_LINES, ESCORT_GUARD_LINES, PRISONER_LINES, PRISONER_LORE } from './content.js';
+import { ITEMS, QUESTS, SMELT, COOK, FORGE, FLETCH, RUNECRAFT, ENCHANT, CONSTRUCT, SHOP, BREW, PRAYERS, CRAFT, SETS, ACHIEVEMENTS, ENEMIES, TAVERN, PATRON_LINES, CLASSES, BUSINESSES, JOBS, CLUE_SPOTS, LIVESTOCK, FARM, DIARIES, TRIANGLE, WEAKNESS, ATK_STYLE, ATTACK_STYLES, SLAYER_REWARDS, PET_DEF, SPELLS, PERK_DEFS, CAPE_COLORS, DYE_PALETTE, FACTIONS, AUTO_MODES, WANDER_VOICE, GUARD_LINES, ESCORT_GUARD_LINES, PRISONER_LINES, PRISONER_LORE, FISH, LOGS, CROPS, MEALS } from './content.js';
 import { createProjectiles } from './projectiles.js';
 import { WORLD_SCALE } from './scale.js';
 import { createFx } from './fx.js';
@@ -329,34 +329,51 @@ try {
     world.removeTree(t.idx);
     player.playGather('chop');
     G.fx.burst(t.x, t.y + 1.6, t.z, 0x9a6a3a, { n: 9, up: 2.6 });
+    const lvl = G.skills.level('woodcutting');
+    // every tree yields Driftwood (keeps 'wood' flowing for quests/recipes); higher
+    // Woodcutting also drops the best premium log you've unlocked, on top.
     G.inventory.add('wood', 1);
-    G.ui.toast('Chopped Driftwood', 'gold', 1400); G.audio.sfx('pickup');
-    G.gainXp('woodcutting', 14);
+    let xp = LOGS[0].xp, name = ITEMS.wood.name;
+    const best = LOGS.filter((l) => lvl >= l.level).pop();
+    if (best && best.log !== 'wood' && Math.random() < 0.75) { G.inventory.add(best.log, 1); xp = best.xp; name = ITEMS[best.log].name; }
+    G.ui.toast('Chopped ' + name, 'gold', 1400); G.audio.sfx('pickup');
+    G.gainXp('woodcutting', xp);
     checkQuestReady(); G.save.save();
   };
   G.forageBush = (b) => {
     world.harvestBush(b.idx);
     player.playGather('forage');
     G.fx.burst(b.x, b.y + 0.8, b.z, 0x4f9a40, { n: 7, up: 2.0 });
-    const herb = Math.random() < 0.3;
-    G.inventory.add(herb ? 'herb' : 'berry', 1);
+    const lvl = G.skills.level('foraging'), roll = Math.random();
+    let item, label;
+    if (lvl >= 30 && roll < 0.16) { item = 'nectar'; label = 'Gathered Wildflower Nectar'; }
+    else if (lvl >= 15 && roll < 0.30) { item = 'mushroom'; label = 'Foraged a Cave Mushroom'; }
+    else if (roll < 0.5) { item = 'herb'; label = 'Foraged Glimmerleaf'; }
+    else { item = 'berry'; label = 'Foraged Sunberries'; }
+    G.inventory.add(item, 1);
     if (Math.random() < 0.5) G.inventory.add('feather', Math.random() < 0.35 ? 2 : 1);   // feathers for fletching
-    G.ui.toast(herb ? 'Foraged Glimmerleaf' : 'Foraged Sunberries', 'gold', 1400);
-    G.gainXp('foraging', 10);
+    G.ui.toast(label, 'gold', 1400);
+    G.gainXp('foraging', 10 + Math.floor(lvl * 0.2));
     checkQuestReady(); G.save.save();
   };
   G.plotAction = (p) => {
     if (p.state === 'grown') {
       player.playGather('forage');
-      const n = 1 + Math.floor(Math.random() * 2);
-      G.inventory.add('crop', n); world.harvestPlot(p); G.gainXp('farming', 24);
-      G.ui.toast(`Harvested ${n} Isle Greens`, 'gold', 1500); checkQuestReady(); G.save.save();
+      const crop = CROPS.find((c) => c.produce === p.crop) || CROPS[0];
+      const n = crop.yield + Math.floor(Math.random() * 2);
+      G.inventory.add(crop.produce, n); world.harvestPlot(p); G.gainXp('farming', crop.xp);
+      G.ui.toast(`Harvested ${n}× ${ITEMS[crop.produce].name}`, 'gold', 1500); checkQuestReady(); G.save.save();
     } else if (p.state === 'growing') {
       G.ui.toast('Still growing…', '', 1200);
-    } else if (G.inventory.has('seeds', 1)) {
+    } else {
+      const lvl = G.skills.level('farming');
+      const opts = CROPS.filter((c) => lvl >= c.level && G.inventory.has(c.seed, 1));   // best crop you can plant + have seed for
+      if (!opts.length) { G.ui.toast('No usable seeds — buy some from a Trader', 'bad', 1900); return; }
+      const crop = opts[opts.length - 1];
       player.playGather('forage');
-      G.inventory.remove('seeds', 1); world.plantPlot(p); G.gainXp('farming', 8); G.ui.toast('Planted seeds', 'good', 1300); G.save.save();
-    } else G.ui.toast('No seeds — buy some from Trader Pell', 'bad', 1800);
+      G.inventory.remove(crop.seed, 1); p.crop = crop.produce; world.plantPlot(p); G.gainXp('farming', Math.round(crop.xp * 0.3));
+      G.ui.toast(`Planted ${ITEMS[crop.seed].name}`, 'good', 1300); G.save.save();
+    }
   };
   G.thieveStall = (s) => {
     if (s.cooldown > 0) { G.ui.toast('The trader is watching…', '', 1200); return; }
@@ -411,10 +428,10 @@ try {
     G.dialogue.openNode({ speaker, text, choices }, () => setMode(G.inInterior ? 'interior' : 'world'));
   };
 
-  const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal', mithril: 'mithril_ore', essence: 'rune_essence' };
-  const ORE_XP = { copper: 18, iron: 26, coal: 16, mithril: 60, gem_rock: 40, essence: 35 };
-  const ORE_LEVEL = { copper: 1, coal: 1, iron: 10, gem_rock: 20, mithril: 30, essence: 1 };
-  const ORE_FX = { mithril: 0x6fa8d8, gem_rock: 0x6fe0ff, essence: 0xb98fff };
+  const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal', mithril: 'mithril_ore', essence: 'rune_essence', silver: 'silver_ore', gold: 'gold_ore', adamant: 'adamant_ore', runite: 'runite_ore' };
+  const ORE_XP = { copper: 18, iron: 26, coal: 16, mithril: 60, gem_rock: 40, essence: 35, silver: 40, gold: 65, adamant: 95, runite: 125 };
+  const ORE_LEVEL = { copper: 1, coal: 1, iron: 10, gem_rock: 20, mithril: 30, essence: 1, silver: 20, gold: 40, adamant: 50, runite: 70 };
+  const ORE_FX = { mithril: 0x6fa8d8, gem_rock: 0x6fe0ff, essence: 0xb98fff, silver: 0xd8e0ec, gold: 0xf4d24a, adamant: 0x6aa07a, runite: 0x5ab8d0 };
   G.mineOre = (o) => {
     world.depleteOre(o);
     player.playGather('mine');
@@ -435,11 +452,53 @@ try {
   G.fishSpot = (f) => {
     player.playGather('fish');
     if (f) G.fx.burst(f.x, (f.y || 0) + 0.3, f.z, 0x9bf2ff, { n: 8, up: 2.2 });
-    const item = Math.random() < 0.55 ? 'raw_shrimp' : 'raw_trout';
-    G.inventory.add(item, 1);
-    G.ui.toast('Caught ' + ITEMS[item].name, 'gold', 1400);
-    G.gainXp('fishing', 16);
+    const lvl = G.skills.level('fishing');
+    const pool = FISH.filter((fi) => lvl >= fi.level);
+    // weighted pick — the better fish you've unlocked bite more often
+    let total = 0; const w = pool.map((fi, i) => { const v = 1 + i * 0.6; total += v; return v; });
+    let r = Math.random() * total, pick = pool[0];
+    for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) { pick = pool[i]; break; } }
+    G.inventory.add(pick.raw, 1);
+    G.ui.toast('Caught ' + ITEMS[pick.raw].name, 'gold', 1400);
+    G.gainXp('fishing', pick.xp);
+    const rr = Math.random();   // rare treasures from the deep
+    if (rr < 0.015) { G.inventory.add('clue_scroll', 1); G.ui.toast('🎣 You hooked a Clue Scroll!', 'gold', 2600); }
+    else if (rr < 0.06) { G.inventory.add('pearl', 1); G.ui.toast('🎣 A pearl in the net!', 'gold', 2000); }
+    G.audio.sfx('pickup');
     checkQuestReady(); G.save.save();
+  };
+  G.harvestHive = (h) => {
+    world.depleteHive(h);
+    player.playGather('forage');
+    G.fx.burst(h.x, (h.y || 0) + 1.2, h.z, 0xf4c24a, { n: 12, spread: 1.8, up: 2.4 });
+    const lvl = G.skills.level('foraging');
+    G.inventory.add('honey', 1 + (Math.random() < 0.4 ? 1 : 0));
+    let msg = 'Gathered Honey';
+    if (Math.random() < 0.35) { G.inventory.add('beeswax', 1); msg = 'Gathered Honey + Beeswax'; }
+    // the bees sting the careless — less likely as Foraging rises
+    if (Math.random() < Math.max(0.05, 0.35 - lvl * 0.01)) { const dmg = 3 + Math.floor(Math.random() * 4); G.damagePlayer(dmg); msg = `Stung! (-${dmg}) — but you got the honey`; }
+    G.ui.toast(msg, 'gold', 1700); G.audio.sfx('pickup');
+    G.gainXp('foraging', 22 + lvl);
+    checkQuestReady(); G.save.save();
+  };
+  // ---------- Firemaking: light logs into a campfire (XP), then cook at it anywhere ----------
+  const FIRE = { wood: { xp: 20, level: 1 }, oak_log: { xp: 40, level: 12 }, willow_log: { xp: 66, level: 24 }, maple_log: { xp: 96, level: 36 }, yew_log: { xp: 140, level: 50 }, magic_log: { xp: 205, level: 68 } };
+  G.canLightFire = (key) => !!FIRE[key];
+  G.lightFire = (logKey) => {
+    if (G.channel) return;
+    const f = FIRE[logKey]; if (!f) return;
+    if (!G.inventory.has(logKey, 1)) return;
+    if (G.skills.level('firemaking') < f.level) { G.ui.toast(`Needs Firemaking level ${f.level} to light ${ITEMS[logKey].name}`, 'bad', 2400); return; }
+    if (mode === 'menu') closeMenu();   // drop back to the world to light it
+    startChannel(2.0, 'chop', `Lighting ${ITEMS[logKey].name}…`, () => {
+      if (!G.inventory.has(logKey, 1)) return;
+      G.inventory.remove(logKey, 1);
+      G.gainXp('firemaking', f.xp);
+      if (G.fx) G.fx.burst(player.position.x, player.position.y + 0.3, player.position.z, 0xff8a2a, { n: 18, spread: 1.6, up: 2.8, life: 1.1 });
+      G.audio.sfx('level');
+      G.ui.toast('🔥 Fire crackling — cook away!', 'gold', 2200);
+      if (G.ach) G.ach.evaluate(); G.openCook();   // portable cooking at the campfire
+    });
   };
   G.useStation = (s) => {
     if (s.kind === 'waystone') { G.openTravel(); return;
@@ -738,10 +797,33 @@ try {
   // ---------- interactive cooking: pick a raw food at the stove, watch it cook (progress bar + stir) ----------
   const cookCfg = {
     title: 'Cooking Pot', hint: '↑ ↓ select · tap to cook · ↑↓↑↓ leave', empty: 'No raw food to cook — catch some fish or harvest a crop first.',
-    rows: () => Object.keys(COOK).filter((raw) => G.inventory.count(raw) > 0).map((raw) => ({ icon: ITEMS[raw].icon, title: `Cook ${ITEMS[raw].name}`, sub: `→ ${ITEMS[COOK[raw]].name}`, right: `×${G.inventory.count(raw)}`, data: { raw } })),
-    onSelect: (r) => { G.closePicker(); G.cookItem(r.data.raw); },
+    rows: () => {
+      const rows = Object.keys(COOK).filter((raw) => G.inventory.count(raw) > 0).map((raw) => ({ section: 'Cook', icon: ITEMS[raw].icon, title: `Cook ${ITEMS[raw].name}`, sub: `→ ${ITEMS[COOK[raw]].name}`, right: `×${G.inventory.count(raw)}`, data: { raw } }));
+      const lvl = G.skills.level('cooking');   // hearty meals unlock with Cooking level
+      MEALS.forEach((m) => {
+        if (lvl < m.level) return;
+        const can = Object.keys(m.cost).every((k) => G.inventory.has(k, m.cost[k]));
+        const cost = Object.keys(m.cost).map((k) => `${m.cost[k]} ${ITEMS[k].name}`).join(', ');
+        rows.push({ section: '🍲 Hearty meals', icon: ITEMS[m.out].icon, title: ITEMS[m.out].name, sub: cost, right: can ? `heals ${ITEMS[m.out].heal}` : '—', data: { meal: m.out } });
+      });
+      return rows;
+    },
+    onSelect: (r) => { G.closePicker(); if (r.data.meal) G.cookMeal(r.data.meal); else G.cookItem(r.data.raw); },
   };
   G.openCook = () => { setMode('picker'); G.ui.openPicker(cookCfg); };
+  G.cookMeal = (out) => {
+    if (G.channel) return;
+    const m = MEALS.find((x) => x.out === out); if (!m) return;
+    if (G.skills.level('cooking') < m.level) { G.ui.toast(`Needs Cooking level ${m.level}`, 'bad', 2000); return; }
+    if (!Object.keys(m.cost).every((k) => G.inventory.has(k, m.cost[k]))) { G.ui.toast(`Needs ${Object.keys(m.cost).map((k) => `${m.cost[k]} ${ITEMS[k].name}`).join(', ')}`, 'bad', 2800); return; }
+    startChannel(2.4, 'cook', `Cooking ${ITEMS[out].name}…`, () => {
+      if (!Object.keys(m.cost).every((k) => G.inventory.has(k, m.cost[k]))) return;
+      for (const k in m.cost) G.inventory.remove(k, m.cost[k]);
+      G.inventory.add(out, 1); G.gainXp('cooking', m.xp);
+      if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.3, player.position.z, 0xffd28a, { n: 16, spread: 2.6, up: 3.2, life: 1 });
+      G.ui.toast(`Cooked a ${ITEMS[out].name}!`, 'gold', 2800); G.audio.sfx('level'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save();
+    });
+  };
   G.cookItem = (raw) => {
     if (G.channel || !COOK[raw]) return;
     const n = G.inventory.count(raw); if (!n) return;
@@ -1605,6 +1687,7 @@ try {
     else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
     else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(3, (7 - lvl('mining') * 0.04) * toolSpeed('mining')), 'mine', 'Mining…', () => G.mineOre(t.ref)); }
     else if (t.kind === 'fish') startChannel(Math.max(3, (7 - lvl('fishing') * 0.04) * toolSpeed('fishing')), 'fish', 'Fishing…', () => G.fishSpot(t.ref));
+    else if (t.kind === 'hive') { if (lvl('foraging') < 10) G.ui.toast('Needs Foraging level 10 to rob a hive', 'bad', 2200); else startChannel(Math.max(1.8, 3 - lvl('foraging') * 0.02), 'forage', 'Robbing the hive…', () => G.harvestHive(t.ref)); }
     else if (t.kind === 'station') G.useStation(t.ref);
     else if (t.kind === 'plot') G.plotAction(t.ref);
     else if (t.kind === 'stall') G.thieveStall(t.ref);

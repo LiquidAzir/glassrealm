@@ -11,6 +11,7 @@ const DEFS = [
   { key: 'fishing',     name: 'Fishing',     icon: '🎣' },
   { key: 'foraging',    name: 'Foraging',    icon: '🌿' },
   { key: 'cooking',     name: 'Cooking',     icon: '🍳' },
+  { key: 'firemaking',  name: 'Firemaking',  icon: '🔥' },
   { key: 'smithing',    name: 'Smithing',    icon: '🔨' },
   { key: 'farming',     name: 'Farming',     icon: '🌱' },
   { key: 'herblore',    name: 'Herblore',    icon: '⚗️' },

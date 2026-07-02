@@ -88,6 +88,10 @@ export const ITEMS = {
   antidote:        { name: 'Antidote',        icon: '🧴', type: 'potion', cure: 'poison',   dur: 120, col: 0x9ad06a, desc: 'Drink: cures poison + 120s immunity.' },
   venom_flask:     { name: 'Venom Flask',     icon: '🧪', type: 'potion', buff: 'venom',     mult: 1, dur: 60, col: 0x6ad06a, desc: 'Drink: your hits poison foes for 60s.' },
   prayer_potion:   { name: 'Prayer Potion',   icon: '🧪', type: 'potion', restorePrayer: 40, col: 0xffe066, desc: 'Drink: restore 40 prayer.' },
+  // Foraging/beekeeping brews (unique outputs so the cauldron can select them)
+  honey_mead:      { name: 'Honey Mead',      icon: '🍺', type: 'potion', buff: 'strength', mult: 1.15, dur: 80, col: 0xf0b040, desc: 'Drink: +15% melee damage for 80s.' },
+  fungal_tonic:    { name: 'Fungal Tonic',    icon: '🍄', type: 'potion', buff: 'defence',  mult: 0.85, dur: 80, col: 0x9ad06a, desc: 'Drink: take 15% less damage for 80s.' },
+  nectar_tonic:    { name: 'Nectar Tonic',    icon: '🌼', type: 'potion', restorePrayer: 30, col: 0xffe066, desc: 'Drink: restore 30 prayer.' },
   clue_scroll:     { name: 'Clue Scroll',      icon: '📜', type: 'clue', desc: 'Tap to read — a treasure trail to a hidden reward casket.' },
   // Farm produce — collected from your livestock, sold at the Farm Foreman.
   egg:  { name: 'Egg',  icon: '🥚', type: 'material', desc: 'Fresh from your hens. Sell at the farm.' },
@@ -98,6 +102,102 @@ export const ITEMS = {
   raw_trout:     { name: 'Raw Trout',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
   cooked_shrimp: { name: 'Shrimp',     icon: '🍤', type: 'consumable', heal: 14, desc: 'Cooked. Restores 14 HP.' },
   cooked_trout:  { name: 'Trout',      icon: '🍤', type: 'consumable', heal: 26, desc: 'Cooked. Restores 26 HP.' },
+
+  // ---- Expansion: gathering catches (fish tiers, logs, ores, crops) ----
+  // Fishing: catches unlock with Fishing level; cook them at a stove (see FISH + COOK).
+  raw_sardine:      { name: 'Raw Sardine',    icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_sardine:   { name: 'Sardine',        icon: '🍤', type: 'consumable', heal: 20, desc: 'Cooked. Restores 20 HP.' },
+  raw_herring:      { name: 'Raw Herring',    icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_herring:   { name: 'Herring',        icon: '🍤', type: 'consumable', heal: 24, desc: 'Cooked. Restores 24 HP.' },
+  raw_bass:         { name: 'Raw Bass',       icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_bass:      { name: 'Bass',           icon: '🍤', type: 'consumable', heal: 30, desc: 'Cooked. Restores 30 HP.' },
+  raw_salmon:       { name: 'Raw Salmon',     icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_salmon:    { name: 'Salmon',         icon: '🍣', type: 'consumable', heal: 34, desc: 'Cooked. Restores 34 HP.' },
+  raw_pike:         { name: 'Raw Pike',       icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_pike:      { name: 'Pike',           icon: '🍤', type: 'consumable', heal: 38, desc: 'Cooked. Restores 38 HP.' },
+  raw_tuna:         { name: 'Raw Tuna',       icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_tuna:      { name: 'Tuna',           icon: '🍣', type: 'consumable', heal: 44, desc: 'Cooked. Restores 44 HP.' },
+  raw_lobster:      { name: 'Raw Lobster',    icon: '🦞', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_lobster:   { name: 'Lobster',        icon: '🦞', type: 'consumable', heal: 50, desc: 'Cooked. Restores 50 HP.' },
+  raw_swordfish:    { name: 'Raw Swordfish',  icon: '🐟', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_swordfish: { name: 'Swordfish',      icon: '🍽️', type: 'consumable', heal: 58, desc: 'Cooked. Restores 58 HP.' },
+  raw_shark:        { name: 'Raw Shark',      icon: '🦈', type: 'material',   desc: 'Cook it at a fire to make it edible.' },
+  cooked_shark:     { name: 'Shark',          icon: '🦈', type: 'consumable', heal: 68, desc: 'Cooked. Restores 68 HP.' },
+  raw_anglerfish:   { name: 'Raw Anglerfish', icon: '🐡', type: 'material',   desc: 'The deep’s prize. Cook it at a fire.' },
+  cooked_anglerfish:{ name: 'Anglerfish',     icon: '🐡', type: 'consumable', heal: 80, desc: 'Cooked. Restores 80 HP.' },
+
+  // Woodcutting: better logs drop as Woodcutting rises (see LOGS). 'wood' (Driftwood) already exists.
+  oak_log:    { name: 'Oak Logs',    icon: '🪵', type: 'material', desc: 'Sturdy oak. Sells well.' },
+  willow_log: { name: 'Willow Logs', icon: '🪵', type: 'material', desc: 'Supple willow, prized by bowyers.' },
+  maple_log:  { name: 'Maple Logs',  icon: '🪵', type: 'material', desc: 'Dense, hard-grained maple.' },
+  yew_log:    { name: 'Yew Logs',    icon: '🪵', type: 'material', desc: 'Ancient yew — a fine, rare wood.' },
+  magic_log:  { name: 'Magic Logs',  icon: '🪵', type: 'material', desc: 'Faintly humming, arcane timber.' },
+
+  // Mining: new ores + their bars (smelt at a furnace, see SMELT).
+  silver_ore:  { name: 'Silver Ore',     icon: '🪨', type: 'material', desc: 'Smelts into a silver bar.' },
+  silver_bar:  { name: 'Silver Bar',     icon: '🥈', type: 'material', desc: 'Bright metal for fine work.' },
+  gold_ore:    { name: 'Gold Ore',       icon: '🪨', type: 'material', desc: 'Smelts into a gold bar.' },
+  gold_bar:    { name: 'Gold Bar',       icon: '🥇', type: 'material', desc: 'Gleaming and precious.' },
+  adamant_ore: { name: 'Adamantite Ore', icon: '🪨', type: 'material', desc: 'Smelt with coal into an adamant bar.' },
+  adamant_bar: { name: 'Adamant Bar',    icon: '🔩', type: 'material', desc: 'Tough green-black alloy.' },
+  runite_ore:  { name: 'Runite Ore',     icon: '🪨', type: 'material', desc: 'Smelt with coal into a runite bar.' },
+  runite_bar:  { name: 'Runite Bar',     icon: '🔷', type: 'material', desc: 'The finest smithing metal on the isle.' },
+
+  // Foraging: rarer finds at higher Foraging level (feed the cauldron, see BREW).
+  mushroom: { name: 'Cave Mushroom',      icon: '🍄', type: 'material', desc: 'An earthy fungus for brewing.' },
+  nectar:   { name: 'Wildflower Nectar',  icon: '🌼', type: 'material', desc: 'Sweet nectar for restorative tonics.' },
+
+  // Beekeeping: rob a beehive (Foraging) for honey + beeswax → mead, honeyed meals, candles.
+  honey:       { name: 'Honey',           icon: '🍯', type: 'material',   desc: 'Sweet, sticky honey. Brews mead; glazes fine meals.' },
+  beeswax:     { name: 'Beeswax',         icon: '🐝', type: 'material',   desc: 'Golden wax. Craft it into candles.' },
+  wax_candle:  { name: 'Beeswax Candle',  icon: '🕯️', type: 'material',   desc: 'A clean, bright candle. Sells for a good price.' },
+  honey_glazed:{ name: 'Honey-Glazed Salmon', icon: '🍯', type: 'consumable', heal: 55, desc: 'Sweet and hearty. Restores 55 HP.' },
+
+  // Farming: seeds → produce (see CROPS). 'seeds'/'crop' (Isle Greens) already exist.
+  carrot_seed:  { name: 'Carrot Seeds',  icon: '🌱', type: 'material',   desc: 'Plant in a field plot.' },
+  carrot:       { name: 'Carrot',        icon: '🥕', type: 'consumable', heal: 6,  desc: 'Crunchy. Restores 6 HP.' },
+  potato_seed:  { name: 'Potato Seeds',  icon: '🌱', type: 'material',   desc: 'Plant in a field plot.' },
+  potato:       { name: 'Potato',        icon: '🥔', type: 'material',   desc: 'Bake it at a stove.' },
+  baked_potato: { name: 'Baked Potato',  icon: '🥔', type: 'consumable', heal: 22, desc: 'Cooked. Restores 22 HP.' },
+  corn_seed:    { name: 'Corn Seeds',    icon: '🌱', type: 'material',   desc: 'Plant in a field plot.' },
+  corn:         { name: 'Corn',          icon: '🌽', type: 'consumable', heal: 10, desc: 'Sweet corn. Restores 10 HP.' },
+  pumpkin_seed: { name: 'Pumpkin Seeds', icon: '🌱', type: 'material',   desc: 'Plant in a field plot.' },
+  pumpkin:      { name: 'Pumpkin',       icon: '🎃', type: 'material',   desc: 'A hefty gourd — sells for a tidy sum.' },
+
+  // ---- Expansion: smithable adamant & runite gear (forge from bars at an anvil) ----
+  adamant_sword:  { name: 'Adamant Sword',  icon: '⚔️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 26, range: 2.8, speed: 0.4,  desc: 'A brutal adamant blade. +26 melee.' },
+  adamant_armor:  { name: 'Adamant Armor',  icon: '🛡️', type: 'armor',  defense: 24, desc: 'Heavy adamant plate. -24 damage taken.' },
+  adamant_shield: { name: 'Adamant Shield', icon: '🛡️', type: 'shield', defense: 24, desc: 'A broad adamant shield. Blocks 24 damage.' },
+  runite_sword:   { name: 'Runite Sword',   icon: '⚔️', type: 'weapon', style: 'melee', skill: 'combat', bonus: 34, range: 2.9, speed: 0.38, desc: 'A rune-forged greatblade. +34 melee.' },
+  runite_armor:   { name: 'Runite Armor',   icon: '🛡️', type: 'armor',  defense: 30, desc: 'Masterwork runite plate. -30 damage taken.' },
+  runite_shield:  { name: 'Runite Shield',  icon: '🛡️', type: 'shield', defense: 30, desc: 'A flawless runite shield. Blocks 30 damage.' },
+  adamant_pickaxe: { name: 'Adamant Pickaxe', icon: '⛏️', type: 'tool', tool: 'mining',      tier: 5, speed: 0.44, desc: 'Mine ~56% faster.' },
+  adamant_hatchet: { name: 'Adamant Hatchet', icon: '🪓', type: 'tool', tool: 'woodcutting', tier: 5, speed: 0.44, desc: 'Chop ~56% faster.' },
+  adamant_harpoon: { name: 'Adamant Harpoon', icon: '🔱', type: 'tool', tool: 'fishing',     tier: 5, speed: 0.44, desc: 'Fish ~56% faster.' },
+  runite_pickaxe:  { name: 'Runite Pickaxe',  icon: '⛏️', type: 'tool', tool: 'mining',      tier: 6, speed: 0.38, desc: 'Mine ~62% faster.' },
+  runite_hatchet:  { name: 'Runite Hatchet',  icon: '🪓', type: 'tool', tool: 'woodcutting', tier: 6, speed: 0.38, desc: 'Chop ~62% faster.' },
+  runite_harpoon:  { name: 'Runite Harpoon',  icon: '🔱', type: 'tool', tool: 'fishing',     tier: 6, speed: 0.38, desc: 'Fish ~62% faster.' },
+
+  // ---- Fletchable bows (from logs) + arrows (from bars) at a Fletching bench ----
+  oak_longbow: { name: 'Oak Longbow',    icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 12, range: 16, speed: 0.72, desc: 'Fletched from oak. +12 ranged.' },
+  willow_bow:  { name: 'Willow Longbow', icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 16, range: 16, speed: 0.7,  desc: 'A supple willow bow. +16 ranged.' },
+  maple_bow:   { name: 'Maple Longbow',  icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 19, range: 17, speed: 0.68, desc: 'A hard maple bow. +19 ranged.' },
+  yew_longbow: { name: 'Yew Longbow',    icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 22, range: 18, speed: 0.66, desc: 'A great yew warbow. +22 ranged.' },
+  magic_bow:   { name: 'Magic Longbow',  icon: '🏹', type: 'weapon', style: 'ranged', skill: 'ranged', bonus: 26, range: 19, speed: 0.62, desc: 'A humming bow of magic wood. +26 ranged.' },
+  adamant_arrow: { name: 'Adamant Arrows', icon: '🏹', type: 'ammo', bonus: 13, desc: 'Tipped with adamant. +13 ranged damage per shot.' },
+  runite_arrow:  { name: 'Runite Arrows',  icon: '🏹', type: 'ammo', bonus: 17, desc: 'Tipped with runite. +17 ranged damage per shot.' },
+
+  // ---- Craftable silver & gold jewelry (crafting bench, from bars + gems) ----
+  silver_ring:   { name: 'Silver Ring',   icon: '💍', type: 'ring',   bonus: { def: 3 },              desc: 'Silver set with sapphire. +3 defence.' },
+  silver_amulet: { name: 'Silver Amulet', icon: '📿', type: 'amulet', bonus: { magic: 4 },            desc: 'Silver set with emerald. +4 magic.' },
+  gold_ring:     { name: 'Gold Ring',     icon: '💍', type: 'ring',   bonus: { melee: 5, def: 2 },    desc: 'Gold set with ruby. +5 melee, +2 defence.' },
+  gold_amulet:   { name: 'Gold Amulet',   icon: '📿', type: 'amulet', bonus: { melee: 4, maxhp: 15 }, desc: 'A heavy gold pendant. +4 melee, +15 max HP.' },
+
+  // ---- Hearty meals (a cooking activity — combine ingredients for big heals, see MEALS) ----
+  fish_stew:       { name: 'Fisher’s Stew',   icon: '🍲', type: 'consumable', heal: 45,  desc: 'A warming stew. Restores 45 HP.' },
+  hearty_roast:    { name: 'Hearty Roast',    icon: '🍖', type: 'consumable', heal: 60,  desc: 'A filling roast. Restores 60 HP.' },
+  seafood_platter: { name: 'Seafood Platter', icon: '🍱', type: 'consumable', heal: 78,  desc: 'A feast of the sea. Restores 78 HP.' },
+  kings_feast:     { name: 'King’s Feast',    icon: '🍽️', type: 'consumable', heal: 110, desc: 'Fit for royalty. Restores 110 HP.' },
 
   bronze_sword: { name: 'Bronze Sword', icon: '🗡️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 4,  range: 2.7, speed: 0.5,  desc: 'A sturdy bronze blade. +4 melee.' },
   iron_sword:   { name: 'Iron Sword',   icon: '🗡️', type: 'weapon', style: 'melee',  skill: 'combat', bonus: 9,  range: 2.7, speed: 0.5,  desc: 'A keen iron blade. +9 melee.' },
@@ -286,13 +386,67 @@ export const ITEMS = {
   stormweaver_sigil:   { name: 'Stormweaver Sigil', icon: '📿', type: 'amulet', set: 'stormweaver', bonus: { magic: 6 }, desc: 'Stormweaver set. +6 magic.' },
 };
 
+// ---- Gathering progression tables (used by the gather handlers in main.js) ----
+// Fishing: at a shimmering spot you catch a random fish you've unlocked, biased toward
+// the better ones. Shrimp + Trout stay level 1 so early fishing quests still work.
+export const FISH = [
+  { raw: 'raw_shrimp',     level: 1,  xp: 12 },
+  { raw: 'raw_trout',      level: 1,  xp: 16 },
+  { raw: 'raw_sardine',    level: 8,  xp: 22 },
+  { raw: 'raw_herring',    level: 14, xp: 26 },
+  { raw: 'raw_bass',       level: 20, xp: 34 },
+  { raw: 'raw_salmon',     level: 28, xp: 44 },
+  { raw: 'raw_pike',       level: 34, xp: 52 },
+  { raw: 'raw_tuna',       level: 42, xp: 62 },
+  { raw: 'raw_lobster',    level: 50, xp: 74 },
+  { raw: 'raw_swordfish',  level: 58, xp: 86 },
+  { raw: 'raw_shark',      level: 70, xp: 105 },
+  { raw: 'raw_anglerfish', level: 82, xp: 125 },
+];
+// Woodcutting: every tree gives Driftwood; higher levels also drop a premium log on top.
+export const LOGS = [
+  { log: 'wood',       level: 1,  xp: 14 },
+  { log: 'oak_log',    level: 12, xp: 24 },
+  { log: 'willow_log', level: 24, xp: 40 },
+  { log: 'maple_log',  level: 36, xp: 58 },
+  { log: 'yew_log',    level: 50, xp: 85 },
+  { log: 'magic_log',  level: 68, xp: 125 },
+];
+// Farming: plant the best crop you have seeds for + the Farming level to grow. 'seeds'→'crop'
+// (Isle Greens) stays level 1 so existing farming quests still work.
+export const CROPS = [
+  { seed: 'seeds',        produce: 'crop',    name: 'Isle Greens', level: 1,  xp: 24, yield: 2 },
+  { seed: 'carrot_seed',  produce: 'carrot',  name: 'Carrots',     level: 6,  xp: 34, yield: 3 },
+  { seed: 'potato_seed',  produce: 'potato',  name: 'Potatoes',    level: 14, xp: 46, yield: 3 },
+  { seed: 'corn_seed',    produce: 'corn',    name: 'Corn',        level: 24, xp: 60, yield: 3 },
+  { seed: 'pumpkin_seed', produce: 'pumpkin', name: 'Pumpkins',    level: 36, xp: 82, yield: 2 },
+];
+
 // Smelting recipes (furnace) and weapon forge tiers (anvil).
 export const SMELT = [
   { in: { copper_ore: 1 }, out: 'bronze_bar', xp: 18 },
   { in: { iron_ore: 1, coal: 1 }, out: 'iron_bar', xp: 26 },
+  { in: { silver_ore: 1 }, out: 'silver_bar', xp: 34 },
   { in: { mithril_ore: 1, coal: 2 }, out: 'mithril_bar', xp: 50 },
+  { in: { gold_ore: 1 }, out: 'gold_bar', xp: 44 },
+  { in: { adamant_ore: 1, coal: 3 }, out: 'adamant_bar', xp: 68 },
+  { in: { runite_ore: 1, coal: 5 }, out: 'runite_bar', xp: 92 },
 ];
-export const COOK = { raw_shrimp: 'cooked_shrimp', raw_trout: 'cooked_trout', crop: 'cooked_greens' };
+export const COOK = {
+  raw_shrimp: 'cooked_shrimp', raw_trout: 'cooked_trout', crop: 'cooked_greens',
+  raw_sardine: 'cooked_sardine', raw_herring: 'cooked_herring', raw_bass: 'cooked_bass', raw_salmon: 'cooked_salmon',
+  raw_pike: 'cooked_pike', raw_tuna: 'cooked_tuna', raw_lobster: 'cooked_lobster', raw_swordfish: 'cooked_swordfish',
+  raw_shark: 'cooked_shark', raw_anglerfish: 'cooked_anglerfish', potato: 'baked_potato',
+};
+// Hearty meals — a deeper cooking activity: combine cooked foods/produce into big-heal
+// dishes at a stove (gated by Cooking level). See G.cookMeal in main.js.
+export const MEALS = [
+  { out: 'fish_stew',       cost: { cooked_trout: 1, carrot: 1, potato: 1 },            xp: 45,  level: 10 },
+  { out: 'hearty_roast',    cost: { meat: 2, corn: 1 },                                 xp: 60,  level: 20 },
+  { out: 'seafood_platter', cost: { cooked_lobster: 1, cooked_bass: 1 },                xp: 90,  level: 32 },
+  { out: 'honey_glazed',    cost: { honey: 1, cooked_salmon: 1 },                       xp: 70,  level: 28 },
+  { out: 'kings_feast',     cost: { cooked_shark: 1, cooked_swordfish: 1, pumpkin: 1 }, xp: 140, level: 55 },
+];
 // Herblore brewing (cauldron) and Prayer buffs.
 export const BREW = [
   { in: { herb: 1 }, out: 'strong_potion', xp: 32, level: 1 },
@@ -304,6 +458,9 @@ export const BREW = [
   { in: { herb: 1, vine_coil: 1 }, out: 'venom_flask', xp: 54, level: 16 },
   { in: { herb: 1, bones: 1 }, out: 'prayer_potion', xp: 58, level: 18 },
   { in: { herb: 1, sporecap: 1 }, out: 'verdant_antitoxin', xp: 62, level: 20 },
+  { in: { mushroom: 2 }, out: 'fungal_tonic', xp: 34, level: 3 },               // foraged fungus tonic
+  { in: { nectar: 1, berry: 1 }, out: 'nectar_tonic', xp: 50, level: 14 },      // sweet nectar draught
+  { in: { honey: 2, berry: 1 }, out: 'honey_mead', xp: 46, level: 8 },          // honey mead
 ];
 export const PRAYERS = [
   { key: 'stoneskin', name: 'Stone Skin', level: 1,  drain: 0.5, dmgTaken: 0.7, desc: 'Take 30% less damage.' },
@@ -347,6 +504,12 @@ export const CRAFT = [
   { out: 'stormweaver_robes',   cost: { crystal_shard: 4, fae_dust: 2, sapphire: 2 }, xp: 280 },
   { out: 'stormweaver_scepter', cost: { crystal_shard: 3, storm_shard: 2, ruby: 1 }, xp: 270 },
   { out: 'stormweaver_sigil',   cost: { sapphire: 2, fae_dust: 2 }, xp: 240 },
+  // Silver & gold jewellery (from the new mining bars + gems)
+  { out: 'silver_ring',   cost: { silver_bar: 1, sapphire: 1 }, xp: 60 },
+  { out: 'silver_amulet', cost: { silver_bar: 1, emerald: 1 },  xp: 85 },
+  { out: 'gold_ring',     cost: { gold_bar: 1, ruby: 1 },       xp: 120 },
+  { out: 'gold_amulet',   cost: { gold_bar: 1, ruby: 2 },       xp: 150 },
+  { out: 'wax_candle',    cost: { beeswax: 2 },                 xp: 40 },   // beekeeping value-add
 ];
 // Gear sets. `per` = bonus per equipped piece (partial sets reward incremental collecting);
 // `full` = extra bonus when all `size` pieces are worn. Pieces may span ANY slots (weapon/
@@ -381,6 +544,11 @@ export const FORGE = [
   { out: 'bronze_pickaxe', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_pickaxe', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_pickaxe', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_pickaxe', cost: { mithril_bar: 2 }, xp: 230 },
   { out: 'bronze_hatchet', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_hatchet', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_hatchet', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_hatchet', cost: { mithril_bar: 2 }, xp: 230 },
   { out: 'bronze_harpoon', cost: { bronze_bar: 2 }, xp: 40 }, { out: 'iron_harpoon', cost: { iron_bar: 2 }, xp: 80 }, { out: 'steel_harpoon', cost: { iron_bar: 3, coal: 2 }, xp: 150 }, { out: 'mithril_harpoon', cost: { mithril_bar: 2 }, xp: 230 },
+  // Adamant & runite gear + tools (from the new ores' bars)
+  { out: 'adamant_sword',  cost: { adamant_bar: 3 }, xp: 340 }, { out: 'adamant_armor',  cost: { adamant_bar: 5 }, xp: 460 }, { out: 'adamant_shield', cost: { adamant_bar: 4 }, xp: 390 },
+  { out: 'runite_sword',   cost: { runite_bar: 3 },  xp: 480 }, { out: 'runite_armor',   cost: { runite_bar: 5 },  xp: 640 }, { out: 'runite_shield',  cost: { runite_bar: 4 },  xp: 540 },
+  { out: 'adamant_pickaxe', cost: { adamant_bar: 2 }, xp: 320 }, { out: 'adamant_hatchet', cost: { adamant_bar: 2 }, xp: 320 }, { out: 'adamant_harpoon', cost: { adamant_bar: 2 }, xp: 320 },
+  { out: 'runite_pickaxe',  cost: { runite_bar: 2 },  xp: 440 }, { out: 'runite_hatchet',  cost: { runite_bar: 2 },  xp: 440 }, { out: 'runite_harpoon',  cost: { runite_bar: 2 },  xp: 440 },
 ];
 
 // Fletching bench recipes (Woodcutting -> Ranged). qty = how many you get per craft; level gates the tier.
@@ -392,6 +560,14 @@ export const FLETCH = [
   { out: 'iron_arrow',    cost: { arrow_shaft: 8, feather: 4, iron_bar: 1 },   xp: 42, qty: 8, level: 15 },
   { out: 'mithril_arrow', cost: { arrow_shaft: 8, feather: 4, mithril_bar: 1 }, xp: 80, qty: 8, level: 35 },
   { out: 'sky_arrow',     cost: { arrow_shaft: 8, skyfeather: 4, mithril_bar: 1 }, xp: 110, qty: 8, level: 45 },
+  { out: 'adamant_arrow', cost: { arrow_shaft: 8, feather: 4, adamant_bar: 1 }, xp: 95,  qty: 8, level: 45 },
+  { out: 'runite_arrow',  cost: { arrow_shaft: 8, feather: 4, runite_bar: 1 },  xp: 130, qty: 8, level: 60 },
+  // Longbows fletched from the new logs — a Ranged ladder for woodcutters
+  { out: 'oak_longbow', cost: { oak_log: 1 },    xp: 55,  qty: 1, level: 12 },
+  { out: 'willow_bow',  cost: { willow_log: 1 }, xp: 80,  qty: 1, level: 24 },
+  { out: 'maple_bow',   cost: { maple_log: 1 },  xp: 110, qty: 1, level: 36 },
+  { out: 'yew_longbow', cost: { yew_log: 1 },    xp: 150, qty: 1, level: 50 },
+  { out: 'magic_bow',   cost: { magic_log: 1 },  xp: 210, qty: 1, level: 68 },
 ];
 
 // Runecrafting (rune altar): essence -> elemental runes. qty per essence; level gates the tier.
@@ -545,7 +721,7 @@ export const CAPE_COLORS = {
   woodcutting: 0x8a5a2e, mining: 0xc2ccd6, fishing: 0x2bd6cf, foraging: 0x4f9a40, cooking: 0xff7a3a,
   smithing: 0xcdd6e0, farming: 0x6e9a3a, herblore: 0x7a4a8a, thieving: 0x6a4a9a, crafting: 0xffd45f,
   fletching: 0xb98f4a, runecraft: 0xc6a8ff, construction: 0x9aa0a8, agility: 0xbfe6ff, prayer: 0xe8e0ff,
-  beastmastery: 0xffe066, max: 0xffd45f,
+  beastmastery: 0xffe066, firemaking: 0xff7a2a, max: 0xffd45f,
 };
 
 // Wardrobe dye palette — bright/saturated hues that read well on the additive display (no pure white/black).
@@ -1956,6 +2132,7 @@ export const SHOP = {
     { key: 'apprentice_staff', price: 70 },
     { key: 'leather_armor', price: 45 },
     { key: 'seeds', price: 5 },
+    { key: 'carrot_seed', price: 8 }, { key: 'potato_seed', price: 14 }, { key: 'corn_seed', price: 22 }, { key: 'pumpkin_seed', price: 40 },
     { key: 'herb', price: 9 },
     { key: 'bronze_bar', price: 16 },
     { key: 'iron_bar', price: 34 },
@@ -1977,6 +2154,18 @@ export const SHOP = {
     coilfang_spear: 150, ashbringer: 200, tempest_bow: 140, faewild_staff: 170,
     bronze_dagger: 12, wooden_shield: 12, iron_shield: 45, steel_shield: 80,
     barnacle_plate: 18, grave_iron: 18, corsair_cutlass: 120, mariner_plate: 90, barnacle_shield: 70, barrow_blade: 110, grave_plate: 100, wight_crown: 160,
+    // Expansion gathering catches — fish, logs, ores/bars, crops.
+    raw_sardine: 8, cooked_sardine: 12, raw_herring: 11, cooked_herring: 16, raw_bass: 16, cooked_bass: 22, raw_salmon: 22, cooked_salmon: 30,
+    raw_pike: 28, cooked_pike: 36, raw_tuna: 40, cooked_tuna: 52, raw_lobster: 55, cooked_lobster: 70, raw_swordfish: 75, cooked_swordfish: 95,
+    raw_shark: 110, cooked_shark: 140, raw_anglerfish: 150, cooked_anglerfish: 190,
+    oak_log: 12, willow_log: 28, maple_log: 55, yew_log: 110, magic_log: 220,
+    silver_ore: 18, silver_bar: 42, gold_ore: 45, gold_bar: 100, adamant_ore: 90, adamant_bar: 200, runite_ore: 220, runite_bar: 480,
+    mushroom: 7, nectar: 12, carrot: 5, potato: 6, baked_potato: 14, corn: 9, pumpkin: 22,
+    honey: 10, beeswax: 14, wax_candle: 42,
+    // Smithable / fletchable / craftable gear
+    adamant_sword: 260, adamant_armor: 320, adamant_shield: 260, runite_sword: 560, runite_armor: 680, runite_shield: 560,
+    oak_longbow: 40, willow_bow: 75, maple_bow: 130, yew_longbow: 240, magic_bow: 430,
+    silver_ring: 55, silver_amulet: 90, gold_ring: 160, gold_amulet: 230,
   },
 };
 
@@ -2518,6 +2707,7 @@ export const ACHIEVEMENTS = [
   { id: 'isle_hero',   name: 'Isle Hero',        desc: 'Complete every quest.',        cond: (G) => G.quests.all().every((q) => q.status === 'complete') },
   { id: 'jack',        name: 'Jack of Trades',   desc: 'Reach total level 40.',        cond: (G) => G.skills.total() >= 40 },
   { id: 'specialist',  name: 'Specialist',       desc: 'Reach level 20 in any skill.', cond: (G) => G.skills.DEFS.some((d) => G.skills.level(d.key) >= 20) },
+  { id: 'firestarter', name: 'Firestarter',      desc: 'Reach Firemaking level 20.',   cond: (G) => G.skills.level('firemaking') >= 20 },
   { id: 'bonelord',    name: 'Lichbane',         desc: 'Defeat Bonelord Mortrax.',     cond: (G) => G.stats.bosses.has('bonelord') },
   { id: 'warbreaker',  name: 'Warbreaker',       desc: 'Defeat Warchief Gronk.',       cond: (G) => G.stats.bosses.has('warchief') },
   { id: 'prismshatter',name: 'Prismshatter',     desc: 'Defeat the Prism Tyrant.',     cond: (G) => G.stats.bosses.has('prism_tyrant') },

@@ -201,6 +201,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Inventory') {
       const it = G.inventory.list()[row];
       if (it && (it.def.type === 'consumable' || it.def.type === 'potion' || it.def.type === 'clue')) { G.useItem(it.key); renderMenu(); }
+      else if (it && G.canLightFire && G.canLightFire(it.key)) { G.lightFire(it.key); }   // logs → Firemaking (lightFire closes the menu itself)
     } else if (TABS[tab] === 'Gear') {
       const r = gearRows()[row]; if (r) { G.equipChoice(r); renderMenu(); }
     } else if (TABS[tab] === 'Prayer') {
@@ -329,7 +330,7 @@ export function createUI(G) {
     const items = G.inventory.list();
     let html = `<div class="section-head">Pouch &nbsp;·&nbsp; 🪙 ${gold} Gold</div>`;
     if (!items.length) html += `<div class="empty-note">Your pack is empty. Chop trees, forage bushes, and defeat boars to gather loot.</div>`;
-    else html += items.map((it, i) => `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${it.def.icon}</span><div class="row-main"><div class="row-title">${it.def.name}</div><div class="row-sub">${it.def.desc}${(it.def.type === 'consumable' || it.def.type === 'potion' || it.def.type === 'clue') ? ' · tap to use' : ''}</div></div><div class="row-trail">×${it.count}</div></div>`).join('');
+    else html += items.map((it, i) => { const useHint = (it.def.type === 'consumable' || it.def.type === 'potion' || it.def.type === 'clue') ? ' · tap to use' : (G.canLightFire && G.canLightFire(it.key)) ? ' · tap to light a fire' : ''; return `<div class="row ${i === row ? 'sel' : ''}"><span class="row-icon">${it.def.icon}</span><div class="row-main"><div class="row-title">${it.def.name}</div><div class="row-sub">${it.def.desc}${useHint}</div></div><div class="row-trail">×${it.count}</div></div>`; }).join('');
     els.menuBody.innerHTML = html;
   }
   const STANCE_KEYS = ['accurate', 'aggressive', 'defensive', 'controlled'];

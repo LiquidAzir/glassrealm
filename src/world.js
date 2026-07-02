@@ -112,11 +112,11 @@ const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
 // tier mix. mithril is gated to a high Mining level (main.js); gem_rock yields cut gems.
 const MINES = [
   { name: 'Hearth Quarry',   x: 16,   z: -30, rocks: [['copper', 5], ['iron', 3], ['coal', 3]] },
-  { name: 'Emberforge Lode', x: 118,  z: -2,  rocks: [['iron', 5], ['coal', 5]] },
-  { name: 'Sunspire Dig',    x: 14,   z: 112, rocks: [['copper', 4], ['gem_rock', 3]] },
-  { name: 'Frostpeak Mine',  x: 92,   z: -84, rocks: [['coal', 4], ['mithril', 3]] },
-  { name: 'Stormhold Mine',  x: -158, z: -46, rocks: [['iron', 4], ['coal', 3], ['mithril', 2]] },
-  { name: 'Red Mesa Mine',   x: 150,  z: 116, rocks: [['iron', 4], ['coal', 4], ['gem_rock', 2]] },
+  { name: 'Emberforge Lode', x: 118,  z: -2,  rocks: [['iron', 5], ['coal', 5], ['adamant', 2]] },
+  { name: 'Sunspire Dig',    x: 14,   z: 112, rocks: [['copper', 4], ['gem_rock', 3], ['silver', 3]] },
+  { name: 'Frostpeak Mine',  x: 92,   z: -84, rocks: [['coal', 4], ['mithril', 3], ['silver', 2], ['runite', 1]] },
+  { name: 'Stormhold Mine',  x: -158, z: -46, rocks: [['iron', 4], ['coal', 3], ['mithril', 2], ['gold', 2], ['adamant', 2]] },
+  { name: 'Red Mesa Mine',   x: 150,  z: 116, rocks: [['iron', 4], ['coal', 4], ['gem_rock', 2], ['gold', 2], ['runite', 1]] },
 ];
 const MINE_R = 6;
 
@@ -367,6 +367,29 @@ export function createWorld(scene, seed = 1337) {
   }
   // rune essence outcrop in the fae glade — feeds Runecrafting (mine essence here, bind it at a rune altar)
   if (byKey.glade) { const g = byKey.glade; for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU, rad = g.r * 0.42; const x = g.x + Math.cos(a) * rad, z = g.z + Math.sin(a) * rad; if (isWalkable(x, z)) oreNodes.push({ x, z, y: height(x, z), type: 'essence', alive: true, respawn: 0 }); } }
+
+  // Beehives (apiary): rob them for honey + beeswax (Foraging). Woven amber skeps in leafy biomes.
+  const hives = [];
+  const hiveMat = rimLight(new THREE.MeshLambertMaterial({ color: 0xd8a24a, flatShading: true }));
+  const hiveDark = rimLight(new THREE.MeshLambertMaterial({ color: 0x3a2a16, flatShading: true }));
+  function makeHiveMesh(hx, hy, hz) {
+    const g = new THREE.Group();
+    for (const [rt, rb, cy] of [[0.42, 0.5, 0.24], [0.36, 0.44, 0.64], [0.26, 0.38, 1.0], [0.12, 0.28, 1.3]]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, 0.42, 8), hiveMat); c.position.set(0, cy, 0); g.add(c); }
+    const hole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.12), hiveDark); hole.position.set(0, 0.5, 0.42); g.add(hole);
+    g.position.set(hx, hy, hz); group.add(g); return g;
+  }
+  for (const key of ['verdant', 'glade', 'amberfell', 'jungle', 'sporevale']) {
+    const reg = byKey[key]; if (!reg) continue;
+    let placed = 0, tries = 0;
+    while (placed < 2 && tries < 40) {
+      tries++;
+      const a = rng() * TAU, rad = reg.r * (0.4 + rng() * 0.4), x = reg.x + Math.cos(a) * rad, z = reg.z + Math.sin(a) * rad;
+      if (!isWalkable(x, z)) continue;
+      const y = height(x, z);
+      hives.push({ x, z, y, alive: true, respawn: 0, mesh: makeHiveMesh(x, y, z) });
+      placed++;
+    }
+  }
   // hidden discoveries — placed off the beaten path, each snapped to nearby walkable land
   const CLEAR_R2 = 18;   // clear scattered props so each discovery sits in its own clearing (and wins the tap)
   const clearNear = (arr, x, z) => { for (let i = arr.length - 1; i >= 0; i--) { const dx = arr[i].x - x, dz = arr[i].z - z; if (dx * dx + dz * dz < CLEAR_R2) arr.splice(i, 1); } };
@@ -428,7 +451,7 @@ export function createWorld(scene, seed = 1337) {
   group.add(bushIM);
 
   // ore
-  const oreCol = { copper: 0xc87a3a, iron: 0xb9a99a, coal: 0x6c6f7a, mithril: 0x5a8fc0, gem_rock: 0x6fe0ff, essence: 0xb98fff };
+  const oreCol = { copper: 0xc87a3a, iron: 0xb9a99a, coal: 0x6c6f7a, mithril: 0x5a8fc0, gem_rock: 0x6fe0ff, essence: 0xb98fff, silver: 0xc8d0dc, gold: 0xf4d24a, adamant: 0x4f8a68, runite: 0x4aa8c0 };
   const oreIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshLambertMaterial({ flatShading: true }), Math.max(oreNodes.length, 1));
   oreNodes.forEach((o, i) => { dummy.position.set(o.x, o.y + 0.5, o.z); dummy.scale.set(1, 1.2, 1); dummy.rotation.set(rng(), rng() * TAU, rng()); dummy.updateMatrix(); oreIM.setMatrixAt(i, dummy.matrix); oreIM.setColorAt(i, tmpC.setHex(oreCol[o.type] || 0x999999)); o.idx = i; });
   group.add(oreIM);
@@ -1344,7 +1367,7 @@ export function createWorld(scene, seed = 1337) {
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
     peaks: REGIONS.filter((r) => r.peak).map((r) => r.peak), cave: CAVE, cave2: CAVE2, dungeons: DUNGEONS, locations,
-    trees, rocks, bushes, oreNodes, fishingSpots, stations, plots, stalls, shortcuts, solids, dynSolids, inSolidGrid, animalSpawns, obstacles: solids.filter((s) => s.r >= 1.2), mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
+    trees, rocks, bushes, oreNodes, fishingSpots, hives, stations, plots, stalls, shortcuts, solids, dynSolids, inSolidGrid, animalSpawns, obstacles: solids.filter((s) => s.r >= 1.2), mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
       trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);
@@ -1361,6 +1384,7 @@ export function createWorld(scene, seed = 1337) {
       bushIM.setMatrixAt(idx, dummy.matrix); bushIM.instanceMatrix.needsUpdate = true;
     },
     depleteOre(o) { if (!o.alive) return; o.alive = false; o.respawn = 14; setOreScale(o, 0.32); },
+    depleteHive(h) { if (!h.alive) return; h.alive = false; h.respawn = 22; if (h.mesh) h.mesh.scale.setScalar(0.35); },
     plantPlot(pl) { pl.state = 'growing'; pl.grow = GROW; plotVisual(pl); },
     harvestPlot(pl) { pl.state = 'empty'; plotVisual(pl); },
     showTrophy(key) { const m = trophyMeshes[key]; if (m) m.forEach((x) => (x.visible = true)); },
@@ -1376,6 +1400,7 @@ export function createWorld(scene, seed = 1337) {
       water.position.y = WATER_Y + Math.sin(animT * 0.5) * 0.08;
       for (const f of ferryBoats) { const t = (Math.sin(animT * 0.18) + 1) / 2; f.m.position.set(f.ax + (f.bx - f.ax) * t, 0.9 + Math.sin(animT * 2) * 0.06, f.az + (f.bz - f.az) * t); f.m.rotation.y = Math.atan2(f.bx - f.ax, f.bz - f.az); }
       for (const o of oreNodes) if (!o.alive) { o.respawn -= dt; if (o.respawn <= 0) { o.alive = true; setOreScale(o, 1); } }
+      for (const h of hives) if (!h.alive) { h.respawn -= dt; if (h.respawn <= 0) { h.alive = true; if (h.mesh) h.mesh.scale.setScalar(1); } }
       for (const pl of plots) if (pl.state === 'growing') { pl.grow -= dt; if (pl.grow <= 0) { pl.state = 'grown'; plotVisual(pl); } }
       for (const s of stalls) if (s.cooldown > 0) s.cooldown -= dt;
       for (const s of shortcuts) if (s.cooldown > 0) s.cooldown -= dt;
