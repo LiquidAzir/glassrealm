@@ -193,6 +193,7 @@ export const ITEMS = {
   gold_ring:     { name: 'Gold Ring',     icon: '💍', type: 'ring',   bonus: { melee: 5, def: 2 },    desc: 'Gold set with ruby. +5 melee, +2 defence.' },
   gold_amulet:   { name: 'Gold Amulet',   icon: '📿', type: 'amulet', bonus: { melee: 4, maxhp: 15 }, desc: 'A heavy gold pendant. +4 melee, +15 max HP.' },
   crown_signet:  { name: 'Crown Signet',  icon: '💠', type: 'amulet', bonus: { melee: 6, def: 6, maxhp: 20 }, desc: "The King's own seal, given to the Champion of Crownhaven. +6 melee, +6 defence, +20 max HP." },
+  deepstone_amulet: { name: 'Deepstone Amulet', icon: '📿', type: 'amulet', bonus: { melee: 7, def: 5, maxhp: 25 }, desc: 'Cut from the deep-folk hold at the delve\'s heart. +7 melee, +5 defence, +25 max HP.' },
 
   // ---- Hearty meals (a cooking activity — combine ingredients for big heals, see MEALS) ----
   fish_stew:       { name: 'Fisher’s Stew',   icon: '🍲', type: 'consumable', heal: 45,  desc: 'A warming stew. Restores 45 HP.' },
@@ -621,6 +622,8 @@ export const NPCS = [
   { key: 'itzel',  name: 'Wayfarer Itzel',  color: 0x4fd06a, pos: { x: 180, z: 32 },  dialogue: 'saga_itzel' },
   { key: 'ardith', name: 'Seer Ardith',     color: 0xc6a8ff, pos: { x: -29, z: -104 }, dialogue: 'saga_ardith' },
   // Expansion III — Saltcrest Harbor (south) + Amberfell (north)
+  { key: 'delvemaster', name: 'Delve Master Korrin', color: 0xffb84a, pos: { x: 265, z: 58 }, dialogue: 'delvemaster' },
+  { key: 'deepdelver',  name: 'Deep-Miner Yorda',   color: 0x8af0ff, pos: { x: 262, z: 63 }, dialogue: 'deepdelver' },
   { key: 'harbormaster', name: 'Harbourmaster Dell', color: 0x6fd0ff, pos: { x: 86, z: 185 },  dialogue: 'harbormaster' },
   { key: 'corsair',      name: 'Old Corsair Sabine', color: 0xe0c060, pos: { x: 74, z: 185 },  dialogue: 'saga_corsair' },
   { key: 'amberwarden',  name: 'Warden Rowan',       color: 0xe0852e, pos: { x: 56, z: -160 }, dialogue: 'amberwarden' },
@@ -1001,6 +1004,8 @@ export const ENEMIES = {
   the_glassmaw:        { name: 'The Glassmaw',        hp: 380, dmg: 38, speed: 3.1, xp: 1140, color: 0x80e0f0, aggro: 20, shape: 'beast',    scale: 2.2, boss: true, loot: { gold: 520, glassmaw_bow: 1, obsidian_shard: 4, ruby: 2, bones: 4 }, rare: { item: 'ashen_signet', chance: 0.25 } },
   the_hollowed_warden: { name: 'The Hollowed Warden', hp: 400, dmg: 40, speed: 3.0, xp: 1200, color: 0xb08adf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 560, voidedge_blade: 1, amethyst_wisp: 5, emerald: 2, bones: 4 }, rare: { item: 'pall_amulet', chance: 0.25 } },
   the_brinemother:     { name: 'The Brinemother',     hp: 380, dmg: 38, speed: 3.1, xp: 1120, color: 0xf08fb8, aggro: 20, shape: 'beast',    scale: 2.2, boss: true, loot: { gold: 520, brinesong_trident: 1, brine_silver: 6, pearl: 3, bones: 4 } },
+  // --- The Undercity: the Deepwarden holds the Deep-Folk Hold at the delve's core ---
+  the_deepwarden:      { name: 'The Deepwarden',      hp: 480, dmg: 40, speed: 3.2, xp: 1240, color: 0xb08adf, aggro: 20, shape: 'warden', scale: 2.3, boss: true, loot: { gold: 460, runite_bar: 3, ruby: 2, emerald: 2, bones: 4 }, rare: { item: 'deepstone_amulet', chance: 0.35 } },
 };
 
 // ---------- Combat triangle ----------
@@ -1027,6 +1032,7 @@ export const WEAKNESS = {
   glimmer_leech: 'ranged', the_dreamward: 'ranged', frost_wraith: 'magic', glacier_wight: 'melee', heart_of_hoarfrost: 'magic', shade_stalker: 'melee', edgewraith: 'magic', the_reckoner: 'ranged', salt_wraith: 'magic',
   glass_wisp: 'ranged', cinderglass_stalker: 'magic', the_glasswake: 'ranged',
   the_lantern_drowned: 'ranged', the_rimewright: 'magic', the_glassmaw: 'magic', the_hollowed_warden: 'ranged', the_brinemother: 'magic',
+  the_deepwarden: 'ranged',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -1041,6 +1047,7 @@ export const ATK_STYLE = {
   frost_wraith: 'magic', the_dreamward: 'magic', heart_of_hoarfrost: 'magic', the_reckoner: 'magic',
   the_glasswake: 'magic',
   the_lantern_drowned: 'magic', the_glassmaw: 'ranged', the_hollowed_warden: 'magic',
+  the_deepwarden: 'magic',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -1073,6 +1080,11 @@ export const AUTO_MODES = [
 ];
 
 export const ENEMY_SPAWNS = [
+  // The Undercity — depth-tiered foes: fungal grottoes (outer) → crystal deeps → lava galleries → the Deepwarden at the core
+  { enemy: 'the_deepwarden', x: 300, z: 60 },
+  { enemy: 'magma_imp', x: 315, z: 60 }, { enemy: 'lava_hound', x: 285, z: 60 }, { enemy: 'scorchling', x: 300, z: 75 }, { enemy: 'magma_imp', x: 300, z: 45 },
+  { enemy: 'crystal_sprite', x: 323, z: 73 }, { enemy: 'shard_skitter', x: 277, z: 47 }, { enemy: 'crystal_sprite', x: 320, z: 43 }, { enemy: 'shard_skitter', x: 280, z: 77 },
+  { enemy: 'glimmer_bat', x: 332, z: 60 }, { enemy: 'spore_thrall', x: 268, z: 62 }, { enemy: 'glimmer_bat', x: 300, z: 93 }, { enemy: 'shade_stalker', x: 300, z: 27 }, { enemy: 'glimmer_bat', x: 320, z: 88 },
   // Crownhaven outskirts — bandits + brigands harrying the capital roads (royal questline targets)
   { enemy: 'bandit', x: 0, z: 220 }, { enemy: 'bandit', x: 28, z: 232 }, { enemy: 'bandit', x: -28, z: 232 }, { enemy: 'bandit', x: 22, z: 300 }, { enemy: 'bandit', x: -20, z: 300 },
   { enemy: 'brigand', x: 36, z: 262 }, { enemy: 'brigand', x: -36, z: 262 }, { enemy: 'brigand', x: 0, z: 306 }, { enemy: 'brigand', x: 26, z: 226 }, { enemy: 'brigand', x: -26, z: 296 }, { enemy: 'brigand', x: 34, z: 292 },
@@ -1216,6 +1228,25 @@ export const QUESTS = {
     desc: 'Break the brigand host gathering beyond the capital walls and earn the crown’s signet.',
     objectives: [{ id: 'k', type: 'kill', enemy: 'brigand', count: 6 }],
     rewards: { xp: { combat: 700, defence: 220 }, items: { gold: 500, crown_signet: 1 } },
+  },
+  // --- The Undercity: the delvers' questline (Delve Master Korrin at the camp) ---
+  q_delve1: {
+    name: 'Into the Dark', giver: 'delvemaster', startsAvailable: true,
+    desc: 'Clear the Undercity’s outer grottoes of glimmer-bats.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'glimmer_bat', count: 4 }],
+    rewards: { xp: { combat: 320 }, items: { gold: 130 } },
+  },
+  q_delve2: {
+    name: 'Veins of the Deep', giver: 'delvemaster', requires: 'q_delve1', reqSkills: { mining: 40 },
+    desc: 'Mine two Gold Ore from the Undercity’s crystal deeps.',
+    objectives: [{ id: 'g', type: 'have', item: 'gold_ore', count: 2 }],
+    rewards: { xp: { mining: 380 }, items: { gold: 220 } },
+  },
+  q_delve3: {
+    name: 'The Deepwarden', saga: true, giver: 'delvemaster', requires: 'q_delve2',
+    desc: 'Descend past the lava galleries to the Deep-Folk Hold and end the Deepwarden.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'the_deepwarden', count: 1 }],
+    rewards: { xp: { combat: 820, defence: 260 }, items: { gold: 500, deepstone_amulet: 1 } },
   },
   q_mine: {
     name: 'Coal for the Forge', giver: 'miner', startsAvailable: true,
@@ -1568,6 +1599,37 @@ function questGiver(name, qid, cfg) {
 }
 
 export const DIALOGUE = {
+  // --- The Undercity: the Delvers' Camp ---
+  delvemaster: {
+    root: (G) => {
+      const s1 = G.quests.status('q_delve1');
+      if (s1 === 'available') return node('Delve Master Korrin', 'Fresh legs for the deep, eh? The Undercity swallows the careless. Prove yourself — thin the glimmer-bats haunting the outer grottoes — and I’ll trust you with deeper work.',
+        [{ label: 'I’ll clear them.', action: (g) => g.quests.accept('q_delve1'), to: 'a1' }, { label: 'What is this place?', to: 'lore' }, end('Not yet.')]);
+      if (s1 === 'active') { if (G.quests.isReady('q_delve1')) return node('Delve Master Korrin', 'The grottoes are quieter. Good — you’ve the nerve for the deep.', [{ label: 'What’s next?', action: (g) => g.quests.complete('q_delve1'), to: 'd1' }]); return node('Delve Master Korrin', 'The glimmer-bats still swarm the outer dark. Back to it.', [end('Aye.')]); }
+      const s2 = G.quests.status('q_delve2'), s3 = G.quests.status('q_delve3');
+      if (s2 === 'available') return node('Delve Master Korrin', 'Gold runs in the crystal deeps, past the bats. Bring me two Gold Ore and I’ll know you can work the middle dark.',
+        [{ label: 'I’ll mine them.', action: (g) => g.quests.accept('q_delve2'), to: 'a2' }, end('Later.')]);
+      if (s2 === 'active') { if (G.inventory.count('gold_ore') >= 2) return node('Delve Master Korrin', 'Gold, deep-cut. You’ve the eye for it. Take your reward.', [{ label: 'Hand over 2 Gold Ore.', action: (g) => g.quests.complete('q_delve2'), to: 'd2' }]); return node('Delve Master Korrin', `${2 - G.inventory.count('gold_ore')} more Gold Ore from the crystal deeps. Needs Mining forty to cut — smelt it at our furnace.`, [end('On it.')]); }
+      if (s2 === 'complete' && s3 === 'available') return node('Delve Master Korrin', 'At the delve’s heart sits the Deepwarden — last lord of the deep-folk, and no friend to us. End him, and the Undercity is ours to work in peace.',
+        [{ label: 'I’ll face him.', action: (g) => g.quests.accept('q_delve3'), to: 'a3' }, end('Soon.')]);
+      if (s3 === 'active') { if (G.quests.isReady('q_delve3')) return node('Delve Master Korrin', 'The Deepwarden is fallen? Then the deep is truly open. Wear this — you’ve earned the deepstone.', [{ label: 'My thanks.', action: (g) => g.quests.complete('q_delve3'), to: 'd3' }]); return node('Delve Master Korrin', 'The Deepwarden still holds the core, past the lava galleries. Pray against his magic.', [end('I will.')]); }
+      if (s3 === 'complete') return node('Delve Master Korrin', 'The one who broke the Deepwarden. The whole delve owes you its ore — work it freely.', [{ label: 'What is this place?', to: 'lore' }, end('Farewell.')]);
+      return node('Delve Master Korrin', 'Deeper means richer — and deadlier. Smelt your ore at our furnace before you climb out.', [{ label: 'What is this place?', to: 'lore' }, end('Farewell.')]);
+    },
+    a1: node('Delve Master Korrin', 'The glimmer-bats haunt the outer grottoes. A bow or spell serves best against them.', [end('Understood.')]),
+    d1: node('Delve Master Korrin', 'Now — gold runs in the crystal deeps below. Ready when you are.', [end('Ready.')]),
+    a2: node('Delve Master Korrin', 'Two Gold Ore. Mining forty to cut it; the furnace here will smelt your haul.', [end('Right.')]),
+    d2: node('Delve Master Korrin', 'Speak to me again when you’d test yourself against the deep’s lord.', [end('I will.')]),
+    a3: node('Delve Master Korrin', 'The core lies past the lava galleries. Bring food, and pray hard.', [end('I go.')]),
+    d3: node('Delve Master Korrin', 'The deepstone remembers every hand that shaped it. Now it’s yours.', [end('Thank you.')]),
+    lore: node('Delve Master Korrin', 'The Undercity is older than any crown above. The deep-folk carved it, then vanished into their own dark — all but the Warden. We mine what they left, and try not to wake what sleeps deeper still.', [end('Grim.')]),
+  },
+  deepdelver: {
+    root: () => node('Deep-Miner Yorda', 'Careful in the crystal deeps — the shards sing before they cut. The best ore’s always where the light gives out.',
+      [{ label: 'Any tips?', to: 'tips' }, { label: 'How deep does it go?', to: 'deep' }, end('Thanks.')]),
+    tips: node('Deep-Miner Yorda', 'Louder the hum, richer the vein. A runite seam glows blue-black — you’ll know it when the dark itself gleams.', [end('Good to know.')]),
+    deep: node('Deep-Miner Yorda', 'Nobody’s found the bottom. Some nights you feel the whole delve breathing. I don’t go past the lava — you do what you like.', [end('Noted.')]),
+  },
   // --- Crownhaven castle court (spoken to via interior 'talk' stations) ---
   king: {
     root: (G) => {
@@ -2250,6 +2312,7 @@ export const SHOP = {
     adamant_sword: 260, adamant_armor: 320, adamant_shield: 260, runite_sword: 560, runite_armor: 680, runite_shield: 560,
     oak_longbow: 40, willow_bow: 75, maple_bow: 130, yew_longbow: 240, magic_bow: 430,
     silver_ring: 55, silver_amulet: 90, gold_ring: 160, gold_amulet: 230,
+    deepstone_amulet: 300,
   },
 };
 

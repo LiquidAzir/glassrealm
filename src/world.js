@@ -39,6 +39,9 @@ const BIOMES = {
   saltmarsh: { sea: 0x1ab0c0, sand: 0xf4e2e8, low: 0xf08fb8, low2: 0xe07fa8, high: 0xd86fa0, peak: 0xffe6f4, fol: [0x4fae84, 0x6ec98a], trunk: 0x8a6a4a },
   // Capital — manicured royal green, pale stone highs, gilded feel
   royal:     { sea: 0x18406a, sand: 0xe8dcc0, low: 0x57ab6b, low2: 0x479560, high: 0x9aa6c2, peak: 0xf0e8ff, fol: [0x3f9d5a, 0x5fc77d], trunk: 0x6e4a2b },
+  // Undercity — near-black cavern rock (reads transparent on the additive display, so
+  // only the glowing fungi / crystal veins / lava show) with luminous green+violet growth
+  cavern:    { sea: 0x08080e, sand: 0x201d28, low: 0x2a2634, low2: 0x231f2c, high: 0x38324a, peak: 0x6a5a92, fol: [0x7cffb0, 0x9b6bff], trunk: 0x2a2634 },
 };
 
 const REGIONS = [
@@ -70,6 +73,8 @@ const REGIONS = [
   { key: 'mirelythe', x: -150, z: 222,  r: 36, biome: 'saltmarsh', village: { name: 'Rosbrine',         x: -150, z: 222,  hut: [0xf4e2e8, 0xf08fb8] }, tree: 'palm',   nTree: 12, nBush: 8, nRock: 6,  nFish: 8, ore: [['copper', 4], ['iron', 3]] },
   // --- Capital: Crownhaven — the seat of the crown on its own grand southern isle (a large castle + royal town) ---
   { key: 'crownhaven', x: 0, z: 262, r: 56, biome: 'royal', village: { name: 'Crownhaven', x: 0, z: 262, hut: [0xcdd2dc, 0x6a4a9a], smithy: true, castle: true }, tree: 'pine', nTree: 26, nBush: 12, nRock: 10, nFish: 6, ore: [['iron', 4]] },
+  // --- The Undercity: a vast deep cavern you delve into — fungal grottoes, crystal deeps, lava galleries, a deep-folk hold. Depth-tiered ore + foes (built custom). ---
+  { key: 'undercity', x: 300, z: 60, r: 48, biome: 'cavern', undercity: true, tree: 'mushroom', nTree: 26, nBush: 0, nRock: 24, nFish: 0, ore: [] },
 ];
 // Region links with a transition TYPE: 'causeway' = rustic plank land bridge (the classic),
 // 'isthmus' = a wide natural land neck where the islands nearly merge (clean, no built deck),
@@ -96,6 +101,8 @@ const BRIDGE_LINKS = [
   ['mirelythe', 'cinderbreak', 'causeway'], ['mirelythe', 'saltcrest', 'ferry'], ['mirelythe', 'shardspire', 'pier'],
   // Capital links — a grand stone span from the harbour, a causeway from the cinder isle
   ['crownhaven', 'saltcrest', 'span'], ['crownhaven', 'cinderbreak', 'causeway'],
+  // The Undercity — a cave-mouth passage from the jungle's edge
+  ['undercity', 'jungle', 'causeway'],
 ];
 // One signature landmark per region (offsets are raw, scaled by WS at build time).
 const REGION_SIG = {
@@ -378,6 +385,21 @@ export function createWorld(scene, seed = 1337) {
   }
   // rune essence outcrop in the fae glade — feeds Runecrafting (mine essence here, bind it at a rune altar)
   if (byKey.glade) { const g = byKey.glade; for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU, rad = g.r * 0.42; const x = g.x + Math.cos(a) * rad, z = g.z + Math.sin(a) * rad; if (isWalkable(x, z)) oreNodes.push({ x, z, y: height(x, z), type: 'essence', alive: true, respawn: 0 }); } }
+  // Undercity depth-tiered ore: the DEEPER you go (nearer the centre), the richer the vein.
+  // Outer=copper/iron, mid=coal/mithril, inner=adamant/gold+gems, core=runite. (level-gated in main.js)
+  if (byKey.undercity) {
+    const u = byKey.undercity;
+    const TIERS = [
+      { rad: 0.82, kinds: ['copper', 'copper', 'iron'], n: 10 },
+      { rad: 0.6,  kinds: ['iron', 'coal', 'mithril'],  n: 10 },
+      { rad: 0.38, kinds: ['mithril', 'adamant', 'gold', 'gem_rock'], n: 10 },
+      { rad: 0.18, kinds: ['runite', 'adamant', 'gem_rock'], n: 6 },
+    ];
+    for (const t of TIERS) for (let i = 0; i < t.n; i++) {
+      const a = rng() * TAU, rad = u.r * (t.rad - 0.06 + rng() * 0.12), x = u.x + Math.cos(a) * rad, z = u.z + Math.sin(a) * rad;
+      if (isWalkable(x, z)) oreNodes.push({ x, z, y: height(x, z), type: t.kinds[(rng() * t.kinds.length) | 0], alive: true, respawn: 0 });
+    }
+  }
 
   // Beehives (apiary): rob them for honey + beeswax (Foraging). Woven amber skeps in leafy biomes.
   const hives = [];
@@ -880,6 +902,37 @@ export function createWorld(scene, seed = 1337) {
     const dz = -HW - 2.8;
     stations.push({ kind: 'door', label: 'Enter Crownhaven Castle', x: cx, z: cz + dz, y: height(cx, cz + dz), building: 'castle', biome: 'royal' });
   }
+  // The Undercity — a great delve built as concentric depth tiers: a Delvers' Camp on the
+  // rim, then fungal grottoes, crystal deeps, lava galleries, and the Deep-Folk Hold + a
+  // boss vault at the core. Near-black rock means only the glowing growth reads on the display.
+  function buildUndercity(u) {
+    const cx = u.x, cz = u.z, R = u.r;
+    const bx = (w, h, d, c, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lmat(c)); m.position.set(x, y, z); if (ry) m.rotation.y = ry; group.add(m); return m; };
+    const gm = (geo, c, x, y, z, op) => { const mt = new THREE.MeshBasicMaterial({ color: c }); if (op != null) { mt.transparent = true; mt.opacity = op; } const m = new THREE.Mesh(geo, mt); m.position.set(x, y, z); group.add(m); return m; };
+    const at = (fx, fz) => { const x = cx + fx, z = cz + fz; return { x, z, y: height(x, z) }; };
+    // CORE — the Deep-Folk Hold: a black monolith, a hovering violet core, carved pillars, the grand vault
+    { const c = at(0, 0);
+      bx(3.4, 7, 3.4, 0x1a1622, c.x, c.y + 3.5, c.z, 0.4);
+      const core = gm(new THREE.OctahedronGeometry(1.0, 0), 0xb08adf, c.x, c.y + 8, c.z); orbMeshes.push({ m: core, baseY: c.y + 8, seed: c.x });
+      for (let i = 0; i < 6; i++) { const a = i / 6 * TAU, p = at(Math.cos(a) * 6, Math.sin(a) * 6); bx(1.2, 5 + (i % 2) * 1.4, 1.2, 0x241f30, p.x, p.y + 2.8, p.z, a); gm(new THREE.IcosahedronGeometry(0.28, 0), 0x9b6bff, p.x, p.y + 5.6, p.z); solids.push({ x: p.x, z: p.z, r: 0.9 }); }
+      solids.push({ x: c.x, z: c.z, r: 2.2 });
+      const ch = at(4, 4); const chest = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.1, 1.0), lmat(0xffd45f)); chest.position.set(ch.x, ch.y + 0.55, ch.z); group.add(chest);
+      stations.push({ kind: 'chest', label: 'Deephold Vault', x: ch.x, z: ch.z, y: ch.y, looted: false, gold: 560, loot: { runite_bar: 2, ruby: 2, emerald: 2 } });
+      ambientEmitters.push({ x: c.x, y: c.y + 2, z: c.z, color: 0xb08adf, every: 0.7, opts: { n: 4, spread: 4, up: 4, life: 2 } });
+    }
+    for (let i = 0; i < 5; i++) { const a = i / 5 * TAU + 0.3, p = at(Math.cos(a) * R * 0.34, Math.sin(a) * R * 0.34); gm(new THREE.CylinderGeometry(3.2, 3.2, 0.2, 14), 0xff5a2a, p.x, p.y + 0.14, p.z, 0.85); for (let k = 0; k < 5; k++) { const b = k / 5 * TAU; bx(1.1, 0.7, 1.1, 0x2a2026, p.x + Math.cos(b) * 3.5, p.y + 0.4, p.z + Math.sin(b) * 3.5); } solids.push({ x: p.x, z: p.z, r: 3.0 }); ambientEmitters.push({ x: p.x, y: p.y + 0.4, z: p.z, color: 0xff8a3d, every: 0.6, opts: { n: 4, spread: 3.2, up: 4, life: 1.4 } }); }   // lava galleries (inner)
+    for (let i = 0; i < 10; i++) { const a = i / 10 * TAU + 0.15, p = at(Math.cos(a) * R * 0.55, Math.sin(a) * R * 0.55), col = (i % 2) ? 0x8af0ff : 0xb08adf; for (let k = 0; k < 4; k++) { const off = (k - 1.5) * 0.5, cr = gm(new THREE.ConeGeometry(0.4 + (k % 2) * 0.2, 2 + (k % 2) * 1.2, 5), col, p.x + off, p.y + 1.1 + (k % 2) * 0.6, p.z + off * 0.6, 0.85); cr.rotation.z = (k - 1.5) * 0.2; shimMeshes.push({ m: cr, baseY: cr.position.y, seed: i * 3 + k, kind: 'pulse' }); } solids.push({ x: p.x, z: p.z, r: 1.0 }); }   // crystal deeps (mid)
+    for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + 0.5, p = at(Math.cos(a) * R * 0.76, Math.sin(a) * R * 0.76); bx(0.6, 3 + (i % 2), 0.6, 0xd8d0e6, p.x, p.y + 1.5 + (i % 2) * 0.5, p.z); const cap = gm(new THREE.SphereGeometry(1.4 + (i % 2) * 0.4, 9, 5, 0, TAU, 0, Math.PI / 2), (i % 2) ? 0x7cffb0 : 0x9b6bff, p.x, p.y + 3 + (i % 2), p.z, 0.9); shimMeshes.push({ m: cap, baseY: cap.position.y, seed: i, kind: 'pulse' }); solids.push({ x: p.x, z: p.z, r: 0.7 }); ambientEmitters.push({ x: p.x, y: p.y + 2, z: p.z, color: 0x9aff7a, every: 1.3, opts: { n: 3, spread: 2.4, up: 2.4, life: 2 } }); }   // fungal grottoes (outer)
+    // DELVERS' CAMP (rim, toward the jungle causeway)
+    const camp = at(-R * 0.72, 0);
+    for (const [dx, dz] of [[-3, -2], [3, -2], [0, 3]]) { const t = at(-R * 0.72 + dx, dz); bx(3, 0.2, 3, 0x5a4632, t.x, t.y + 0.1, t.z); const roof = new THREE.Mesh(new THREE.ConeGeometry(2.4, 2, 4), lmat(0x7a5a3a)); roof.position.set(t.x, t.y + 1.7, t.z); roof.rotation.y = 0.78; group.add(roof); solids.push({ x: t.x, z: t.z, r: 1.4 }); }
+    const fireM = gm(new THREE.IcosahedronGeometry(0.5, 0), 0xff8a2a, camp.x, camp.y + 0.5, camp.z); shimMeshes.push({ m: fireM, baseY: camp.y + 0.5, seed: camp.x, kind: 'pulse' }); ambientEmitters.push({ x: camp.x, y: camp.y + 0.5, z: camp.z, color: 0xff8a3d, every: 0.5, opts: { n: 3, spread: 1, up: 2.4, life: 1.2 } });
+    const fu = at(-R * 0.72 - 5, -3); bx(2.4, 2.6, 2.2, 0x55585f, fu.x, fu.y + 1.3, fu.z); gm(new THREE.BoxGeometry(1.1, 1.1, 0.2), 0xff7a33, fu.x, fu.y + 0.9, fu.z + 1.12); solids.push({ x: fu.x, z: fu.z, r: 1.5 }); stations.push({ kind: 'furnace', label: "Delvers' Furnace", x: fu.x, z: fu.z, y: fu.y });
+    const an = at(-R * 0.72 - 5, 3); bx(1.2, 1.0, 1.2, 0x6e4a2b, an.x, an.y + 0.5, an.z); bx(1.6, 0.4, 0.5, 0x55585f, an.x, an.y + 1.35, an.z); solids.push({ x: an.x, z: an.z, r: 1.0 }); stations.push({ kind: 'anvil', label: "Delvers' Anvil", x: an.x, z: an.z, y: an.y });
+    const cc = at(-R * 0.72 + 2, -4.5); const cchest = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.9, 0.8), lmat(0x8a6a3a)); cchest.position.set(cc.x, cc.y + 0.45, cc.z); group.add(cchest); stations.push({ kind: 'chest', label: "Delvers' Supply Cache", x: cc.x, z: cc.z, y: cc.y, looted: false, gold: 120, loot: { coal: 6, potion: 2 } });
+    for (let i = 0; i < 4; i++) { const a = i / 4 * TAU, p = at(-R * 0.72 + Math.cos(a) * 6, Math.sin(a) * 6); lampPost(p.x, p.z); }
+    waystone('ws_undercity', 'Undercity Descent', camp.x - 3, camp.z - 6);
+  }
   for (const v of villages) {
     const L = LAYOUT[v.biome] || LAYOUT.grass;
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
@@ -913,6 +966,7 @@ export function createWorld(scene, seed = 1337) {
   }
   waystone('ws_emberdeep', 'Emberdeep Waystone', CAVE.x + 6, CAVE.z + 6);   // a couple of frontier stones away from towns
   waystone('ws_crossroads', 'Crossroads Waystone', 61 * WS, 4 * WS);
+  if (byKey.undercity) buildUndercity(byKey.undercity);   // the deep delve + its Delvers' Camp waystone
 
   // region signatures — one big landmark per region so each reads distinctly from afar
   function buildSignature(reg) {
