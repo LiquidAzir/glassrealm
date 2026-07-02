@@ -1238,7 +1238,7 @@ try {
   G.enterBuilding = (door) => {
     cancelChannel(); clearCombat();
     G.returnPos = { x: door.x, z: door.z, heading: player.state.heading };
-    const info = G.interiors.enter(door.building);
+    const info = G.interiors.enter(door.building, door.biome);
     G.interiorStations = info.stations;
     G.inInterior = true;
     world.group.visible = false;   // stop drawing the whole overworld while indoors
