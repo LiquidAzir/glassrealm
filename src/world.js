@@ -696,6 +696,8 @@ export function createWorld(scene, seed = 1337) {
     const y = height(x, z);
     const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 3.4, 8), lmat(trunk || 0x5c4326)); tr.position.set(x, y + 1.7, z); group.add(tr);
     for (let i = 0; i < 3; i++) { const cv = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6 - i * 0.3, 0), lmat(canopy || 0x3f8f3f)); cv.position.set(x + (i % 2 ? 0.4 : -0.3), y + 3.4 + i * 1.0, z); cv.scale.y = 0.85; group.add(cv); }
+    const bloss = new THREE.MeshBasicMaterial({ color: 0xffe08a });   // warm lantern-blossoms nestled in the boughs — glow on the additive display (static, no per-frame cost)
+    for (const [bx, by, bz] of [[0.5, 3.9, 0.6], [-0.5, 4.5, 0.4], [0.3, 5.3, -0.5], [-0.4, 4.9, 0.6], [0.6, 4.2, -0.4], [0.05, 5.7, 0.2]]) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), bloss); b.position.set(x + bx, y + by, z + bz); group.add(b); }
     solids.push({ x, z, r: 1.4 });
   }
   function brazier(x, z) {                               // volcanic / obsidian — a lit iron fire-basket

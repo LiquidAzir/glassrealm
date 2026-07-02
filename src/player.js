@@ -111,7 +111,10 @@ export function createPlayer(scene, world) {
   // body (the helm/hood stay on the armor group, so they don't tilt with the face).
   const headPivot = new THREE.Group(); headPivot.position.set(0, 1.86, 0); body.add(headPivot);
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), skin); headPivot.add(head);
+  headPivot.add(mkBox(0.44, 0.2, 0.44, dark, 0, 0.2, 0));          // hair/cap — rounds out the silhouette from every angle (helm/hood cover it when armored)
   headPivot.add(mkBox(0.4, 0.12, 0.06, visorMat, 0, 0.04, 0.3));   // facing visor (+z), rides with the head
+  const lensMat = new THREE.MeshBasicMaterial({ color: 0xe4fbff });
+  for (const lx of [0.12, -0.12]) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.055, 0), lensMat); l.position.set(lx, 0.045, 0.315); headPivot.add(l); }   // two bright visor-lenses (the hero's glowing "eyes")
 
   // armor overlay group — rebuilt to match the equipped armor (chest/shoulders/helm/hood)
   const armorGroup = new THREE.Group(); body.add(armorGroup);

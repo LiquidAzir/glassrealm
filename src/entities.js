@@ -20,6 +20,17 @@ const mkCone = (rb, h, m, x, y, z, rx = 0, rz = 0) => { const me = new THREE.Mes
 const mkIco = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(x, y, z); return me; };
 const legAt = (g, x, y, z, w, h, m) => { const p = new THREE.Group(); p.position.set(x, y, z); p.add(mkBox(w, h, w, m, 0, -h / 2, 0)); g.add(p); return p; };   // hip-pivoted leg (swings in the walk cycle)
 const glowMat = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: o != null, opacity: o == null ? 1 : o });   // self-lit (pops on the additive display)
+// PERF: glowing eyes share ONE unit geometry (scaled per-mesh) + a per-colour cached material,
+// so giving every creature eyes costs almost no memory and no per-frame work — just a couple of
+// tiny self-lit meshes that read vividly against the see-through (black=transparent) waveguide.
+const EYE_GEO = new THREE.IcosahedronGeometry(1, 0);
+const _glowCache = {};
+const gmat = (c) => _glowCache[c] || (_glowCache[c] = new THREE.MeshBasicMaterial({ color: c }));
+const eye = (parent, x, y, z, r, m) => { const e = new THREE.Mesh(EYE_GEO, m); e.position.set(x, y, z); e.scale.setScalar(r); parent.add(e); };
+// Two glowing eyes on a beast head that faces +x (eyes flank the snout across z).
+const eyesFwd = (parent, x, y, dz, color, r = 0.06) => { const m = gmat(color); eye(parent, x, y, dz, r, m); eye(parent, x, y, -dz, r, m); };
+// Two glowing eyes on the person rig — added to the HEAD group so they nod + look around with the face (+z is forward).
+const faceEyes = (g, color, r = 0.05, dx = 0.11, fz = 0.28, y = 0.02) => { const m = gmat(color); const h = g.userData.anim.head; eye(h, dx, y, fz, r, m); eye(h, -dx, y, fz, r, m); };
 
 // A proper bipedal person: hip-pivoted legs + shoulder-pivoted arms (with skin hands),
 // a clothed torso, a head, and hair — limb pivots exposed via userData.anim for walking.
@@ -65,6 +76,7 @@ function makeBeast(def) {
   g.add(mkBox(1.5, 0.9, 0.9, mat, 0, 0.95, 0));    // body
   g.add(mkBox(0.7, 0.7, 0.75, mat, 0.9, 0.8, 0));  // head
   g.add(mkBox(0.35, 0.3, 0.55, dark, 1.3, 0.65, 0)); // snout
+  eyesFwd(g, 1.12, 0.94, 0.17, 0xffb347, 0.07);    // glowing eyes
   // four legs on hip pivots (front-left, front-right, back-left, back-right) for a trot
   const legs = [[-0.5, 0.35], [0.5, 0.35], [-0.5, -0.35], [0.5, -0.35]].map(([x, z]) => {
     const p = new THREE.Group(); p.position.set(x, 0.7, z); p.add(mkBox(0.2, 0.72, 0.2, dark, 0, -0.36, 0)); g.add(p); return p;
@@ -76,6 +88,7 @@ function makeBeast(def) {
 
 function makeHumanoid(def) {
   const g = buildPerson({ cloth: def.color, skin: 0xd9a273, hair: 0x2a2330, weaponMat: lmat(0xb9c2cc) });
+  faceEyes(g, 0xff7a4a, 0.045);                                                 // faint glowing eyes
   g.scale.setScalar(def.scale || 1);
   return g;
 }
@@ -115,6 +128,7 @@ function makeCanine(def) {
   g.add(mkBox(0.34, 0.26, 0.32, d, 1.06, 0.96, 0));                            // muzzle
   g.add(mkCone(0.1, 0.24, m, 0.66, 1.42, 0.16)); g.add(mkCone(0.1, 0.24, m, 0.66, 1.42, -0.16));   // ears
   g.add(mkCone(0.16, 0.55, m, -0.82, 1.1, 0, 0, -1.1));                         // tail (raised, back)
+  eyesFwd(g, 0.98, 1.12, 0.13, 0xffcf5a, 0.055);                                // amber predator-eyes
   const legs = [[-0.45, 0.27], [0.45, 0.27], [-0.45, -0.27], [0.45, -0.27]].map(([x, z]) => legAt(g, x, 0.62, z, 0.18, 0.64, d));
   g.userData.anim = { legs, biped: false };
   g.scale.setScalar(def.scale || 1);
@@ -129,6 +143,7 @@ function makePanther(def) {
   g.add(mkBox(0.18, 0.16, 0.16, lmat(0xf0e6c0), 1.12, 0.76, 0));               // pale muzzle
   g.add(mkCone(0.08, 0.18, m, 0.78, 1.06, 0.14)); g.add(mkCone(0.08, 0.18, m, 0.78, 1.06, -0.14));   // ears
   g.add(mkCone(0.12, 0.95, m, -0.92, 0.7, 0, 0, -1.65));                        // long tail
+  eyesFwd(g, 1.02, 0.86, 0.12, 0xcaff5a, 0.05);                                 // slit green cat-eyes
   const legs = [[-0.52, 0.21], [0.52, 0.21], [-0.52, -0.21], [0.52, -0.21]].map(([x, z]) => legAt(g, x, 0.5, z, 0.15, 0.52, m));
   g.userData.anim = { legs, biped: false };
   g.scale.setScalar(def.scale || 1);
@@ -143,6 +158,7 @@ function makeBoarFoe(def) {
   g.add(mkBox(0.64, 0.6, 0.62, m, 0.82, 0.86, 0));                             // head
   g.add(mkCone(0.24, 0.32, d, 1.2, 0.78, 0, 0, -Math.PI / 2));                  // snout (+x)
   g.add(mkCone(0.05, 0.28, w, 1.0, 0.66, 0.18, 0, 0.6)); g.add(mkCone(0.05, 0.28, w, 1.0, 0.66, -0.18, 0, 0.6));   // tusks
+  eyesFwd(g, 1.02, 0.98, 0.16, 0xff5a3a, 0.055);                                // small red eyes
   const legs = [[-0.42, 0.34], [0.42, 0.34], [-0.42, -0.34], [0.42, -0.34]].map(([x, z]) => legAt(g, x, 0.62, z, 0.2, 0.64, d));
   g.userData.anim = { legs, biped: false };
   g.scale.setScalar(def.scale || 1);
@@ -155,6 +171,7 @@ function makeScorpion(def) {
   g.add(mkBox(1.0, 0.38, 0.7, m, 0, 0.5, 0));                                  // abdomen
   g.add(mkBox(0.5, 0.34, 0.5, m, 0.6, 0.5, 0));                                // cephalothorax
   for (const s of [1, -1]) { g.add(mkBox(0.42, 0.14, 0.14, m, 0.92, 0.5, 0.28 * s)); g.add(mkBox(0.24, 0.28, 0.26, m, 1.18, 0.5, 0.34 * s)); }   // pincer arms + claws
+  eyesFwd(g, 0.8, 0.6, 0.13, 0xffb347, 0.045);                                 // beady glowing eyes
   const tail = new THREE.Group(); tail.position.set(-0.5, 0.55, 0); g.add(tail);
   let px = 0, py = 0;
   for (let i = 0; i < 5; i++) { const sz = 0.22 - i * 0.022; tail.add(mkBox(sz, 0.2, sz, m, px, py, 0)); px -= 0.15; py += 0.18; }
@@ -173,6 +190,7 @@ function makeSerpent(def) {
   body.add(mkBox(0.52, 0.44, 0.52, m, 0.96, 1.56, 0));                          // head
   body.add(mkCone(0.18, 0.32, d, 1.24, 1.52, 0, 0, -Math.PI / 2));              // snout
   body.add(mkCone(0.04, 0.2, lmat(0xffffff), 1.08, 1.32, 0.1, 0, 0.5)); body.add(mkCone(0.04, 0.2, lmat(0xffffff), 1.08, 1.32, -0.1, 0, 0.5));   // fangs
+  eyesFwd(body, 1.12, 1.64, 0.13, 0x9bff5a, 0.05);                             // venom-green eyes (sway with the body)
   g.userData.anim = { legs: [], biped: false, sway: body };
   g.scale.setScalar(def.scale || 1);
   return g;
@@ -184,6 +202,7 @@ function makeBat(def) {
   const core = new THREE.Group(); core.position.y = 1.4; g.add(core);
   core.add(mkIco(0.3, m, 0, 0, 0));                                            // body
   core.add(mkCone(0.09, 0.18, d, 0.05, 0.26, 0.12)); core.add(mkCone(0.09, 0.18, d, 0.05, 0.26, -0.12));   // ears
+  eyesFwd(core, 0.24, 0.05, 0.1, 0xff4a3a, 0.045);                            // tiny red eyes
   const wingM = glowMat(def.color, 0.5);
   const mkWing = (s) => { const p = new THREE.Group(); p.add(mkBox(0.55, 0.05, 0.6, wingM, 0, 0, 0.36 * s)); core.add(p); return p; };
   const wings = [mkWing(1), mkWing(-1)];
@@ -199,6 +218,7 @@ function makeRaptor(def) {
   g.add(mkBox(0.32, 0.34, 0.32, m, 0.2, 1.55, 0));                             // head
   g.add(mkCone(0.1, 0.28, beak, 0.44, 1.55, 0, 0, -Math.PI / 2));              // beak
   g.add(mkCone(0.2, 0.6, m, -0.52, 1.0, 0, 0, -1.5));                          // tail feathers
+  eyesFwd(g, 0.34, 1.62, 0.1, 0xffcf5a, 0.045);                                // sharp raptor eyes
   const mkWing = (s) => { const p = new THREE.Group(); p.position.set(0, 1.15, 0); p.add(mkBox(1.0, 0.1, 0.5, m, 0, 0, 0.5 * s)); g.add(p); return p; };
   const wings = [mkWing(1), mkWing(-1)];
   const legs = [legAt(g, 0, 0.7, 0.16, 0.08, 0.7, d), legAt(g, 0, 0.7, -0.16, 0.08, 0.7, d)];
@@ -209,9 +229,10 @@ function makeRaptor(def) {
 
 // Crab — wide shell, eyestalks, two big forward claws, side legs.
 function makeCrab(def) {
-  const g = new THREE.Group(), m = lmat(def.color), d = lmat(0x7a3a2a), eye = lmat(0x201010);
+  const g = new THREE.Group(), m = lmat(def.color), d = lmat(0x7a3a2a), eyeM = gmat(0xffd24a);
   g.add(mkBox(1.1, 0.5, 0.82, m, 0, 0.58, 0));                                 // shell
-  g.add(mkIco(0.1, eye, 0.32, 0.78, 0.22)); g.add(mkIco(0.1, eye, 0.32, 0.78, -0.22));   // eyestalks
+  g.add(mkBox(0.05, 0.22, 0.05, d, 0.32, 0.72, 0.22)); g.add(mkBox(0.05, 0.22, 0.05, d, 0.32, 0.72, -0.22));   // eyestalks
+  g.add(mkIco(0.1, eyeM, 0.32, 0.86, 0.22)); g.add(mkIco(0.1, eyeM, 0.32, 0.86, -0.22));   // glowing eyes atop the stalks
   for (const s of [1, -1]) { g.add(mkBox(0.4, 0.16, 0.16, m, 0.58, 0.5, 0.42 * s)); g.add(mkBox(0.3, 0.36, 0.3, m, 0.88, 0.5, 0.48 * s)); }   // claw arm + claw
   const legs = [[-0.3, 0.52], [0.12, 0.52], [-0.3, -0.52], [0.12, -0.52]].map(([x, z]) => legAt(g, x, 0.46, z, 0.08, 0.46, d));
   g.userData.anim = { legs, biped: false };
@@ -225,6 +246,7 @@ function makeImp(def) {
   const horn = lmat(0x2a1810);
   g.add(mkCone(0.07, 0.24, horn, 0.13, 2.08, 0, 0, -0.5)); g.add(mkCone(0.07, 0.24, horn, -0.13, 2.08, 0, 0, 0.5));   // horns
   g.add(mkCone(0.1, 0.55, lmat(def.color), 0, 0.7, -0.32, -1.4, 0));            // tail
+  faceEyes(g, 0xff6a2a, 0.05, 0.1, 0.27);                                       // fiery little eyes
   g.scale.setScalar((def.scale || 1) * 0.82);
   return g;
 }
@@ -249,6 +271,7 @@ function makeSkeleton(def) {
   const g = buildPerson({ cloth: bone, skin: bone, hair: null, weaponMat: lmat(0xc8ccd2) });
   g.add(mkBox(0.52, 0.5, 0.36, lmat(0xf0ecdd), 0, 1.15, 0.04));                 // ribcage plate
   g.add(mkBox(0.22, 0.12, 0.2, lmat(0xd8d2c2), 0, 1.66, 0.18));                 // jaw
+  faceEyes(g, 0x8fe0ff, 0.05, 0.1, 0.24, 0.04);                                 // cold hollow eye-sockets aglow
   g.scale.setScalar(def.scale || 1);
   return g;
 }
@@ -282,6 +305,7 @@ function makeMyconid(def) {
   const g = buildPerson({ cloth: def.color, skin: 0xe8dcc0, hair: null });
   const cap = new THREE.Mesh(new THREE.ConeGeometry(0.56, 0.5, 7), lmat(def.color)); cap.position.y = 2.12; g.add(cap);   // mushroom cap
   g.add(mkIco(0.07, lmat(0xf2e6cc), 0.18, 2.04, 0.26)); g.add(mkIco(0.06, lmat(0xf2e6cc), -0.15, 2.1, 0.22));   // pale cap spots
+  faceEyes(g, 0xbfff8a, 0.05, 0.1, 0.27);                                                                       // bioluminescent eyes
   g.scale.setScalar(def.scale || 1);
   return g;
 }
@@ -291,6 +315,7 @@ function makeHarpy(def) {
   const g = buildPerson({ cloth: def.color, skin: 0xe6c79a, hair: 0x2a2330 });
   const mkWing = (s) => { const p = new THREE.Group(); p.position.set(0, 1.45, 0.18 * s); p.add(mkBox(0.95, 0.1, 0.5, lmat(def.color), 0, 0, 0.48 * s)); g.add(p); return p; };
   g.userData.anim.wings = [mkWing(1), mkWing(-1)];
+  faceEyes(g, 0xffd24a, 0.045);                                                 // fierce raptor-eyes
   g.scale.setScalar(def.scale || 1);
   return g;
 }
@@ -300,6 +325,7 @@ function makeSiren(def) {
   const g = buildPerson({ cloth: def.color, skin: 0x9ad6c0, hair: 0x2a6a5a });
   for (const s of [1, -1]) g.add(mkCone(0.13, 0.32, lmat(def.color), 0.34 * s, 1.84, -0.08, 0, 1.3 * s));   // fin ears
   g.add(mkBox(0.1, 0.75, 0.5, lmat(def.color), 0, 1.2, -0.26));                 // dorsal fin
+  faceEyes(g, 0x7ae6d6, 0.05, 0.1, 0.27);                                       // luminous deep-sea eyes
   g.scale.setScalar(def.scale || 1);
   return g;
 }
@@ -312,6 +338,7 @@ function makeGoblin(def) {
   const g = buildPerson({ cloth: def.color, skin: 0x6f9a4a, hair: null, weaponMat: lmat(0x6e4a2b) });
   for (const s of [1, -1]) g.add(mkCone(0.08, 0.36, lmat(0x6f9a4a), 0.34 * s, 1.84, -0.04, 0, 1.2 * s));   // pointed ears
   g.userData.anim.armR.add(mkBox(0.2, 0.2, 0.2, lmat(0x6e4a2b), 0, -0.96, 0));                              // club head
+  faceEyes(g, 0xffcf5a, 0.05, 0.1, 0.27);                                                                   // beady amber eyes
   g.scale.setScalar((def.scale || 1) * 0.95);
   return g;
 }
@@ -321,6 +348,7 @@ function makeRogue(def) {
   const g = buildPerson({ cloth: def.color, skin: SKIN[0], hair: null });
   g.add(mkBox(0.44, 0.36, 0.48, lmat(0x2a2330), 0, 1.92, 0));     // hood
   g.add(mkBox(0.32, 0.16, 0.1, lmat(0x14111a), 0, 1.84, 0.27));   // shadowed face
+  faceEyes(g, 0xff4a3a, 0.04, 0.08, 0.34, 0.02);                  // eyes glinting out of the hood-shadow
   g.userData.anim.armR.add(mkBox(0.08, 0.46, 0.12, lmat(0xc8ccd2), 0, -0.7, 0));   // dagger
   g.scale.setScalar(def.scale || 1);
   return g;
@@ -332,6 +360,7 @@ function makePirate(def) {
   g.add(mkBox(0.54, 0.1, 0.5, lmat(0x1a1510), 0, 2.02, 0));       // hat brim
   g.add(mkBox(0.34, 0.2, 0.34, lmat(0x1a1510), 0, 2.14, 0));      // hat crown
   g.add(mkBox(0.7, 0.12, 0.42, lmat(0xb03030), 0, 1.0, 0.02));    // red sash
+  faceEyes(g, 0xffd24a, 0.045);                                   // glinting eyes
   g.scale.setScalar(def.scale || 1);
   return g;
 }
