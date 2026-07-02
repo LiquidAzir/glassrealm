@@ -37,6 +37,8 @@ const BIOMES = {
   obsidian:  { sea: 0x1a0e12, sand: 0x3a2a2e, low: 0x22181f, low2: 0x2a1e26, high: 0x43303a, peak: 0xff7a2a, fol: [0x6a3a2a, 0x8a4a2a], trunk: 0x2a1a1a },
   umbral:    { sea: 0x140a26, sand: 0x3a2f4a, low: 0x2a2440, low2: 0x342c52, high: 0x4a3f66, peak: 0xc8a6ff, fol: [0x9a6abf, 0xb88ad6], trunk: 0x6a5f76 },
   saltmarsh: { sea: 0x1ab0c0, sand: 0xf4e2e8, low: 0xf08fb8, low2: 0xe07fa8, high: 0xd86fa0, peak: 0xffe6f4, fol: [0x4fae84, 0x6ec98a], trunk: 0x8a6a4a },
+  // Capital — manicured royal green, pale stone highs, gilded feel
+  royal:     { sea: 0x18406a, sand: 0xe8dcc0, low: 0x57ab6b, low2: 0x479560, high: 0x9aa6c2, peak: 0xf0e8ff, fol: [0x3f9d5a, 0x5fc77d], trunk: 0x6e4a2b },
 };
 
 const REGIONS = [
@@ -66,6 +68,8 @@ const REGIONS = [
   { key: 'cindughol', x: 240,  z: 156,  r: 34, biome: 'obsidian',  village: { name: 'Emberglass', x: 226, z: 170, hut: [0x2c2433, 0xff6a3a] },                       peak: { x: 240, z: 150, r: 14, h: 12 }, tree: 'cactus', nTree: 8, nBush: 0, nRock: 22, nFish: 2, ore: [['iron', 5], ['coal', 5]] },
   { key: 'sablon',    x: -256, z: 2,    r: 40, biome: 'umbral',    village: { name: 'Greywarden Rest',  x: -256, z: 2,    hut: [0x3a2f4a, 0xb88ad6] }, tree: 'pine',   nTree: 30, nBush: 6, nRock: 12, nFish: 3, ore: [['iron', 4], ['coal', 3], ['gem_rock', 2]] },
   { key: 'mirelythe', x: -150, z: 222,  r: 36, biome: 'saltmarsh', village: { name: 'Rosbrine',         x: -150, z: 222,  hut: [0xf4e2e8, 0xf08fb8] }, tree: 'palm',   nTree: 12, nBush: 8, nRock: 6,  nFish: 8, ore: [['copper', 4], ['iron', 3]] },
+  // --- Capital: Crownhaven — the seat of the crown on its own grand southern isle (a large castle + royal town) ---
+  { key: 'crownhaven', x: 0, z: 262, r: 56, biome: 'royal', village: { name: 'Crownhaven', x: 0, z: 262, hut: [0xcdd2dc, 0x6a4a9a], smithy: true, castle: true }, tree: 'pine', nTree: 26, nBush: 12, nRock: 10, nFish: 6, ore: [['iron', 4]] },
 ];
 // Region links with a transition TYPE: 'causeway' = rustic plank land bridge (the classic),
 // 'isthmus' = a wide natural land neck where the islands nearly merge (clean, no built deck),
@@ -90,6 +94,8 @@ const BRIDGE_LINKS = [
   ['sablon', 'highland', 'tunnel'], ['sablon', 'sporevale', 'isthmus'],
   ['aurorath', 'amberfell', 'iceshelf'], ['aurorath', 'glade', 'gate'], ['aurorath', 'sablon', 'gate'],
   ['mirelythe', 'cinderbreak', 'causeway'], ['mirelythe', 'saltcrest', 'ferry'], ['mirelythe', 'shardspire', 'pier'],
+  // Capital links — a grand stone span from the harbour, a causeway from the cinder isle
+  ['crownhaven', 'saltcrest', 'span'], ['crownhaven', 'cinderbreak', 'causeway'],
 ];
 // One signature landmark per region (offsets are raw, scaled by WS at build time).
 const REGION_SIG = {
@@ -825,6 +831,7 @@ export function createWorld(scene, seed = 1337) {
     obsidian: { bldR: 15, svcR: 7.6, lampN: 5, plaza: () => brazier,         farmA: 2.20 },
     umbral:   { bldR: 14, svcR: 7.2, lampN: 5, plaza: () => totem,           farmA: 1.50 },
     saltmarsh:{ bldR: 15, svcR: 7.6, lampN: 5, plaza: () => fountain,        farmA: 0.70 },
+    royal:    { bldR: 27, svcR: 18,  lampN: 10, plaza: () => statue,          farmA: 1.30 },
   };
   const PLAZA_ARG = {                                  // biome-specific centerpiece tints (water / canopy / crystal / totem)
     desert: [0x3fb8d0], coast: [0x2fb8e0], lagoon: [0x6fe6c8], saltmarsh: [0xf08fb8],
@@ -832,13 +839,55 @@ export function createWorld(scene, seed = 1337) {
     fae: [0x8af0ff], crystal: [0x9ad8ff],
     swamp: [0x6a4a2a, 0x9affb0], umbral: [0x3a2f4a, 0xb88ad6],
   };
+  // The capital's great castle: a crenellated curtain wall + corner towers, a tall
+  // central keep, a gatehouse with the grand door, and royal banners. The single door
+  // leads into the multi-room castle interior (throne room, hall, barracks, library, treasury).
+  function castle(cx, cz) {
+    const y0 = height(cx, cz);
+    const stone = lmat(0xb9bccb), stone2 = lmat(0x9aa0b0), slate = lmat(0x5a5f72), roofc = lmat(0x6a3f8a), bannerCol = lmat(0x7a2f9a);
+    const box = (w, h, d, m, x, y, z, ry) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(cx + x, y0 + y, cz + z); if (ry) me.rotation.y = ry; group.add(me); return me; };
+    const cyl = (rt, rb, h, m, x, y, z, seg = 9) => { const me = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m); me.position.set(cx + x, y0 + y, cz + z); group.add(me); return me; };
+    const cone = (r, h, m, x, y, z, seg = 9) => { const me = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), m); me.position.set(cx + x, y0 + y, cz + z); group.add(me); return me; };
+    const glowb = (geo, c, x, y, z) => { const me = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: c })); me.position.set(cx + x, y0 + y, cz + z); group.add(me); return me; };
+    const crenel = (x0, z0, x1, z1, y) => { const n = Math.max(2, Math.round(Math.hypot(x1 - x0, z1 - z0) / 1.6)); for (let i = 0; i <= n; i++) { const t = i / n; box(0.7, 0.9, 0.7, stone2, x0 + (x1 - x0) * t, y, z0 + (z1 - z0) * t); } };
+    const wallSolid = (x0, z0, x1, z1) => { const n = Math.max(2, Math.round(Math.hypot(x1 - x0, z1 - z0) / 2.2)); for (let i = 0; i <= n; i++) { const t = i / n; solids.push({ x: cx + x0 + (x1 - x0) * t, z: cz + z0 + (z1 - z0) * t, r: 1.3 }); } };
+    const HW = 11, WH = 5, gateGap = 4.5;
+    // curtain walls — the north (-z, facing arrivals) is split for the gate; the rest solid
+    box(1.0, WH, HW * 2, stone, -HW, WH / 2, 0); box(1.0, WH, HW * 2, stone, HW, WH / 2, 0);   // west + east
+    box(HW * 2, WH, 1.0, stone, 0, WH / 2, HW);                                                // south (back)
+    const halfSeg = (HW * 2 - gateGap) / 2, segC = gateGap / 2 + halfSeg / 2;
+    box(halfSeg, WH, 1.0, stone, -segC, WH / 2, -HW); box(halfSeg, WH, 1.0, stone, segC, WH / 2, -HW);   // north (front, split)
+    crenel(-HW, HW, HW, HW, WH + 0.35); crenel(-HW, -HW, -HW, HW, WH + 0.35); crenel(HW, -HW, HW, HW, WH + 0.35);
+    wallSolid(-HW, HW, HW, HW); wallSolid(-HW, -HW, -HW, HW); wallSolid(HW, -HW, HW, HW);
+    wallSolid(-HW, -HW, -(gateGap / 2), -HW); wallSolid(gateGap / 2, -HW, HW, -HW);
+    // four corner towers with spire roofs + pennants
+    for (const [tx, tz] of [[-HW, -HW], [HW, -HW], [-HW, HW], [HW, HW]]) {
+      cyl(2.0, 2.2, WH + 3.5, stone, tx, (WH + 3.5) / 2, tz); cone(2.6, 3.2, roofc, tx, WH + 3.5 + 1.6, tz);
+      box(0.12, 1.4, 0.12, slate, tx, WH + 3.5 + 3.6, tz); box(1.1, 0.7, 0.06, bannerCol, tx + 0.6, WH + 3.5 + 3.5, tz);
+      solids.push({ x: cx + tx, z: cz + tz, r: 2.4 });
+    }
+    // central keep (back) with flanking turrets + a great banner + gilded crest
+    const kz = 3.5, KW = 6.5, KH = 12.5;
+    box(KW, KH, KW, stone, 0, KH / 2, kz); crenel(-KW / 2, kz - KW / 2, KW / 2, kz - KW / 2, KH + 0.35); crenel(-KW / 2, kz + KW / 2, KW / 2, kz + KW / 2, KH + 0.35);
+    for (const s of [-1, 1]) { cyl(1.3, 1.4, KH + 2, stone, s * (KW / 2), (KH + 2) / 2, kz); cone(1.7, 2.2, roofc, s * (KW / 2), KH + 2 + 1.1, kz); }
+    box(2.4, 4.2, 0.16, bannerCol, 0, KH * 0.55, kz - KW / 2 - 0.1); glowb(new THREE.IcosahedronGeometry(0.5, 0), 0xffd45f, 0, KH * 0.64, kz - KW / 2 - 0.28);
+    solids.push({ x: cx, z: cz + kz, r: 4.8 });
+    // gatehouse (front) — two towers flanking the gate + a lintel + a shadowed doorway recess
+    for (const s of [-1, 1]) { cyl(1.6, 1.8, WH + 2.6, stone, s * (gateGap / 2 + 1.6), (WH + 2.6) / 2, -HW); cone(2.0, 2.4, roofc, s * (gateGap / 2 + 1.6), WH + 2.6 + 1.2, -HW); box(0.9, 0.6, 0.05, bannerCol, s * (gateGap / 2 + 1.6), WH + 3.6, -HW - 0.4); solids.push({ x: cx + s * (gateGap / 2 + 1.6), z: cz - HW, r: 1.9 }); }
+    box(gateGap + 3.4, 1.5, 1.6, stone, 0, WH + 0.55, -HW); box(gateGap, 3.6, 0.3, slate, 0, 1.8, -HW - 0.2);
+    // a banner-lined approach to the gate + the grand door itself
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { box(0.14, 2.6, 0.14, slate, s * 3.4, 1.3, -HW - 3 - i * 3); box(0.9, 1.3, 0.05, bannerCol, s * 3.4 + (s < 0 ? 0.5 : -0.5), 2.3, -HW - 3 - i * 3); }
+    const dz = -HW - 2.8;
+    stations.push({ kind: 'door', label: 'Enter Crownhaven Castle', x: cx, z: cz + dz, y: height(cx, cz + dz), building: 'castle', biome: 'royal' });
+  }
   for (const v of villages) {
     const L = LAYOUT[v.biome] || LAYOUT.grass;
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
-    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * L.bldR, v.z + Math.sin(a) * L.bldR, v.x, v.z, types[i], v.hut, v.biome); }
-    // plaza centerpiece (biome-specific) in the centre
-    const pf = L.plaza(); const args = PLAZA_ARG[v.biome];
-    if (args) pf(v.x, v.z, ...args); else pf(v.x, v.z);
+    const bldR = v.castle ? 27 : L.bldR, svcR = v.castle ? 18 : L.svcR, lampN = v.castle ? 10 : L.lampN;
+    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * bldR, v.z + Math.sin(a) * bldR, v.x, v.z, types[i], v.hut, v.biome); }
+    // centrepiece: the great castle for the capital, else the biome's plaza feature
+    if (v.castle) castle(v.x, v.z);
+    else { const pf = L.plaza(); const args = PLAZA_ARG[v.biome]; if (args) pf(v.x, v.z, ...args); else pf(v.x, v.z); }
     // service stations spread evenly on an inner ring so each sits in its own clear sector (easy to navigate)
     const svc = [
       (x, z) => fire(x, z),
@@ -850,12 +899,12 @@ export function createWorld(scene, seed = 1337) {
       (x, z) => { signpost(x, z, 0xffd45f); stations.push({ kind: 'ledger', label: 'Merchants’ Guild', x, z, y: height(x, z) }); },
       (x, z) => { signpost(x, z, 0x9bf2ff); stations.push({ kind: 'jobboard', label: 'Job Board', x, z, y: height(x, z) }); },
     ];
-    svc.forEach((fn, i) => { const a = (i / svc.length) * TAU + 0.3; fn(v.x + Math.cos(a) * L.svcR, v.z + Math.sin(a) * L.svcR); });
+    svc.forEach((fn, i) => { const a = (i / svc.length) * TAU + 0.3; fn(v.x + Math.cos(a) * svcR, v.z + Math.sin(a) * svcR); });
     // lamps sit between the service ring and the building doors (derived so they never clip)
-    const lampR = L.svcR + (L.bldR - 3.8 - L.svcR) * 0.5;
-    for (let i = 0; i < L.lampN; i++) { const a = (i / L.lampN) * TAU + 0.78; lampPost(v.x + Math.cos(a) * lampR, v.z + Math.sin(a) * lampR); }
+    const lampR = svcR + (bldR - 3.8 - svcR) * 0.5;
+    for (let i = 0; i < lampN; i++) { const a = (i / lampN) * TAU + 0.78; lampPost(v.x + Math.cos(a) * lampR, v.z + Math.sin(a) * lampR); }
     // farm garden off to the biome's own side (radius scales with the building ring so it never clips a building)
-    const fa = L.farmA, fr = L.bldR + 3.5;
+    const fa = L.farmA, fr = bldR + 3.5;
     const px = Math.cos(fa), pz = Math.sin(fa), rx = -Math.sin(fa), rz = Math.cos(fa);
     plot(v.x + px * fr + rx * 1.0, v.z + pz * fr + rz * 1.0);
     plot(v.x + px * fr + rx * 2.4, v.z + pz * fr + rz * 2.4);

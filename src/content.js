@@ -192,6 +192,7 @@ export const ITEMS = {
   silver_amulet: { name: 'Silver Amulet', icon: '📿', type: 'amulet', bonus: { magic: 4 },            desc: 'Silver set with emerald. +4 magic.' },
   gold_ring:     { name: 'Gold Ring',     icon: '💍', type: 'ring',   bonus: { melee: 5, def: 2 },    desc: 'Gold set with ruby. +5 melee, +2 defence.' },
   gold_amulet:   { name: 'Gold Amulet',   icon: '📿', type: 'amulet', bonus: { melee: 4, maxhp: 15 }, desc: 'A heavy gold pendant. +4 melee, +15 max HP.' },
+  crown_signet:  { name: 'Crown Signet',  icon: '💠', type: 'amulet', bonus: { melee: 6, def: 6, maxhp: 20 }, desc: "The King's own seal, given to the Champion of Crownhaven. +6 melee, +6 defence, +20 max HP." },
 
   // ---- Hearty meals (a cooking activity — combine ingredients for big heals, see MEALS) ----
   fish_stew:       { name: 'Fisher’s Stew',   icon: '🍲', type: 'consumable', heal: 45,  desc: 'A warming stew. Restores 45 HP.' },
@@ -665,6 +666,13 @@ export const WANDERERS = [
   { kind: 'wander', name: 'Bard',       color: 0x9a6ab0, home: { x: -4, z: -11 }, radius: 7,  speed: 1.1 },
   { kind: 'wander', name: 'Fisherwife', color: 0x5a8a9a, home: { x: 80, z: 182 }, radius: 8,  speed: 1.4 },
   { kind: 'wander', name: 'Stevedore',  color: 0x6a5a4a, home: { x: 92, z: 188 }, radius: 7,  speed: 1.5 },
+  // --- Crownhaven, the capital: two guard squads patrolling the castle plaza + royal townsfolk ---
+  { kind: 'squad',  name: 'Crown Guard', color: 0x9aa0c8, helm: 0xffd45f, count: 4, speed: 2.2, loop: [{ x: -12, z: 250 }, { x: 12, z: 250 }, { x: 12, z: 274 }, { x: -12, z: 274 }] },
+  { kind: 'squad',  name: 'Castle Watch', color: 0x8a93ad, helm: 0xcdd6e0, count: 3, speed: 2.0, loop: [{ x: -18, z: 262 }, { x: 0, z: 248 }, { x: 18, z: 262 }, { x: 0, z: 276 }] },
+  { kind: 'wander', name: 'Herald',    color: 0xffd45f, home: { x: -10, z: 250 }, radius: 9, speed: 1.5 },
+  { kind: 'wander', name: 'Courtier',  color: 0x9b6bff, home: { x: 12,  z: 268 }, radius: 8, speed: 1.3 },
+  { kind: 'wander', name: 'Noble',     color: 0xc6a8ff, home: { x: -14, z: 272 }, radius: 8, speed: 1.2 },
+  { kind: 'wander', name: 'Handmaid',  color: 0xe0b0d0, home: { x: 14,  z: 252 }, radius: 8, speed: 1.4 },
 ];
 
 // Tameable animals → companion pets. One pet follows you at a time and grants its perk
@@ -1065,6 +1073,9 @@ export const AUTO_MODES = [
 ];
 
 export const ENEMY_SPAWNS = [
+  // Crownhaven outskirts — bandits + brigands harrying the capital roads (royal questline targets)
+  { enemy: 'bandit', x: 0, z: 220 }, { enemy: 'bandit', x: 28, z: 232 }, { enemy: 'bandit', x: -28, z: 232 }, { enemy: 'bandit', x: 22, z: 300 }, { enemy: 'bandit', x: -20, z: 300 },
+  { enemy: 'brigand', x: 36, z: 262 }, { enemy: 'brigand', x: -36, z: 262 }, { enemy: 'brigand', x: 0, z: 306 }, { enemy: 'brigand', x: 26, z: 226 }, { enemy: 'brigand', x: -26, z: 296 }, { enemy: 'brigand', x: 34, z: 292 },
   { enemy: 'boar', x: -22, z: 4 }, { enemy: 'boar', x: -28, z: 14 }, { enemy: 'boar', x: 24, z: 10 }, { enemy: 'boar', x: -10, z: 26 },
   { enemy: 'wolf', x: 70, z: 18 }, { enemy: 'wolf', x: 88, z: -8 }, { enemy: 'wolf', x: 60, z: -6 },
   { enemy: 'bandit', x: 120, z: 26 }, { enemy: 'bandit', x: 136, z: 8 }, { enemy: 'bandit', x: 104, z: 32 },
@@ -1186,6 +1197,25 @@ export const QUESTS = {
     desc: 'Cull the wild boars threatening the village.',
     objectives: [{ id: 'boar', type: 'kill', enemy: 'boar', count: 2 }],
     rewards: { xp: { combat: 160 }, items: { pelt: 2, gold: 40 } },
+  },
+  // --- Crownhaven: the royal questline (given inside the castle by the King + Steward) ---
+  q_crown1: {
+    name: 'By Royal Decree', giver: 'king', startsAvailable: true,
+    desc: 'King Aldemar bids you cull the bandits harrying the roads to Crownhaven.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'bandit', count: 4 }],
+    rewards: { xp: { combat: 400 }, items: { gold: 200, gold_ring: 1 } },
+  },
+  q_crown2: {
+    name: "The Crown's Coffers", giver: 'steward', requires: 'q_crown1',
+    desc: 'Bring three Gold Bars to Steward Perrin for the royal mint.',
+    objectives: [{ id: 'g', type: 'have', item: 'gold_bar', count: 3 }],
+    rewards: { xp: { smithing: 320 }, items: { gold: 320 } },
+  },
+  q_crown3: {
+    name: 'Champion of Crownhaven', saga: true, giver: 'king', requires: 'q_crown2',
+    desc: 'Break the brigand host gathering beyond the capital walls and earn the crown’s signet.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'brigand', count: 6 }],
+    rewards: { xp: { combat: 700, defence: 220 }, items: { gold: 500, crown_signet: 1 } },
   },
   q_mine: {
     name: 'Coal for the Forge', giver: 'miner', startsAvailable: true,
@@ -1538,6 +1568,60 @@ function questGiver(name, qid, cfg) {
 }
 
 export const DIALOGUE = {
+  // --- Crownhaven castle court (spoken to via interior 'talk' stations) ---
+  king: {
+    root: (G) => {
+      const s1 = G.quests.status('q_crown1');
+      if (s1 === 'available') return node('King Aldemar',
+        'So — the wanderer whose deeds echo even to my hall. Crownhaven welcomes you. But bandits harry the roads to my gates. Thin them, and prove your worth to the crown.',
+        [{ label: 'It will be done, your Majesty.', action: (g) => g.quests.accept('q_crown1'), to: 'accept1' }, { label: 'Tell me of Crownhaven.', to: 'lore' }, end('Another time.')]);
+      if (s1 === 'active') {
+        if (G.quests.isReady('q_crown1')) return node('King Aldemar', 'Word of your sword reaches me before you do. My roads breathe easier. Take this, with the crown’s thanks.',
+          [{ label: 'Honoured, Majesty.', action: (g) => g.quests.complete('q_crown1'), to: 'done1' }]);
+        return node('King Aldemar', 'The bandits still trouble my roads. Return when they are dealt with.', [end('At once.')]);
+      }
+      const s2 = G.quests.status('q_crown2'), s3 = G.quests.status('q_crown3');
+      if (s2 === 'complete' && s3 === 'available') return node('King Aldemar', 'You have served faithfully. One trial remains — become Crownhaven’s champion. Break the brigand host gathering beyond my walls.',
+        [{ label: 'I accept the trial.', action: (g) => g.quests.accept('q_crown3'), to: 'accept3' }, end('Soon.')]);
+      if (s3 === 'active') {
+        if (G.quests.isReady('q_crown3')) return node('King Aldemar', 'The host is broken and the realm secure. Kneel… and rise, Champion of Crownhaven. Wear my signet with pride.',
+          [{ label: 'I am honoured, Majesty.', action: (g) => g.quests.complete('q_crown3'), to: 'done3' }]);
+        return node('King Aldemar', 'The brigand host still gathers beyond the walls. Return a champion.', [end('I will return.')]);
+      }
+      if (s3 === 'complete') return node('King Aldemar', 'Champion of Crownhaven — the realm is yours to walk freely. The crown remembers its friends.', [{ label: 'Tell me of Crownhaven.', to: 'lore' }, end('Farewell, Majesty.')]);
+      if (s1 === 'complete') return node('King Aldemar', 'A blade the crown can trust. My Steward has work for you yet — seek him in the hall.', [{ label: 'Tell me of Crownhaven.', to: 'lore' }, end('Farewell.')]);
+      return node('King Aldemar', 'Serve the crown well, and Crownhaven will remember you.', [{ label: 'Tell me of Crownhaven.', to: 'lore' }, end('Farewell.')]);
+    },
+    accept1: node('King Aldemar', 'Good. My guards will speak well of you. Ride out and cull the bandits.', [end('At once.')]),
+    done1: node('King Aldemar', 'Now seek my Steward here in the hall — the coffers have need of you.', [end('I will.')]),
+    accept3: node('King Aldemar', 'Then go. Return a champion, or not at all.', [end('I will.')]),
+    done3: node('King Aldemar', 'Rise, Champion. Crownhaven honours you — today and always.', [end('Thank you, Majesty.')]),
+    lore: node('King Aldemar', 'Crownhaven has stood since the first tides — the last seat of the old crown. While hearth-fires burn in the far isles, here the banners still fly. Help me keep them flying.', [end('Inspiring.')]),
+  },
+  steward: {
+    root: (G) => {
+      const s2 = G.quests.status('q_crown2');
+      if (s2 === 'available') return node('Steward Perrin', 'Ah — the King’s new blade. The royal coffers run low on fine metal; the mint needs Gold Bars. Bring me three, and the crown will reward you.',
+        [{ label: "I'll bring the gold.", action: (g) => g.quests.accept('q_crown2'), to: 'accept2' }, { label: 'Where do I find gold bars?', to: 'hint' }, end('Later.')]);
+      if (s2 === 'active') {
+        if (G.inventory.count('gold_bar') >= 3) return node('Steward Perrin', 'Three Gold Bars, and finely smelted. The mint thanks you — as does the crown.',
+          [{ label: 'Hand over 3 Gold Bars.', action: (g) => g.quests.complete('q_crown2'), to: 'done2' }]);
+        return node('Steward Perrin', `The mint still wants ${3 - G.inventory.count('gold_bar')} more Gold Bars. Mine gold ore and smelt it at a furnace.`, [end('On it.')]);
+      }
+      if (s2 === 'complete') return node('Steward Perrin', 'The coffers are full and the realm prospers. The King will want to see you — one last trial awaits.', [end('I’ll seek him.')]);
+      return node('Steward Perrin', 'Prove yourself to the King first, then the coffers may have work for you.', [{ label: 'What do you do here?', to: 'role' }, end('Farewell.')]);
+    },
+    accept2: node('Steward Perrin', 'Three Gold Bars. The treasury is through the east wing when you’re ready.', [end('Understood.')]),
+    done2: node('Steward Perrin', 'Deposited and counted. Now speak with the King — he has a final task for one so proven.', [end('I will.')]),
+    hint: node('Steward Perrin', 'Gold ore lies in the deeper mines — Stormhold and the Red Mesa. Smelt it at any furnace into bars.', [end('Thank you.')]),
+    role: node('Steward Perrin', 'I keep the King’s hall, his ledgers, and his patience. All three run thin some days.', [end('Ha.')]),
+  },
+  courtmage: {
+    root: () => node('Court Mage Sabelle', 'The crown’s enchantments are mine to keep. Bind runes at my circle if you’ve the essence — the arcane serves those who serve the realm.',
+      [{ label: 'What magic guards Crownhaven?', to: 'lore' }, { label: 'Any wisdom for me?', to: 'wisdom' }, end('Farewell.')]),
+    lore: node('Court Mage Sabelle', 'Wards older than the walls. The first crown was forged with starlight and salt — its light still hums beneath these stones. I keep it lit.', [end('Fascinating.')]),
+    wisdom: node('Court Mage Sabelle', 'Power that stays small and chooses to serve outlasts any throne. Remember it.', [end('I will.')]),
+  },
   elder: {
     root: (G) => {
       const st = G.quests.status('q_wood');
@@ -2293,6 +2377,10 @@ export const PRISONER_LORE = "My name's Wrenna. I took bread, yes — for the do
 // Generic voices for the ambient WANDERERS (keyed by their content.js `name`).
 export const WANDER_VOICE = {
   Villager: { day: ["Fine day for it, isn't it?", "Heard the elder's looking for help again.", "Mind the boars past the treeline.", "Off to the market, me."], night: ["Best be getting home.", "Dark comes quick this time of year.", "Lamps lit. All's well.", "Quiet night. I'll take it."], any: ["Keeper, is it? We're glad of you."] },
+  Herald:   { day: ["Hear ye — the King holds court in the great hall!", "Make way, make way for the crown's business.", "Petitions to the throne are heard till dusk."], night: ["The gates are barred till dawn.", "Even a herald's voice needs rest."], any: ["You seek an audience? Mind your manners in the hall."] },
+  Courtier: { day: ["The court whispers of a new champion. Could it be you?", "One does not simply stroll into the throne room… well, you did.", "The Steward frets over the coffers again."], night: ["The candles gutter low in the hall.", "Court intrigue never sleeps, alas."], any: ["Do try not to embarrass yourself before His Majesty."] },
+  Noble:    { day: ["Crownhaven is the only civilised isle, frankly.", "One's estate simply doesn't run itself.", "The King's taste in banners is impeccable."], night: ["A nightcap in the hall, I think.", "The stars are so much finer over the capital."], any: ["Ah — new blood at court. How diverting."] },
+  Handmaid: { day: ["The hall's to be spotless before the King wakes.", "Fresh rushes for the throne room, quick now.", "Mind the mud — this floor was just swept."], night: ["The braziers want banking for the night.", "Long day in the great hall. Long every day."], any: ["Lost, are you? The throne's straight up the carpet."] },
   Monk: { day: ["Peace finds those who walk slowly.", "The hearth is a kind of prayer.", "Every footfall, a small devotion."], night: ["I keep the night vigil.", "Stars are the elder's candles.", "Stillness teaches what noise cannot."], any: ["Be well, traveller."] },
   Merchant: { day: ["Wares from three isles, fair prices!", "Caravan was late again. Bandits, likely.", "A copper saved is a copper earned."], night: ["Counting the day's take.", "Roads aren't safe after dark.", "Rest the feet, ready the cart."], any: ["Buy low, sell true — that's the trade."] },
   Dockhand: { day: ["Crates won't haul themselves.", "Tide's good for unloading.", "Salt gets in everything out here."], night: ["Last barrel's stowed. Done in.", "Fog's rolling in off the water.", "Watch the planks — they're slick."], any: ["Mind your step on the pier."] },

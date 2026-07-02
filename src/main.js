@@ -427,6 +427,14 @@ try {
     }
     G.dialogue.openNode({ speaker, text, choices }, () => setMode(G.inInterior ? 'interior' : 'world'));
   };
+  // Talk to a fixed interior figure (the King, Steward, Court Mage) via a 'talk' station —
+  // opens their full dialogue tree (with quests), then drops back into the room.
+  G.talkToStation = (s) => {
+    if (!s.dialogue) return;
+    setMode('dialogue'); G.ui.hidePrompt();
+    if (s.npcKey) { G.quests.notifyTalk(s.npcKey); checkQuestReady(); }
+    G.dialogue.open(s.dialogue, () => { if (G.pendingShop) { G.pendingShop = false; G.openShop(); } else setMode(G.inInterior ? 'interior' : 'world'); });
+  };
 
   const ORE_ITEM = { copper: 'copper_ore', iron: 'iron_ore', coal: 'coal', mithril: 'mithril_ore', essence: 'rune_essence', silver: 'silver_ore', gold: 'gold_ore', adamant: 'adamant_ore', runite: 'runite_ore' };
   const ORE_XP = { copper: 18, iron: 26, coal: 16, mithril: 60, gem_rock: 40, essence: 35, silver: 40, gold: 65, adamant: 95, runite: 125 };
@@ -554,6 +562,7 @@ try {
     } else if (s.kind === 'shop') { G.openShop(); return;
     } else if (s.kind === 'tavern') { G.openTavern(); return;
     } else if (s.kind === 'patron') { G.ui.toast(PATRON_LINES[Math.floor(Math.random() * PATRON_LINES.length)], '', 3400); G.audio.sfx('ui'); return;
+    } else if (s.kind === 'talk') { G.talkToStation(s); return;
     } else if (s.kind === 'ledger') { G.openBusiness(); return;
     } else if (s.kind === 'jobboard') { G.openJobs(); return;
     }
@@ -1316,7 +1325,7 @@ try {
   };
 
   // ---------- enter / exit buildings ----------
-  const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge' };
+  const BUILDING_NAME = { home: 'Home', store: 'General Store', bank: 'Bank', workshop: 'Workshop', tavern: 'Tavern', forge: 'Forge', castle: 'Crownhaven Castle' };
   G.enterBuilding = (door) => {
     cancelChannel(); clearCombat();
     G.returnPos = { x: door.x, z: door.z, heading: player.state.heading };

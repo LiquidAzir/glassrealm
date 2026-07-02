@@ -44,6 +44,7 @@ const INT_PAL = {
   obsidian: { floor: 0x3a2a2a, wall: 0x4a3a3a, beam: 0x2a1a1a, rug: 0x7a2a2a, lamp: 0xff6a3a },
   umbral:   { floor: 0x3a3248, wall: 0x5a4a6a, beam: 0x282038, rug: 0x4a3a6a, lamp: 0xb08adf },
   saltmarsh:{ floor: 0x8a6a6a, wall: 0xe8c0c8, beam: 0x5a4a4a, rug: 0xd07a8a, lamp: 0xf08fb8 },
+  royal:    { floor: 0x8a7048, wall: 0xcdc2a4, beam: 0x5a4632, rug: 0x8a2438, lamp: 0xffdf9a },
 };
 const PAL = (b) => INT_PAL[b] || INT_PAL.grass;
 
@@ -150,17 +151,80 @@ export function createInteriors(scene) {
     cache[type + '|' + biome] = { group: g, stations, solids, lamp: pal.lamp };
   }
 
+  // The capital's grand castle interior — one large multi-room hall: a throne room with
+  // the crowned King (north), a great feast hall (centre), a barracks/armoury (west wing),
+  // a library with the court mage (east wing), and the royal treasury (behind). Internal
+  // partition walls + wide doorways connect the rooms; the player roams one big bounds.
+  function buildCastle(biome) {
+    const g = new THREE.Group(); root.add(g); g.visible = false;
+    const stations = [], solids = [];
+    const P = { floor: mat(0x8a7048), wall: mat(0xcdc2a4), beam: mat(0x5a4632), rug: mat(0x8a2438), stone: mat(0x9aa0b0), robe: mat(0x6a2f9a) };
+    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const cyl = (rt, rb, h, m, x, y, z, s = 8) => { const me = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, s), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
+    const wallSolids = (x0, z0, x1, z1) => { const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 2)); for (let i = 0; i <= n; i++) { const t = i / n; solid(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.2); } };
+    const st = (o) => stations.push(Object.assign({ y: FY }, o, { x: IX + o.x, z: IZ + o.z }));
+    const person = (x, z, color, hair = 0x3a2a20) => { const cl = mat(color); box(0.2, 0.7, 0.2, M.dark, x - 0.16, 0.35, z); box(0.2, 0.7, 0.2, M.dark, x + 0.16, 0.35, z); box(0.64, 0.78, 0.4, cl, x, 1.1, z); box(0.18, 0.56, 0.2, cl, x - 0.44, 1.18, z); box(0.16, 0.16, 0.16, M.skin, x - 0.44, 0.84, z); box(0.18, 0.56, 0.2, cl, x + 0.44, 1.18, z); box(0.16, 0.16, 0.16, M.skin, x + 0.44, 0.84, z); ico(0.3, M.skin, x, 1.75, z); box(0.42, 0.18, 0.42, mat(hair), x, 1.95, z); solid(x, z, 0.8); };
+    const banner = (x, z) => { box(0.14, 3.2, 0.02, P.stone, x, 4.4, z); box(1.1, 2.6, 0.08, P.robe, x, 3.4, z + 0.06); ico(0.22, M.gold, x, 4.7, z); };
+    const brazier = (x, z) => { cyl(0.4, 0.5, 0.9, M.metal, x, 0.45, z); ico(0.35, M.fire, x, 1.1, z); solid(x, z, 0.5); };
+    const HX = 22, HZ = 18, WH = 6.5;
+    // shell (south wall split for the entry)
+    box(HX * 2, 0.3, HZ * 2, P.floor, 0, 0, 0);
+    box(HX * 2, WH, 0.5, P.wall, 0, WH / 2, -HZ); box(0.5, WH, HZ * 2, P.wall, -HX, WH / 2, 0); box(0.5, WH, HZ * 2, P.wall, HX, WH / 2, 0);
+    const dg = 4, sseg = (HX * 2 - dg) / 2;
+    box(sseg, WH, 0.5, P.wall, -(dg / 2 + sseg / 2), WH / 2, HZ); box(sseg, WH, 0.5, P.wall, (dg / 2 + sseg / 2), WH / 2, HZ); box(dg + 1.4, 1.5, 0.5, P.wall, 0, WH - 0.75, HZ);
+    for (let i = -3; i <= 3; i++) box(HX * 2, 0.32, 0.32, P.beam, 0, WH - 0.2, i * HZ / 3.5);
+    for (const wx of [-4, 0, 4]) box(2.6, 3.0, 0.14, glow(wx === 0 ? 0xffd47a : 0x9bd0ff), wx, 3.6, -HZ + 0.32);   // stained glass behind the throne
+    for (const wz of [-8, 0, 8]) { box(0.14, 2.2, 2.0, glow(0x9bd0ff), -HX + 0.3, 3.4, wz); box(0.14, 2.2, 2.0, glow(0x9bd0ff), HX - 0.3, 3.4, wz); }
+    box(5, 0.05, HZ * 2 - 3, P.rug, 0, 0.18, 0);   // crimson runner
+    box(3.2, 0.06, 1.4, P.rug, 0, 0.2, HZ - 2);
+    st({ kind: 'exit', label: 'Exit to Crownhaven', x: 0, z: HZ - 2 });
+    // internal partitions → west/east wings (wide central doorway into each)
+    for (const sx of [-1, 1]) { const wx = sx * 8; box(0.5, WH, 9, P.stone, wx, WH / 2, -9.5); box(0.5, WH, 6, P.stone, wx, WH / 2, 12); wallSolids(wx, -14, wx, -5); wallSolids(wx, 9, wx, 15); }
+    wallSolids(-HX, -HZ, HX, -HZ); wallSolids(-HX, -HZ, -HX, HZ); wallSolids(HX, -HZ, HX, HZ); wallSolids(-HX, HZ, -(dg / 2), HZ); wallSolids(dg / 2, HZ, HX, HZ);
+    // THRONE ROOM
+    box(9, 0.4, 5, P.stone, 0, 0.2, -14); box(7, 0.4, 3.5, P.stone, 0, 0.5, -14);   // dais steps
+    box(1.8, 2.6, 1.6, mat(0x6a2f7a), 0, 1.9, -15); box(2.2, 0.5, 1.8, mat(0x7a3f8a), 0, 1.2, -14.4); ico(0.3, M.gold, 0, 3.3, -15);   // throne
+    for (const dx of [-3.4, 0, 3.4]) solid(dx, -13.6, 1.7);   // the dais halts you right before the King (in earshot of the throne)
+    (function king() { const x = 0, z = -14.2, robe = P.robe; box(0.72, 0.95, 0.5, robe, x, 1.4, z); box(0.2, 0.6, 0.2, robe, x - 0.46, 1.45, z); box(0.16, 0.16, 0.16, M.skin, x - 0.46, 1.15, z); box(0.2, 0.6, 0.2, robe, x + 0.46, 1.45, z); box(0.16, 0.16, 0.16, M.skin, x + 0.46, 1.15, z); ico(0.32, M.skin, x, 2.15, z); box(0.55, 0.2, 0.28, mat(0xececef), x, 1.15, z + 0.22); box(0.42, 0.16, 0.42, M.gold, x, 2.34, z); for (let i = -2; i <= 2; i++) box(0.08, 0.24, 0.08, M.gold, x + i * 0.14, 2.55, z); })();
+    st({ kind: 'talk', label: 'Address the King', x: 0, z: -11.4, dialogue: 'king', npcKey: 'king' });
+    banner(-4.5, -HZ + 0.7); banner(4.5, -HZ + 0.7); brazier(-6.5, -13); brazier(6.5, -13);
+    for (const s of [-1, 1]) { person(s * 3.6, -12.4, 0x8a93ad, 0x2a2018); box(0.1, 3.0, 0.1, M.stone, s * 3.6 + 0.5, 1.5, -12.4); ico(0.16, M.metal, s * 3.6 + 0.5, 3.05, -12.4); }
+    // GREAT HALL — feast tables FLANK the central carpet so the aisle to the throne stays clear
+    for (const tx of [-6, 6]) { box(2.6, 0.2, 6.5, M.wood, tx, 1.0, 1); for (const lz of [-2.2, 2.2]) box(0.24, 1.0, 0.24, M.wood, tx, 0.5, 1 + lz); solid(tx, -0.6, 1.6); solid(tx, 2.6, 1.6); box(0.5, 0.5, 0.5, M.gold, tx, 1.3, 1); ico(0.2, M.fire, tx, 1.35, -1.8); }
+    person(4, 6, 0xffd45f, 0x5a4326); st({ kind: 'talk', label: 'Speak with the Steward', x: 4, z: 7, dialogue: 'steward', npcKey: 'steward' });
+    // WEST WING — barracks / armoury
+    box(0.4, 3.2, 6, M.wood, -HX + 1, 1.6, -1); for (let i = 0; i < 3; i++) box(0.36, 0.12, 5.4, M.dark, -HX + 1.1, 0.9 + i * 0.9, -1);
+    for (let s = 0; s < 4; s++) box(0.1, 1.7, 0.1, M.stone, -HX + 1.5, 1.35, -3 + s * 1.3);   // racked spears
+    box(1.2, 1.0, 1.2, M.wood, -16, 0.5, 4); box(1.6, 0.4, 0.5, M.metal, -16, 1.35, 4); solid(-16, 4, 1.0); st({ kind: 'anvil', label: 'Armoury Anvil', x: -16, z: 5.4 });
+    box(4, 1.1, 1.3, M.wood, -14.5, 0.55, 9); solid(-14.5, 9, 1.6); person(-14.5, 10, 0xff9a5a, 0x2a2018); st({ kind: 'shop', label: 'Quartermaster', x: -14.5, z: 7.6 });
+    person(-18, -3, 0x8a93ad, 0x2a2018); person(-13, -5, 0x8a93ad, 0x3a2a20); brazier(-HX + 2.4, -13);
+    // EAST WING — library / court mage
+    for (const sz of [-6, 0, 6]) { box(0.5, 3.4, 3.2, M.wood, HX - 1, 1.7, sz); for (let i = 0; i < 3; i++) box(0.46, 0.12, 3, M.dark, HX - 1.1, 0.9 + i * 0.95, sz); }
+    cyl(2, 2, 0.1, glow(0x9b6bff), 15, 0.16, 4, 16); ico(0.4, glow(0xc6a8ff), 15, 1.4, 4); st({ kind: 'rune', label: 'Court Enchanter’s Circle', x: 15, z: 5.8 });
+    person(13, 9, 0x9b6bff, 0x6a5a8a); st({ kind: 'talk', label: 'Consult the Court Mage', x: 13, z: 7.6, dialogue: 'courtmage', npcKey: 'courtmage' });
+    box(2.4, 0.2, 1.4, M.wood, 16.5, 1.0, -8); ico(0.3, glow(0x8af0ff), 16.5, 1.4, -8);
+    // TREASURY (NE)
+    box(1.7, 1.9, 1.1, M.metal, 18, 0.95, -14); box(0.6, 0.6, 0.12, M.gold, 18, 0.95, -13.4); solid(18, -14, 1.1); st({ kind: 'bank', label: 'Royal Treasury', x: 18, z: -12.4 });
+    for (const gx of [15.5, 19.5]) { box(0.8, 0.5, 0.8, M.gold, gx, 0.25, -11.5); ico(0.2, M.gold, gx, 0.6, -11.5); }
+    // chandeliers
+    for (const [lx, lz] of [[0, -6], [0, 6], [-14, 4], [14, 4]]) { box(0.1, 0.6, 0.1, M.dark, lx, WH - 0.6, lz); ico(0.4, M.win, lx, WH - 1.2, lz); }
+    cache['castle|' + biome] = { group: g, stations, solids, lamp: 0xffdf9a, bounds: { minX: IX - HX + 1.2, maxX: IX + HX - 1.2, minZ: IZ - HZ + 1.2, maxZ: IZ + HZ - 1.2, y: FY }, entry: { x: IX, z: IZ + HZ - 3.5 } };
+  }
+
   function enter(type, biome) {
     const key = type + '|' + biome;
-    if (!cache[key]) buildType(type, biome);
+    if (!cache[key]) { if (type === 'castle') buildCastle(biome); else buildType(type, biome); }
     for (const k in cache) cache[k].group.visible = (k === key);
     lamp.color.setHex(cache[key].lamp);   // warm/cold/ember light to match the region
     root.visible = true;
+    const c = cache[key];
     return {
-      bounds: { minX: IX - HW + 1.2, maxX: IX + HW - 1.2, minZ: IZ - HD + 1.2, maxZ: IZ + HD - 1.2, y: FY },
-      entry: { x: IX, z: IZ + HD - 3 },
-      stations: cache[key].stations,
-      solids: cache[key].solids,
+      bounds: c.bounds || { minX: IX - HW + 1.2, maxX: IX + HW - 1.2, minZ: IZ - HD + 1.2, maxZ: IZ + HD - 1.2, y: FY },
+      entry: c.entry || { x: IX, z: IZ + HD - 3 },
+      stations: c.stations,
+      solids: c.solids,
     };
   }
   function leave() { root.visible = false; }
