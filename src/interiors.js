@@ -46,6 +46,7 @@ const INT_PAL = {
   saltmarsh:{ floor: 0x8a6a6a, wall: 0xe8c0c8, beam: 0x5a4a4a, rug: 0xd07a8a, lamp: 0xf08fb8 },
   royal:    { floor: 0x8a7048, wall: 0xcdc2a4, beam: 0x5a4632, rug: 0x8a2438, lamp: 0xffdf9a },
   necro:    { floor: 0x3a3a42, wall: 0x565662, beam: 0x2a2a30, rug: 0x2f4a3a, lamp: 0x7cffb0 },
+  basalt:   { floor: 0x2e2422, wall: 0x4a3a34, beam: 0x241a16, rug: 0x6a2a1a, lamp: 0xff8a3a },
 };
 const PAL = (b) => INT_PAL[b] || INT_PAL.grass;
 
@@ -249,9 +250,42 @@ export function createInteriors(scene) {
     cache['cathedral|' + biome] = { group: g, stations, solids, lamp: 0x7cffb0, bounds: { minX: IX - HX + 1.2, maxX: IX + HX - 1.2, minZ: IZ - HZ + 1.2, maxZ: IZ + HZ - 1.2, y: FY }, entry: { x: IX, z: IZ + HZ - 3.5 } };
   }
 
+  // Karak-Vol's forge-hall — a molten dwarven smithy: the Forge-Master at a great anvil, rows of
+  // furnaces + master anvils, glowing lava channels, a magma-vault, and forge-glow light.
+  function buildForgeHall(biome) {
+    const g = new THREE.Group(); root.add(g); g.visible = false;
+    const stations = [], solids = [];
+    const P = { floor: mat(0x2e2422), wall: mat(0x4a3a34), beam: mat(0x241a16), stone: mat(0x3a2e2a) };
+    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
+    const wallSolids = (x0, z0, x1, z1) => { const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 2)); for (let i = 0; i <= n; i++) { const t = i / n; solid(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.2); } };
+    const st = (o) => stations.push(Object.assign({ y: FY }, o, { x: IX + o.x, z: IZ + o.z }));
+    const dwarf = (x, z, color) => { const cl = mat(color); box(0.24, 0.5, 0.24, P.beam, x - 0.16, 0.25, z); box(0.24, 0.5, 0.24, P.beam, x + 0.16, 0.25, z); box(0.72, 0.7, 0.44, cl, x, 0.85, z); box(0.2, 0.5, 0.22, cl, x - 0.46, 0.9, z); box(0.2, 0.5, 0.22, cl, x + 0.46, 0.9, z); ico(0.3, mat(0xf2c79a), x, 1.35, z); box(0.5, 0.42, 0.5, mat(0x8a5a2e), x, 1.0, z + 0.22); solid(x, z, 0.8); };   // stocky, big-bearded
+    const furnace = (x, z) => { box(2.6, 2.8, 2.4, P.stone, x, 1.4, z); box(1.3, 1.3, 0.2, glow(0xff7a33), x, 1.0, z + 1.21); solid(x, z, 1.6); };
+    const anvil = (x, z) => { box(1.2, 1.0, 1.2, mat(0x6e4a2b), x, 0.5, z); box(1.6, 0.4, 0.5, mat(0x55585f), x, 1.35, z); solid(x, z, 1.0); };
+    const HX = 14, HZ = 16, WH = 7;
+    box(HX * 2, 0.3, HZ * 2, P.floor, 0, 0, 0);
+    box(HX * 2, WH, 0.5, P.wall, 0, WH / 2, -HZ); box(0.5, WH, HZ * 2, P.wall, -HX, WH / 2, 0); box(0.5, WH, HZ * 2, P.wall, HX, WH / 2, 0);
+    const dg = 4, sseg = (HX * 2 - dg) / 2; box(sseg, WH, 0.5, P.wall, -(dg / 2 + sseg / 2), WH / 2, HZ); box(sseg, WH, 0.5, P.wall, (dg / 2 + sseg / 2), WH / 2, HZ); box(dg + 1.4, 1.6, 0.5, P.wall, 0, WH - 0.8, HZ);
+    for (let i = -3; i <= 3; i++) box(HX * 2, 0.32, 0.32, P.beam, 0, WH - 0.2, i * HZ / 3.5);
+    box(1.6, 0.05, HZ * 2 - 3, glow(0xff5a2a), -9, 0.2, 0); box(1.6, 0.05, HZ * 2 - 3, glow(0xff5a2a), 9, 0.2, 0);   // molten channels
+    st({ kind: 'exit', label: 'Exit to Karak-Vol', x: 0, z: HZ - 2 });
+    wallSolids(-HX, -HZ, HX, -HZ); wallSolids(-HX, -HZ, -HX, HZ); wallSolids(HX, -HZ, HX, HZ); wallSolids(-HX, HZ, -(dg / 2), HZ); wallSolids(dg / 2, HZ, HX, HZ);
+    box(4, 0.4, 4, P.stone, 0, 0.2, -13); anvil(0, -13); dwarf(2.2, -12, 0xff9a5a);   // the Forge-Master at the great anvil
+    for (const dx of [-2.6, 2.6]) solid(dx, -13, 1.4);
+    st({ kind: 'talk', label: 'Speak with the Forge-Master', x: 0, z: -10.5, dialogue: 'forgemaster', npcKey: 'forgemaster' });
+    furnace(-11, -6); st({ kind: 'furnace', label: 'Great Furnace', x: -11, z: -4 }); furnace(11, -6); st({ kind: 'furnace', label: 'Great Furnace', x: 11, z: -4 });
+    anvil(-11, 4); st({ kind: 'anvil', label: 'Master Anvil', x: -11, z: 6 }); anvil(11, 4); st({ kind: 'anvil', label: 'Master Anvil', x: 11, z: 6 });
+    for (const [sx, sz] of [[-6, -13], [6, -13]]) { box(1.6, 0.6, 1.6, mat(0x55585f), sx, 0.3, sz); ico(0.3, glow(0xff9a4a), sx, 0.7, sz); }   // ore/bar stockpiles
+    box(1.7, 1.9, 1.1, mat(0x55585f), -12, 0.95, 12); ico(0.4, glow(0xff7a33), -12, 2.0, 12); solid(-12, 12, 1.1); st({ kind: 'bank', label: 'Magma Vault', x: -12, z: 10.4 });
+    for (const lz of [-6, 2, 10]) ico(0.5, glow(0xff8a3a), 0, WH - 1.2, lz);
+    cache['forgehall|' + biome] = { group: g, stations, solids, lamp: 0xff8a3a, bounds: { minX: IX - HX + 1.2, maxX: IX + HX - 1.2, minZ: IZ - HZ + 1.2, maxZ: IZ + HZ - 1.2, y: FY }, entry: { x: IX, z: IZ + HZ - 3.5 } };
+  }
+
   function enter(type, biome) {
     const key = type + '|' + biome;
-    if (!cache[key]) { if (type === 'castle') buildCastle(biome); else if (type === 'cathedral') buildCathedral(biome); else buildType(type, biome); }
+    if (!cache[key]) { if (type === 'castle') buildCastle(biome); else if (type === 'cathedral') buildCathedral(biome); else if (type === 'forgehall') buildForgeHall(biome); else buildType(type, biome); }
     for (const k in cache) cache[k].group.visible = (k === key);
     lamp.color.setHex(cache[key].lamp);   // warm/cold/ember light to match the region
     root.visible = true;

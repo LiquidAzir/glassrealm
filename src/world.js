@@ -44,6 +44,8 @@ const BIOMES = {
   cavern:    { sea: 0x08080e, sand: 0x201d28, low: 0x2a2634, low2: 0x231f2c, high: 0x38324a, peak: 0x6a5a92, fol: [0x7cffb0, 0x9b6bff], trunk: 0x2a2634 },
   // Necropolis — cold graveyard stone + spectral green will-o'-wisp light
   necro:     { sea: 0x0a0c12, sand: 0x2c2c32, low: 0x33343c, low2: 0x2b2c34, high: 0x45464f, peak: 0x8a9a94, fol: [0x4a6a54, 0x7cffb0], trunk: 0x3a3a40 },
+  // Karak-Vol — near-black basalt (transparent on the display) shot through with molten orange
+  basalt:    { sea: 0x1a0a08, sand: 0x3a2420, low: 0x2a1e1c, low2: 0x241a18, high: 0x3e2e2a, peak: 0xff7a3d, fol: [0xff7a3a, 0xffb04a], trunk: 0x2a1a16 },
 };
 
 const REGIONS = [
@@ -79,6 +81,8 @@ const REGIONS = [
   { key: 'undercity', x: 300, z: 60, r: 48, biome: 'cavern', undercity: true, tree: 'mushroom', nTree: 26, nBush: 0, nRock: 24, nFish: 0, ore: [] },
   // --- The Necropolis: Gravehallow, a fog-drowned city of the dead — a gothic cathedral, crypts, ghosts with unfinished business, and a lich. ---
   { key: 'gravehallow', x: -120, z: -200, r: 40, biome: 'necro', village: { name: 'Gravehallow', x: -120, z: -200, hut: [0x565662, 0x2f4a3a], cathedral: true }, tree: 'pine', nTree: 18, nBush: 4, nRock: 16, nFish: 0, ore: [['coal', 3]] },
+  // --- Karak-Vol: a dwarven forge-hold carved into a live volcano — a great gate, a molten forge-hall, master smiths, and a magma titan. ---
+  { key: 'karakvol', x: 250, z: -160, r: 42, biome: 'basalt', village: { name: 'Karak-Vol', x: 250, z: -160, hut: [0x3e2e2a, 0xff7a3a], smithy: true, hold: true }, peak: { x: 258, z: -172, r: 14, h: 13 }, tree: 'cactus', nTree: 8, nBush: 0, nRock: 24, nFish: 0, ore: [['iron', 5], ['coal', 5], ['adamant', 2]] },
 ];
 // Region links with a transition TYPE: 'causeway' = rustic plank land bridge (the classic),
 // 'isthmus' = a wide natural land neck where the islands nearly merge (clean, no built deck),
@@ -109,6 +113,8 @@ const BRIDGE_LINKS = [
   ['undercity', 'jungle', 'causeway'],
   // The Necropolis — a foggy causeway from the lagoon, an ice-shelf from the aurora shelf
   ['gravehallow', 'lagoon', 'causeway'], ['gravehallow', 'aurorath', 'iceshelf'],
+  // Karak-Vol — a causeway from Duskmere, a switchback mountain pass from Skyreach
+  ['karakvol', 'duskmere', 'causeway'], ['karakvol', 'skyreach', 'pass'],
 ];
 // One signature landmark per region (offsets are raw, scaled by WS at build time).
 const REGION_SIG = {
@@ -124,6 +130,7 @@ const REGION_SIG = {
   lagoon:     { kind: 'coralarch',  dx: 14,  dz: 10 },
   sporevale:  { kind: 'mushrooms',  dx: 8,   dz: 4 },
   cinderbreak: { kind: 'monolith',  dx: 14,  dz: 6 },
+  karakvol:   { kind: 'lavalake',   dx: 10,  dz: -12 },
 };
 const CAVE = { x: 138, z: -14, r: 11 };
 const CAVE2 = { x: 118, z: -98, r: 11 };   // Frost Cavern (snow)
@@ -861,6 +868,7 @@ export function createWorld(scene, seed = 1337) {
     saltmarsh:{ bldR: 15, svcR: 7.6, lampN: 5, plaza: () => fountain,        farmA: 0.70 },
     royal:    { bldR: 27, svcR: 18,  lampN: 10, plaza: () => statue,          farmA: 1.30 },
     necro:    { bldR: 24, svcR: 17,  lampN: 8,  plaza: () => statue,          farmA: 2.10 },
+    basalt:   { bldR: 24, svcR: 16,  lampN: 8,  plaza: () => brazier,         farmA: 2.20 },
   };
   const PLAZA_ARG = {                                  // biome-specific centerpiece tints (water / canopy / crystal / totem)
     desert: [0x3fb8d0], coast: [0x2fb8e0], lagoon: [0x6fe6c8], saltmarsh: [0xf08fb8],
@@ -964,14 +972,35 @@ export function createWorld(scene, seed = 1337) {
     ambientEmitters.push({ x: cx, y: y0 + 3, z: cz - 1, color: 0x7cffb0, every: 0.9, opts: { n: 3, spread: 5, up: 4, life: 2.4 } });
     const dz = 12; stations.push({ kind: 'door', label: 'Enter the Cathedral', x: cx, z: cz + dz, y: height(cx, cz + dz), building: 'cathedral', biome: 'necro' });
   }
+  // Karak-Vol's dwarven forge-hold: two great gate-towers with ember-belching chimneys, a
+  // recessed runed arch, blocky statue-guardians, and a lava channel. The door leads into the
+  // molten forge-hall (furnaces, anvils, the Forge-Master, a magma-vault).
+  function hold(cx, cz) {
+    const y0 = height(cx, cz);
+    const stone = lmat(0x4a3a34), stone2 = lmat(0x3a2e2a), dark = lmat(0x241a16), iron = lmat(0x55585f);
+    const box = (w, h, d, m, x, y, z, ry) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(cx + x, y0 + y, cz + z); if (ry) me.rotation.y = ry; group.add(me); return me; };
+    const glowb = (geo, c, x, y, z, op) => { const mt = new THREE.MeshBasicMaterial({ color: c }); if (op != null) { mt.transparent = true; mt.opacity = op; } const me = new THREE.Mesh(geo, mt); me.position.set(cx + x, y0 + y, cz + z); group.add(me); return me; };
+    for (const s of [-1, 1]) {
+      box(6, 12, 6, stone, s * 6, 6, 0); box(6.6, 1, 6.6, stone2, s * 6, 12.2, 0);
+      box(1.4, 4, 1.4, dark, s * 6, 14.5, 0); glowb(new THREE.BoxGeometry(1, 0.6, 1), 0xff7a33, s * 6, 16.6, 0);   // forge chimney + ember cap
+      ambientEmitters.push({ x: cx + s * 6, y: y0 + 17, z: cz, color: 0xff8a3d, every: 0.5, opts: { n: 3, spread: 1, up: 4, life: 1.6 } });
+      solids.push({ x: cx + s * 6, z: cz, r: 3.4 });
+    }
+    box(14, 2.5, 3, stone, 0, 11, 0); box(5, 6, 0.5, dark, 0, 3, 2.6);   // lintel + recessed dark gate
+    for (let i = -2; i <= 2; i++) glowb(new THREE.BoxGeometry(0.6, 0.6, 0.2), 0xff9a4a, i * 1.4, 9, 2.72);   // glowing dwarven rune-band
+    for (const s of [-1, 1]) { box(1.8, 5, 1.8, stone2, s * 4.2, 2.5, 8); box(1.9, 1.5, 1.9, stone2, s * 4.2, 5.75, 8); box(2.5, 0.8, 2.5, iron, s * 4.2, 6.7, 8); solids.push({ x: cx + s * 4.2, z: cz + 8, r: 1.3 }); }   // statue guardians
+    glowb(new THREE.BoxGeometry(2.2, 0.2, 13), 0xff5a2a, 0, 0.14, 10.5, 0.85);   // lava channel from the gate
+    const dz = 4.5; stations.push({ kind: 'door', label: 'Enter the Forge-Hall', x: cx, z: cz + dz, y: height(cx, cz + dz), building: 'forgehall', biome: 'basalt' });
+  }
   for (const v of villages) {
     const L = LAYOUT[v.biome] || LAYOUT.grass;
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
     const bldR = v.castle ? 27 : L.bldR, svcR = v.castle ? 18 : L.svcR, lampN = v.castle ? 10 : L.lampN;
     for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * bldR, v.z + Math.sin(a) * bldR, v.x, v.z, types[i], v.hut, v.biome); }
-    // centrepiece: the great castle for the capital, the cathedral for the necropolis, else the biome's plaza feature
+    // centrepiece: the castle (capital), the cathedral (necropolis), the forge-hold gate (Karak-Vol), else the biome's plaza
     if (v.castle) castle(v.x, v.z);
     else if (v.cathedral) cathedral(v.x, v.z);
+    else if (v.hold) hold(v.x, v.z);
     else { const pf = L.plaza(); const args = PLAZA_ARG[v.biome]; if (args) pf(v.x, v.z, ...args); else pf(v.x, v.z); }
     // service stations spread evenly on an inner ring so each sits in its own clear sector (easy to navigate)
     const svc = [

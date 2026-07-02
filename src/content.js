@@ -195,6 +195,7 @@ export const ITEMS = {
   crown_signet:  { name: 'Crown Signet',  icon: '💠', type: 'amulet', bonus: { melee: 6, def: 6, maxhp: 20 }, desc: "The King's own seal, given to the Champion of Crownhaven. +6 melee, +6 defence, +20 max HP." },
   deepstone_amulet: { name: 'Deepstone Amulet', icon: '📿', type: 'amulet', bonus: { melee: 7, def: 5, maxhp: 25 }, desc: 'Cut from the deep-folk hold at the delve\'s heart. +7 melee, +5 defence, +25 max HP.' },
   spectral_shroud:  { name: 'Spectral Shroud',  icon: '📿', type: 'amulet', bonus: { magic: 8, def: 5, maxhp: 15 }, desc: 'Woven from grave-mist, taken from the Pale Lich. +8 magic, +5 defence, +15 max HP.' },
+  forgeheart_amulet:{ name: 'Forgeheart Amulet', icon: '📿', type: 'amulet', bonus: { melee: 8, def: 6, maxhp: 20 }, desc: 'A still-warm core cut from the Magma Titan. +8 melee, +6 defence, +20 max HP.' },
 
   // ---- Hearty meals (a cooking activity — combine ingredients for big heals, see MEALS) ----
   fish_stew:       { name: 'Fisher’s Stew',   icon: '🍲', type: 'consumable', heal: 45,  desc: 'A warming stew. Restores 45 HP.' },
@@ -679,6 +680,10 @@ export const WANDERERS = [
   { kind: 'wander', name: 'Courtier',  color: 0x9b6bff, home: { x: 12,  z: 268 }, radius: 8, speed: 1.3 },
   { kind: 'wander', name: 'Noble',     color: 0xc6a8ff, home: { x: -14, z: 272 }, radius: 8, speed: 1.2 },
   { kind: 'wander', name: 'Handmaid',  color: 0xe0b0d0, home: { x: 14,  z: 252 }, radius: 8, speed: 1.4 },
+  // --- Karak-Vol: a hold guard + dwarven folk about the forge-town ---
+  { kind: 'squad',  name: 'Hold Guard', color: 0x8a5a3a, helm: 0xff9a4a, count: 3, speed: 2.0, loop: [{ x: 238, z: -150 }, { x: 262, z: -150 }, { x: 262, z: -170 }, { x: 238, z: -170 }] },
+  { kind: 'wander', name: 'Dwarf Miner', color: 0xc89060, home: { x: 240, z: -152 }, radius: 9, speed: 1.4 },
+  { kind: 'wander', name: 'Dwarf Smith', color: 0xff9a5a, home: { x: 258, z: -150 }, radius: 8, speed: 1.3 },
 ];
 
 // Tameable animals → companion pets. One pet follows you at a time and grants its perk
@@ -1011,6 +1016,8 @@ export const ENEMIES = {
   the_deepwarden:      { name: 'The Deepwarden',      hp: 480, dmg: 40, speed: 3.2, xp: 1240, color: 0xb08adf, aggro: 20, shape: 'warden', scale: 2.3, boss: true, loot: { gold: 460, runite_bar: 3, ruby: 2, emerald: 2, bones: 4 }, rare: { item: 'deepstone_amulet', chance: 0.35 } },
   // --- The Necropolis: the Pale Lich in the Gravehallow crypts ---
   the_pale_lich:       { name: 'The Pale Lich',       hp: 470, dmg: 38, speed: 3.0, xp: 1220, color: 0xbfe0d0, aggro: 20, shape: 'warden', scale: 2.2, boss: true, loot: { gold: 440, bone_shard: 6, ruby: 2, emerald: 2, bones: 5 }, rare: { item: 'spectral_shroud', chance: 0.35 } },
+  // --- Karak-Vol: the Magma Titan at the volcano's heart ---
+  the_magma_titan:     { name: 'The Magma Titan',     hp: 540, dmg: 42, speed: 2.8, xp: 1360, color: 0xff5a2a, aggro: 20, shape: 'golem', scale: 2.6, boss: true, loot: { gold: 480, magma_core: 6, adamant_bar: 3, ruby: 3, coal: 8 }, rare: { item: 'forgeheart_amulet', chance: 0.35 } },
 };
 
 // ---------- Combat triangle ----------
@@ -1037,7 +1044,7 @@ export const WEAKNESS = {
   glimmer_leech: 'ranged', the_dreamward: 'ranged', frost_wraith: 'magic', glacier_wight: 'melee', heart_of_hoarfrost: 'magic', shade_stalker: 'melee', edgewraith: 'magic', the_reckoner: 'ranged', salt_wraith: 'magic',
   glass_wisp: 'ranged', cinderglass_stalker: 'magic', the_glasswake: 'ranged',
   the_lantern_drowned: 'ranged', the_rimewright: 'magic', the_glassmaw: 'magic', the_hollowed_warden: 'ranged', the_brinemother: 'magic',
-  the_deepwarden: 'ranged', the_pale_lich: 'magic',
+  the_deepwarden: 'ranged', the_pale_lich: 'magic', the_magma_titan: 'magic',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -1085,6 +1092,11 @@ export const AUTO_MODES = [
 ];
 
 export const ENEMY_SPAWNS = [
+  // Karak-Vol — fire-things prowl the basalt; the Magma Titan wakes at the volcano's heart
+  { enemy: 'the_magma_titan', x: 258, z: -172 },
+  { enemy: 'magma_imp', x: 236, z: -150 }, { enemy: 'magma_imp', x: 264, z: -150 }, { enemy: 'magma_imp', x: 242, z: -176 },
+  { enemy: 'lava_hound', x: 270, z: -164 }, { enemy: 'lava_hound', x: 230, z: -168 }, { enemy: 'ash_hound', x: 228, z: -154 }, { enemy: 'ash_hound', x: 272, z: -178 },
+  { enemy: 'scorchling', x: 250, z: -142 }, { enemy: 'scorchling', x: 274, z: -156 }, { enemy: 'scorchling', x: 238, z: -184 },
   // The Necropolis — undead haunt the Gravehallow graveyard; the Pale Lich holds the crypt
   { enemy: 'the_pale_lich', x: -120, z: -216 },
   { enemy: 'wraith', x: -102, z: -210 }, { enemy: 'wraith', x: -138, z: -210 }, { enemy: 'wraith', x: -120, z: -230 }, { enemy: 'wraith', x: -106, z: -188 },
@@ -1275,6 +1287,25 @@ export const QUESTS = {
     desc: 'Descend into the deep crypt and banish the Pale Lich haunting Gravehallow.',
     objectives: [{ id: 'boss', type: 'kill', enemy: 'the_pale_lich', count: 1 }],
     rewards: { xp: { prayer: 400, combat: 640 }, items: { gold: 460, spectral_shroud: 1 } },
+  },
+  // --- Karak-Vol: the forge-hold's trials (Forge-Master Durga) ---
+  q_forge1: {
+    name: 'Proving the Metal', giver: 'forgemaster', startsAvailable: true, reqSkills: { smithing: 1 },
+    desc: 'Smelt three Adamant Bars at the Forge-Hall’s great furnaces.',
+    objectives: [{ id: 'b', type: 'have', item: 'adamant_bar', count: 3 }],
+    rewards: { xp: { smithing: 420 }, items: { gold: 200 } },
+  },
+  q_forge2: {
+    name: 'Clear the Vents', giver: 'forgemaster', requires: 'q_forge1',
+    desc: 'Put down four lava-hounds fouling the Karak-Vol vents.',
+    objectives: [{ id: 'k', type: 'kill', enemy: 'lava_hound', count: 4 }],
+    rewards: { xp: { combat: 420 }, items: { gold: 220 } },
+  },
+  q_forge3: {
+    name: 'The Magma Titan', saga: true, giver: 'forgemaster', requires: 'q_forge2',
+    desc: 'Climb to the caldera and break the Magma Titan before it buries the hold.',
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'the_magma_titan', count: 1 }],
+    rewards: { xp: { combat: 840, defence: 280 }, items: { gold: 520, forgeheart_amulet: 1 } },
   },
   q_mine: {
     name: 'Coal for the Forge', giver: 'miner', startsAvailable: true,
@@ -1627,6 +1658,31 @@ function questGiver(name, qid, cfg) {
 }
 
 export const DIALOGUE = {
+  // --- Karak-Vol: the Forge-Master (forge-hall 'talk' station) ---
+  forgemaster: {
+    root: (G) => {
+      const s1 = G.quests.status('q_forge1');
+      if (s1 === 'available') return node('Forge-Master Durga', 'Hah — a topsider in my hall! You want to learn the metal, do you? Then earn it. Smelt me three Adamant Bars at my furnaces. No bought bars — I’ll smell the cheat on you.',
+        [{ label: 'I’ll smelt them.', action: (g) => g.quests.accept('q_forge1'), to: 'a1' }, { label: 'What is Karak-Vol?', to: 'lore' }, end('Not yet.')]);
+      if (s1 === 'active') { if (G.inventory.count('adamant_bar') >= 3) return node('Forge-Master Durga', 'Three adamant bars, and cleanly cast. You’ve the makings of a smith. Keep the fire in you.', [{ label: 'Hand over 3 Adamant Bars.', action: (g) => g.quests.complete('q_forge1'), to: 'd1' }]); return node('Forge-Master Durga', `${3 - G.inventory.count('adamant_bar')} more Adamant Bars. Adamant ore + three coal per bar, at the great furnace.`, [end('On it.')]); }
+      const s2 = G.quests.status('q_forge2'), s3 = G.quests.status('q_forge3');
+      if (s2 === 'available') return node('Forge-Master Durga', 'The lava-hounds crawl up from the vents and foul the workings. Put four of them down and the fires burn cleaner.',
+        [{ label: 'I’ll clear the vents.', action: (g) => g.quests.accept('q_forge2'), to: 'a2' }, end('Later.')]);
+      if (s2 === 'active') { if (G.quests.isReady('q_forge2')) return node('Forge-Master Durga', 'The vents run clean again. You fight like you forge — with your whole weight behind it.', [{ label: 'What’s next?', action: (g) => g.quests.complete('q_forge2'), to: 'd2' }]); return node('Forge-Master Durga', 'The lava-hounds still foul the vents. Back to it.', [end('Aye.')]); }
+      if (s2 === 'complete' && s3 === 'available') return node('Forge-Master Durga', 'The mountain’s heart beats too hot. The Magma Titan has woken in the caldera — old as the hold itself. Break it before it buries us, and I’ll name you kin of the forge.',
+        [{ label: 'I’ll break it.', action: (g) => g.quests.accept('q_forge3'), to: 'a3' }, end('Soon.')]);
+      if (s3 === 'active') { if (G.quests.isReady('q_forge3')) return node('Forge-Master Durga', 'The Titan is slag and cinders? By stone and fire — you’ve saved the hold. Take its heart; wear it, and never be cold again.', [{ label: 'My thanks, Forge-Master.', action: (g) => g.quests.complete('q_forge3'), to: 'd3' }]); return node('Forge-Master Durga', 'The Titan still burns in the caldera above. Cool your nerve and go — hit it with magic; stone hates the arcane.', [end('I will.')]); }
+      if (s3 === 'complete') return node('Forge-Master Durga', 'Kin of the forge, that’s what you are now. My furnaces are yours whenever the fire calls you.', [{ label: 'What is Karak-Vol?', to: 'lore' }, end('Stone-strong.')]);
+      return node('Forge-Master Durga', 'The great furnaces are yours to use, and the master anvils. Smelt your ore, beat it true, and the metal will remember your hand.', [{ label: 'What is Karak-Vol?', to: 'lore' }, end('Farewell.')]);
+    },
+    a1: node('Forge-Master Durga', 'Adamant ore and coal into the furnace. Three bars — and mind you don’t scorch the beard.', [end('Understood.')]),
+    d1: node('Forge-Master Durga', 'Now — the vents need clearing. Speak to me when your arm’s warmed up.', [end('Ready.')]),
+    a2: node('Forge-Master Durga', 'Four lava-hounds. They come up hot; hit them harder.', [end('Right.')]),
+    d2: node('Forge-Master Durga', 'One trial remains — but it’s a mountain of one. Come to me when your nerve is iron.', [end('I will.')]),
+    a3: node('Forge-Master Durga', 'The caldera lies above the hold. Go, kin — and come back slag or victor.', [end('I go.')]),
+    d3: node('Forge-Master Durga', 'The forge remembers you. So will the hold, for a hundred years.', [end('Thank you.')]),
+    lore: node('Forge-Master Durga', 'Karak-Vol was cut into a living volcano ten ages back — we mine its bones and forge in its blood. The mountain gives, and the mountain takes. Lately it takes more than its due. But a hold does not abandon its fire.', [end('Stone-strong.')]),
+  },
   // --- The Necropolis: the High Priest (cathedral 'talk' station) + graveyard ghosts ---
   highpriest: {
     root: (G) => {
@@ -2379,7 +2435,7 @@ export const SHOP = {
     adamant_sword: 260, adamant_armor: 320, adamant_shield: 260, runite_sword: 560, runite_armor: 680, runite_shield: 560,
     oak_longbow: 40, willow_bow: 75, maple_bow: 130, yew_longbow: 240, magic_bow: 430,
     silver_ring: 55, silver_amulet: 90, gold_ring: 160, gold_amulet: 230,
-    deepstone_amulet: 300, spectral_shroud: 300,
+    deepstone_amulet: 300, spectral_shroud: 300, forgeheart_amulet: 320,
   },
 };
 
@@ -2511,6 +2567,8 @@ export const WANDER_VOICE = {
   Courtier: { day: ["The court whispers of a new champion. Could it be you?", "One does not simply stroll into the throne room… well, you did.", "The Steward frets over the coffers again."], night: ["The candles gutter low in the hall.", "Court intrigue never sleeps, alas."], any: ["Do try not to embarrass yourself before His Majesty."] },
   Noble:    { day: ["Crownhaven is the only civilised isle, frankly.", "One's estate simply doesn't run itself.", "The King's taste in banners is impeccable."], night: ["A nightcap in the hall, I think.", "The stars are so much finer over the capital."], any: ["Ah — new blood at court. How diverting."] },
   Handmaid: { day: ["The hall's to be spotless before the King wakes.", "Fresh rushes for the throne room, quick now.", "Mind the mud — this floor was just swept."], night: ["The braziers want banking for the night.", "Long day in the great hall. Long every day."], any: ["Lost, are you? The throne's straight up the carpet."] },
+  'Dwarf Miner': { day: ["Adamant seam this deep — Durga'll be pleased.", "The mountain gives good stone today.", "Mind the vents, topsider — they breathe fire."], night: ["Off the pick and on to the ale.", "The deep rock never sleeps, so neither do I."], any: ["Stone-strong, friend. Stone-strong."] },
+  'Dwarf Smith':  { day: ["Hear that ring? That's honest work.", "A blade's only as true as the arm that beat it.", "Bring your ore to the great furnace — we'll make it sing."], night: ["The forge glow's the only sun we need.", "Cooling the anvils. Even iron rests."], any: ["Karak-Vol forges the finest steel on any isle."] },
   Monk: { day: ["Peace finds those who walk slowly.", "The hearth is a kind of prayer.", "Every footfall, a small devotion."], night: ["I keep the night vigil.", "Stars are the elder's candles.", "Stillness teaches what noise cannot."], any: ["Be well, traveller."] },
   Merchant: { day: ["Wares from three isles, fair prices!", "Caravan was late again. Bandits, likely.", "A copper saved is a copper earned."], night: ["Counting the day's take.", "Roads aren't safe after dark.", "Rest the feet, ready the cart."], any: ["Buy low, sell true — that's the trade."] },
   Dockhand: { day: ["Crates won't haul themselves.", "Tide's good for unloading.", "Salt gets in everything out here."], night: ["Last barrel's stowed. Done in.", "Fog's rolling in off the water.", "Watch the planks — they're slick."], any: ["Mind your step on the pier."] },
