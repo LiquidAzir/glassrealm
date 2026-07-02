@@ -374,6 +374,14 @@ export function createPlayer(scene, world) {
     if (walking) tryMove(dt, 1);
     else if (backing) tryMove(dt, -0.55);   // slower back-pedal
 
+    // anti-stuck safety net: if you ever end up INSIDE blocked geometry (clipped into a hillside, a
+    // mob wedged onto you, a bad landing) ease to the nearest open ground so you can't be pinned.
+    // Only fires when genuinely blocked — normal wall-pressing keeps your own cell clear, so it's silent then.
+    if (!state.bounds && !clear(group.position.x, group.position.z)) {
+      state.pinnedT = (state.pinnedT || 0) + dt;
+      if (state.pinnedT > 0.35) { const d = world.findClear(group.position.x, group.position.z); group.position.x = d.x; group.position.z = d.z; state.pinnedT = 0; }
+    } else state.pinnedT = 0;
+
     group.position.y = state.bounds ? state.bounds.y : world.height(group.position.x, group.position.z);
     group.rotation.y = state.heading;
     state.t = (state.t || 0) + dt;
@@ -557,6 +565,7 @@ export function createPlayer(scene, world) {
     const dX = px - f.x * dist, dZ = pz - f.z * dist, dY = py + ht;
     if (!camReady) { camera.position.set(dX, dY, dZ); camReady = true; }
     else { const k = damp(6, dt); camera.position.x += (dX - camera.position.x) * k; camera.position.y += (dY - camera.position.y) * k; camera.position.z += (dZ - camera.position.z) * k; }
+    if (!state.bounds) { const camFloor = world.height(camera.position.x, camera.position.z) + 2.4; if (camera.position.y < camFloor) camera.position.y = camFloor; }   // ride up over hills instead of clipping through them (e.g. behind you on a bridge)
     tmpTarget.set(px + f.x * look, py + HEAD_Y, pz + f.z * look);
     camera.lookAt(tmpTarget);
   }

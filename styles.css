@@ -347,17 +347,23 @@ body { display: flex; align-items: center; justify-content: center; }
   gap: 6px;
   padding: 10px;
   border-bottom: 1px solid var(--surface-line);
+  overflow-x: auto;            /* a scrolling carousel — the active tab rides to centre as you switch */
+  flex-wrap: nowrap;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
 }
+.tabs::-webkit-scrollbar { display: none; }
 .tab {
-  flex: 1;
+  flex: 0 0 auto;              /* size to the label + let the strip scroll, so each tab stays readable */
   text-align: center;
-  padding: 10px 6px;
+  padding: 10px 12px;
   border-radius: 12px;
   background: var(--surface-2);
   color: var(--text-mut);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.3px;
+  white-space: nowrap;
   transition: transform 200ms var(--ease-focus-on), color 200ms, background 200ms;
 }
 .tab.active { color: var(--text); }
@@ -365,6 +371,7 @@ body { display: flex; align-items: center; justify-content: center; }
   color: #001016;
   background: var(--accent);
   box-shadow: 0 0 14px rgba(95,227,255,0.4);
+  transform: scale(1.09);      /* the current tab pops as it scrolls to centre, so you always know where you are */
 }
 .menu-body {
   position: relative;

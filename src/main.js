@@ -1490,6 +1490,20 @@ try {
   };
   G.openTravel = () => { setMode('picker'); G.ui.openPicker(travelCfg); };
 
+  // Safety hatch — whisk the player to the nearest town if they ever feel stuck (menu → Settings → Unstuck).
+  G.unstuck = () => {
+    cancelChannel(); clearCombat();
+    if (G.inInterior) G.exitInterior();
+    const p = player.group.position;
+    let best = world.villages[0], bd = Infinity;
+    for (const v of world.villages) { const dd = (v.x - p.x) ** 2 + (v.z - p.z) ** 2; if (dd < bd) { bd = dd; best = v; } }
+    const d = world.findClear(best.x, best.z + 12);
+    player.group.position.set(d.x, world.height(d.x, d.z), d.z); player.snapCamera();
+    if (mode === 'menu') closeMenu();
+    if (G.fx) G.fx.burst(d.x, world.height(d.x, d.z) + 1, d.z, 0x9b6bff, { n: 16, spread: 2.4, up: 3, life: 1 });
+    G.audio.sfx('cast'); G.ui.toast('🧭 Unstuck — returned to ' + (best.name || 'town'), 'good', 2200); G.save.save();
+  };
+
   let hurtFlash = 0;
   // ---------- Death stakes: a gravestone holds your dropped goods; run back to reclaim them ----------
   const GRAVE_TIME = 240;   // seconds of play to return before the grave crumbles

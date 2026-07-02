@@ -47,6 +47,12 @@ export function createInput(target = window) {
         if (e.repeat) break;
         emit('back');
         break;
+      case 'Tab':
+        // Keyboard: open/close the menu (mirrors the on-screen ☰ button).
+        e.preventDefault();
+        if (e.repeat) break;
+        emit('menu');
+        break;
     }
   }
 

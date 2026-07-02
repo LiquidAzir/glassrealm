@@ -327,7 +327,12 @@ export function createWorld(scene, seed = 1337) {
     _hcache.set(k, h);
     return h;
   }
-  const isWalkable = (x, z) => height(x, z) > 0.35;
+  // The whole modelled bridge corridor (out to halfW) is walkable — the deck height BLENDS to the
+  // water over its outer ~2 units, so without this the walkable band (h>0.35) is narrower than the
+  // visible planks and you slide off into the sea mid-crossing. Checked only when height fails, so
+  // it short-circuits everywhere that isn't low ground near a bridge (near-free).
+  const onBridge = (x, z) => { for (const b of LAND_BRIDGES) { if (distToSeg(x, z, b.ax, b.az, b.bx, b.bz) <= b.halfW) return true; } return false; };
+  const isWalkable = (x, z) => height(x, z) > 0.35 || onBridge(x, z);
   function biomeAt(x, z) { let best = REGIONS[0], bd = Infinity; for (const r of REGIONS) { const d = Math.hypot(x - r.x, z - r.z) - r.r; if (d < bd) { bd = d; best = r; } } return best.biome; }
 
   // --- terrain mesh (biome-coloured) -------------------------------------

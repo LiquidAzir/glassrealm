@@ -171,8 +171,15 @@ export function createUI(G) {
 
   // ---- menu ----
   let tab = 0, row = 0;
+  function syncTabs() {   // keep the tab strip built once, then just move the highlight + scroll it to centre (so it doesn't reset scroll every render)
+    if (els.menuTabs.children.length !== TABS.length) els.menuTabs.innerHTML = TABS.map((t) => `<div class="tab">${t}</div>`).join('');
+    const kids = els.menuTabs.children;
+    for (let i = 0; i < kids.length; i++) kids[i].classList.toggle('sel', i === tab);
+    const sel = kids[tab];
+    if (sel) els.menuTabs.scrollLeft = sel.offsetLeft - (els.menuTabs.clientWidth - sel.offsetWidth) / 2;   // CSS scroll-behavior:smooth animates the shift so the active tab glides to centre
+  }
   function renderMenu() {
-    els.menuTabs.innerHTML = TABS.map((t, i) => `<div class="tab ${i === tab ? 'sel' : ''}">${t}</div>`).join('');
+    syncTabs();
     ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Spells: renderSpells, Quests: renderQuests, Auto: renderAuto, Pets: renderPets, Mastery: renderMastery, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
   }
   function rowCount() {
@@ -185,7 +192,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Auto') return AUTO_MODES.length;
     if (TABS[tab] === 'Pets') return G.petRows().length;
     if (TABS[tab] === 'Mastery') return G.masteryRows().length + G.perkRows().length;
-    if (TABS[tab] === 'Diary') return (G.controls && G.controls.touchUIAvailable) ? 7 : 6;
+    if (TABS[tab] === 'Diary') return (G.controls && G.controls.touchUIAvailable) ? 8 : 7;
     if (TABS[tab] === 'Tasks') return G.diaryRows().length;
     return 0;
   }
@@ -229,7 +236,8 @@ export function createUI(G) {
       else if (row === 3 && G.importSave) G.importSave();
       else if (row === 4 && G.copySyncLink) G.copySyncLink();
       else if (row === 5 && G.cycleDeathMode) { G.cycleDeathMode(); renderMenu(); }
-      else if (row === 6 && G.controls && G.controls.touchUIAvailable) { G.controls.toggleTouchUI(); renderMenu(); }
+      else if (row === 6 && G.unstuck) { G.unstuck(); }
+      else if (row === 7 && G.controls && G.controls.touchUIAvailable) { G.controls.toggleTouchUI(); renderMenu(); }
     } else if (TABS[tab] === 'Tasks') {
       const r = G.diaryRows()[row]; if (r && r.ready) { G.diaryClaim(r.region, r.tierIdx); renderMenu(); }
     }
@@ -304,9 +312,10 @@ export function createUI(G) {
     html += `<div class="row ${row === 4 ? 'sel' : ''}"><span class="row-icon">☁️</span><div class="row-main"><div class="row-title">Cloud sync: ${cloudOn ? 'ON' : 'off'}</div><div class="row-sub">${cloudOn ? 'tap to copy your sync link for other devices' : 'enable in config.js (see /worker)'}</div></div></div>`;
     const safe = G.deathMode === 'safe';
     html += `<div class="row ${row === 5 ? 'sel' : ''}"><span class="row-icon">⚰️</span><div class="row-main"><div class="row-title">Death: ${safe ? 'Safe' : 'Standard'}</div><div class="row-sub">${safe ? 'no penalty on death' : 'drop your goods to a gravestone — run back to reclaim'} · tap to toggle</div></div></div>`;
+    html += `<div class="row ${row === 6 ? 'sel' : ''}"><span class="row-icon">🧭</span><div class="row-main"><div class="row-title">Unstuck</div><div class="row-sub">whisk back to the nearest town if you ever get stuck</div></div></div>`;
     if (G.controls && G.controls.touchUIAvailable) {   // hide the on-screen d-pad/buttons when playing on keyboard / controller / glasses
       const ton = G.controls.isTouchUIOn();
-      html += `<div class="row ${row === 6 ? 'sel' : ''}"><span class="row-icon">🎮</span><div class="row-main"><div class="row-title">Touch controls: ${ton ? 'ON' : 'OFF'}</div><div class="row-sub">on-screen d-pad &amp; buttons · tap to toggle</div></div></div>`;
+      html += `<div class="row ${row === 7 ? 'sel' : ''}"><span class="row-icon">🎮</span><div class="row-main"><div class="row-title">Touch controls: ${ton ? 'ON' : 'OFF'}</div><div class="row-sub">on-screen d-pad &amp; buttons · tap to toggle</div></div></div>`;
     }
     html += `<div class="section-head">Achievements · ${done.size}/${ACHIEVEMENTS.length}</div>`;
     html += ACHIEVEMENTS.map((a) => { const u = done.has(a.id); return `<div class="row" style="${u ? '' : 'opacity:.55'}"><span class="row-icon">${u ? '🏆' : '🔒'}</span><div class="row-main"><div class="row-title">${a.name}</div><div class="row-sub">${a.desc}</div></div></div>`; }).join('');
