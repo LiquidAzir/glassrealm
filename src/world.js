@@ -109,7 +109,7 @@ const BRIDGE_LINKS = [
   ['verdant', 'tideisle', 'isthmus'], ['ember', 'tideisle', 'causeway'],
   // Big-Map Upgrade cross-links. 'ferry' = a sea route (no land laid; tap the dock to sail across).
   ['shardspire', 'sporevale', 'isthmus'], ['shardspire', 'highland', 'span'], ['shardspire', 'mistmoor', 'causeway'],
-  ['sporevale', 'forest', 'span'], ['glade', 'lagoon', 'isthmus'], ['lagoon', 'highland', 'span'],
+  ['sporevale', 'forest', 'span'], ['glade', 'lagoon', 'isthmus'], ['lagoon', 'highland', 'isthmus'],   // Coralside↔Stormhold: a wide natural land neck, not a long span
   ['lagoon', 'amberfell', 'ferry'], ['snow', 'skyreach', 'isthmus'], ['skyreach', 'amberfell', 'span'],
   ['skyreach', 'ember', 'ferry'], ['cinderbreak', 'mistmoor', 'ferry'], ['cinderbreak', 'saltcrest', 'ferry'],
   // --- Expansion IV: new realms knit in with new transition types. 'pass'=switchback mountain road, 'tunnel'=instant cave passage,
@@ -274,15 +274,15 @@ export function createWorld(scene, seed = 1337) {
   const BRIDGES = BRIDGE_LINKS.map(([a, b, type = 'causeway']) => {
     const A = byKey[a], B = byKey[b], cfg = BRIDGE_CFG[type] || BRIDGE_CFG.causeway;
     const dx = B.x - A.x, dz = B.z - A.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
-    return { ax: A.x + ux * (A.r - cfg.inset), az: A.z + uz * (A.r - cfg.inset), bx: B.x - ux * (B.r - cfg.inset), bz: B.z - uz * (B.r - cfg.inset), halfW: cfg.w, fall: cfg.fall, flat: cfg.flat, type };
+    return { ax: A.x + ux * (A.r - cfg.inset), az: A.z + uz * (A.r - cfg.inset), bx: B.x - ux * (B.r - cfg.inset), bz: B.z - uz * (B.r - cfg.inset), halfW: cfg.w, fall: cfg.fall, flat: cfg.flat, type, acx: A.x, acz: A.z, bcx: B.x, bcz: B.z };
   });
 
   // --- height field -------------------------------------------------------
   const NO_LAND = new Set(['ferry', 'tunnel', 'gate']);   // sea routes + instant portals lay NO walkable land along the segment
   const segT = (x, z, b) => { const dx = b.bx - b.ax, dz = b.bz - b.az, L2 = dx * dx + dz * dz || 1; return clamp(((x - b.ax) * dx + (z - b.az) * dz) / L2, 0, 1); };   // 0..1 along a bridge segment
+  const regionMask = (x, z) => { let m = 0; for (const r of REGIONS) m = Math.max(m, smoothstep((r.r - Math.hypot(x - r.x, z - r.z)) / (16 * WS))); return m; };   // region land only (no bridges) — the true coastline
   function landMask(x, z) {
-    let m = 0;
-    for (const r of REGIONS) m = Math.max(m, smoothstep((r.r - Math.hypot(x - r.x, z - r.z)) / (16 * WS)));   // coastline width scales with the world so beaches stay proportional (rim features stay on land)
+    let m = regionMask(x, z);   // coastline width scales with the world so beaches stay proportional (rim features stay on land)
     for (const b of BRIDGES) { if (NO_LAND.has(b.type)) continue; m = Math.max(m, smoothstep((b.halfW - distToSeg(x, z, b.ax, b.az, b.bx, b.bz)) / b.fall)); }   // ferries/tunnels/gates lay no land
     return m;
   }
@@ -292,12 +292,29 @@ export function createWorld(scene, seed = 1337) {
   const PEAK_REGIONS = REGIONS.filter((r) => r.peak);
   // Pre-filter flat dungeons
   const FLAT_DUNGEONS = DUNGEONS.filter((dg) => dg.flat);
+  // Shared land form (base + noise + peaks) for a given land-mask — no bridge shaping.
+  function _terrainBase(x, z, mask) {
+    let h = mask * 2.4;
+    h += (Math.sin(x * (0.10 / WS)) * Math.cos(z * (0.09 / WS)) * 1.3 + Math.sin(x * (0.06 / WS) + z * (0.045 / WS) + 2.0) * 1.1 + Math.cos(z * (0.08 / WS)) * 0.7) * mask;
+    for (const r of PEAK_REGIONS) h += smoothstep(clamp(1 - Math.hypot(x - r.peak.x, z - r.peak.z) / r.peak.r, 0, 1)) * r.peak.h * mask;
+    h += (mask - 1) * 1.6;
+    return h;
+  }
+  // NATURAL shore height with NO bridge — the height each deck must meet at its ends (used to place
+  // endpoints on solid ground and to ramp the deck between the two shores).
+  const _landH = (x, z) => { let h = _terrainBase(x, z, regionMask(x, z)); for (const v of villages) { const flat = smoothstep(clamp((16.5 - dist2D(x, z, v.x, v.z)) / 16.5, 0, 1)); h = h * (1 - flat) + 2.0 * flat; } return h; };
+  // Pull every land-bridge end IN toward its region centre until it rests on solid walkable shore, so the
+  // deck can never be stranded out in the shallows with a water gap you can't cross. Record each shore's
+  // natural height so the deck RAMPS smoothly between them (no cliff into highland, no trench).
+  for (const b of LAND_BRIDGES) {
+    const pullIn = (ex, ez, cx, cz) => { const dx = cx - ex, dz = cz - ez, m = Math.hypot(dx, dz) || 1, ux = dx / m, uz = dz / m; for (let s = 0; s <= 30; s += 1.5) { const nx = ex + ux * s, nz = ez + uz * s; if (_landH(nx, nz) > 1.2) return { x: nx, z: nz }; } return { x: ex + ux * 14, z: ez + uz * 14 }; };
+    const A2 = pullIn(b.ax, b.az, b.acx, b.acz), B2 = pullIn(b.bx, b.bz, b.bcx, b.bcz);
+    b.ax = A2.x; b.az = A2.z; b.bx = B2.x; b.bz = B2.z;
+    b.shoreA = _landH(b.ax, b.az); b.shoreB = _landH(b.bx, b.bz);
+  }
   function _heightRaw(x, z) {
     const land = landMask(x, z);
-    let h = land * 2.4;
-    h += (Math.sin(x * (0.10 / WS)) * Math.cos(z * (0.09 / WS)) * 1.3 + Math.sin(x * (0.06 / WS) + z * (0.045 / WS) + 2.0) * 1.1 + Math.cos(z * (0.08 / WS)) * 0.7) * land;
-    for (const r of PEAK_REGIONS) h += smoothstep(clamp(1 - Math.hypot(x - r.peak.x, z - r.peak.z) / r.peak.r, 0, 1)) * r.peak.h * land;
-    h += (land - 1) * 1.6;
+    let h = _terrainBase(x, z, land);
     for (const b of LAND_BRIDGES) {
       const d = distToSeg(x, z, b.ax, b.az, b.bx, b.bz);
       if (d > b.halfW + 2) continue;   // PERF + clarity: nowhere near this bridge
@@ -305,11 +322,11 @@ export function createWorld(scene, seed = 1337) {
       // ~2 units — so the entire visible bridge is a comfortable walkable corridor rather
       // than a thin central spine you keep sliding off. (edge() → 1 until d ≈ halfW-2.)
       const edge = smoothstep(clamp((b.halfW - d) / 2.0, 0, 1));
-      if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.8 * fl); }
+      if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.8 * fl); }   // raise-only natural neck; the shores' own terrain handles the climb
       else if (b.type === 'iceshelf') { if (edge > 0) h = Math.max(h, 1.35 * edge); }   // frozen sea-shelf — lifted well clear of the 0.35 water line
       else if (b.type === 'pass') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.4 * fl + 9 * fl * Math.sin(segT(x, z, b) * Math.PI)); }   // a ridge that humps up over a saddle and back down
       else if (b.type === 'vinespan') { const deckY = 2.4 - 1.2 * Math.sin(segT(x, z, b) * Math.PI); h = h * (1 - edge) + deckY * edge; }   // suspension deck that SAGS at midspan
-      else { h = h * (1 - edge) + b.flat * edge; }   // causeway / span / pier — flat deck
+      else { const t = smoothstep(segT(x, z, b)); const deckH = Math.max(b.flat, b.shoreA + (b.shoreB - b.shoreA) * t); h = h * (1 - edge) + deckH * edge; }   // causeway/span/pier — a smooth ramp from one shore height to the other
     }
     for (const v of villages) { const flat = smoothstep(clamp((16.5 - dist2D(x, z, v.x, v.z)) / 16.5, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
     for (const dg of FLAT_DUNGEONS) { const flat = smoothstep(clamp((dg.r - 3 - dist2D(x, z, dg.x, dg.z)) / 6, 0, 1)); h = h * (1 - flat) + 1.8 * flat; }
@@ -1344,6 +1361,17 @@ export function createWorld(scene, seed = 1337) {
     for (const o of [-2.2, 2.2]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.6, 6), lmat(0x5a3a22)); post.position.set(x, y + 0.7, z + o); group.add(post); }
     const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: 0x7fe0ff })); lamp.position.set(x, y + 1.7, z); group.add(lamp);
   }
+  // A deck that FOLLOWS the ramped walkable height across the whole (extended) span, so the planks sit
+  // exactly on the surface you walk on — never floating above it or buried in a shore. Posts + lamps.
+  function layDeck(b, ang, ex, ez, cfg) {
+    const len = Math.hypot(b.bx - b.ax, b.bz - b.az), N = Math.max(4, Math.round(len / 3.2)), segLen = len / N + 0.5;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, y = height(px, pz);
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(cfg.w, 0.34, segLen), cfg.deckMat); plate.position.set(px, y + 0.02, pz); plate.rotation.y = ang; group.add(plate);
+      if (cfg.railMat && i % 2 === 0) for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, cfg.railH, 0.2), cfg.railMat); post.position.set(px + ex * s * (cfg.w / 2), y + cfg.railH / 2, pz + ez * s * (cfg.w / 2)); group.add(post); }
+      if (cfg.lampEvery && i % cfg.lampEvery === 0) { const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: cfg.lampColor || 0xffd47a })); lamp.position.set(px + ex * (cfg.w / 2 + 0.1), y + cfg.railH + 0.3, pz + ez * (cfg.w / 2 + 0.1)); group.add(lamp); }
+    }
+  }
   for (const b of BRIDGES) {
     if (b.type === 'ferry') {
       const A = snapLand(b.ax, b.az), B = snapLand(b.bx, b.bz);   // docks must sit on solid (walkable) shore, not beach
@@ -1382,21 +1410,9 @@ export function createWorld(scene, seed = 1337) {
     const len = Math.hypot(b.bx - b.ax, b.bz - b.az), ang = Math.atan2(b.bx - b.ax, b.bz - b.az);
     const ex = Math.cos(ang), ez = -Math.sin(ang);                                  // perpendicular (across the deck)
     if (b.type === 'span') {
-      const dy = 1.7;
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.5, len + 2.5), lmat(0xcfc7b4)); deck.position.set(mx, dy, mz); deck.rotation.y = ang; group.add(deck);   // pale stone roadway
-      for (const s of [-2.3, 2.3]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.95, len + 2.5), lmat(0xb8b09a)); rail.position.set(mx + ex * s, dy + 0.7, mz + ez * s); rail.rotation.y = ang; group.add(rail);   // stone balustrade
-      }
-      for (let t = -len / 2; t <= len / 2 + 0.1; t += 4.5) {
-        const px = mx + Math.sin(ang) * t, pz = mz + Math.cos(ang) * t;
-        for (const s of [-2.3, 2.3]) { const pil = new THREE.Mesh(new THREE.BoxGeometry(0.55, 3.4, 0.55), lmat(0xbdb59f)); pil.position.set(px + ex * s, dy - 1.4, pz + ez * s); group.add(pil); }   // arch pillars dipping toward the water
-        const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lamp.position.set(px + ex * 2.3, dy + 1.55, pz + ez * 2.3); group.add(lamp);   // warm lamp on the rail
-      }
-    } else if (b.type === 'pier') {   // stilted timber boardwalk over shallow water + harbour lanterns
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.3, len + 2), lmat(0xb08a55)); deck.position.set(mx, 1.5, mz); deck.rotation.y = ang; group.add(deck);
-      for (let t = -len / 2; t <= len / 2 + 0.1; t += 3.5) { const px = mx + Math.sin(ang) * t, pz = mz + Math.cos(ang) * t; for (const s of [-2.2, 2.2]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 3, 6), lmat(0x6a4a2a)); post.position.set(px + ex * s, 0.3, pz + ez * s); group.add(post); } }
-      for (const s of [-2.5, 2.5]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, len + 2), lmat(0x8a6a45)); rail.position.set(mx + ex * s, 2.2, mz + ez * s); rail.rotation.y = ang; group.add(rail); }
-      for (let t = -len / 2; t <= len / 2 + 0.1; t += 7) { const px = mx + Math.sin(ang) * t, pz = mz + Math.cos(ang) * t; const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lamp.position.set(px + ex * 2.5, 2.7, pz + ez * 2.5); group.add(lamp); }
+      layDeck(b, ang, ex, ez, { w: 4.8, deckMat: lmat(0xcfc7b4), railMat: lmat(0xb8b09a), railH: 1.0, lampEvery: 3, lampColor: 0xffd47a });   // pale stone roadway that rides the ramp
+    } else if (b.type === 'pier') {
+      layDeck(b, ang, ex, ez, { w: 5.2, deckMat: lmat(0xb08a55), railMat: lmat(0x8a6a45), railH: 0.9, lampEvery: 3, lampColor: 0xffd47a });   // stilted timber boardwalk + harbour lanterns
     } else if (b.type === 'vinespan') {   // swaying vine/slat canopy bridge slung between anchor-trees + glowing blossoms
       const N = Math.max(10, Math.round(len / 2));
       for (let i = 0; i <= N; i++) { const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, yy = height(px, pz); const slat = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 0.6), lmat(0x7a5a32)); slat.position.set(px, yy + 0.1, pz); slat.rotation.y = ang; group.add(slat); if (i % 3 === 0) { const bl = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), new THREE.MeshBasicMaterial({ color: i % 6 === 0 ? 0xff5aa0 : 0x7fffd0 })); bl.position.set(px + ex * 1.1, yy + 0.9, pz + ez * 1.1); group.add(bl); } }
@@ -1409,11 +1425,7 @@ export function createWorld(scene, seed = 1337) {
       for (let i = 0; i <= N; i++) { const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, off = (i % 2 ? 1 : -1) * 2.0, rx = px + ex * off, rz = pz + ez * off, ry = height(rx, rz); const seg = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 4), lmat(0xbdb59f)); seg.position.set(rx, ry + 0.2, rz); seg.rotation.y = ang; group.add(seg); if (i % 2 === 0) { const lp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lp.position.set(rx, ry + 1.4, rz); group.add(lp); } }
       const cy = height(mx, mz); for (const s of [-1.6, 1.6]) { const pil = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 0.5), lmat(0xb8b2a0)); pil.position.set(mx + ex * s, cy + 2, mz + ez * s); group.add(pil); } const lintel = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 0.6), lmat(0xb8b2a0)); lintel.position.set(mx, cy + 4, mz); lintel.rotation.y = ang; group.add(lintel); const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: 0x9bf2ff })); cap.position.set(mx, cy + 4.5, mz); group.add(cap);
     } else {
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.4, len + 2.5), lmat(0x8a6a45)); deck.position.set(mx, 1.66, mz); deck.rotation.y = ang; group.add(deck);   // rustic planks (causeway)
-      for (const s of [-2.5, 2.5]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, len + 2.5), lmat(0x5a4630)); rail.position.set(mx + ex * s, 2.15, mz + ez * s); rail.rotation.y = ang; group.add(rail);
-        for (let t = -len / 2; t <= len / 2 + 0.1; t += 3) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, 0.3), lmat(0x5a4630)); post.position.set(mx + Math.sin(ang) * t + ex * s, 1.95, mz + Math.cos(ang) * t + ez * s); group.add(post); }
-      }
+      layDeck(b, ang, ex, ez, { w: 5.4, deckMat: lmat(0x8a6a45), railMat: lmat(0x5a4630), railH: 1.0, lampEvery: 0 });   // rustic plank causeway that rides the ramp
     }
   }
 
