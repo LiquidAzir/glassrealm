@@ -196,6 +196,7 @@ export const ITEMS = {
   deepstone_amulet: { name: 'Deepstone Amulet', icon: '📿', type: 'amulet', bonus: { melee: 7, def: 5, maxhp: 25 }, desc: 'Cut from the deep-folk hold at the delve\'s heart. +7 melee, +5 defence, +25 max HP.' },
   spectral_shroud:  { name: 'Spectral Shroud',  icon: '📿', type: 'amulet', bonus: { magic: 8, def: 5, maxhp: 15 }, desc: 'Woven from grave-mist, taken from the Pale Lich. +8 magic, +5 defence, +15 max HP.' },
   forgeheart_amulet:{ name: 'Forgeheart Amulet', icon: '📿', type: 'amulet', bonus: { melee: 8, def: 6, maxhp: 20 }, desc: 'A still-warm core cut from the Magma Titan. +8 melee, +6 defence, +20 max HP.' },
+  smugglers_charm:  { name: "Smuggler's Charm",  icon: '📿', type: 'amulet', bonus: { ranged: 8, def: 5, maxhp: 18 }, desc: 'The Harbor Baron\'s own luck-piece, cut from black coral. +8 ranged, +5 defence, +18 max HP.' },
 
   // ---- Hearty meals (a cooking activity — combine ingredients for big heals, see MEALS) ----
   fish_stew:       { name: 'Fisher’s Stew',   icon: '🍲', type: 'consumable', heal: 45,  desc: 'A warming stew. Restores 45 HP.' },
@@ -684,6 +685,12 @@ export const WANDERERS = [
   { kind: 'squad',  name: 'Hold Guard', color: 0x8a5a3a, helm: 0xff9a4a, count: 3, speed: 2.0, loop: [{ x: 238, z: -150 }, { x: 262, z: -150 }, { x: 262, z: -170 }, { x: 238, z: -170 }] },
   { kind: 'wander', name: 'Dwarf Miner', color: 0xc89060, home: { x: 240, z: -152 }, radius: 9, speed: 1.4 },
   { kind: 'wander', name: 'Dwarf Smith', color: 0xff9a5a, home: { x: 258, z: -150 }, radius: 8, speed: 1.3 },
+  // --- Duskport: the Thieves' Quarter — no honest guard, only shady folk about the lantern-lit row ---
+  { kind: 'wander', name: 'Smuggler',       color: 0x3a4258, home: { x: 168, z: 210 }, radius: 10, speed: 1.5 },
+  { kind: 'wander', name: 'Lamplighter',    color: 0xffce6a, home: { x: 176, z: 214 }, radius: 9,  speed: 1.4 },
+  { kind: 'wander', name: 'Pickpocket',     color: 0x4a3f5a, home: { x: 164, z: 220 }, radius: 13, speed: 2.3 },
+  { kind: 'wander', name: 'Fence’s Runner', color: 0x6a5acf, home: { x: 178, z: 208 }, radius: 11, speed: 1.8 },
+  { kind: 'wander', name: 'Cloaked Figure', color: 0x2a2f44, home: { x: 172, z: 224 }, radius: 8,  speed: 1.2 },
 ];
 
 // Tameable animals → companion pets. One pet follows you at a time and grants its perk
@@ -1018,6 +1025,10 @@ export const ENEMIES = {
   the_pale_lich:       { name: 'The Pale Lich',       hp: 470, dmg: 38, speed: 3.0, xp: 1220, color: 0xbfe0d0, aggro: 20, shape: 'warden', scale: 2.2, boss: true, loot: { gold: 440, bone_shard: 6, ruby: 2, emerald: 2, bones: 5 }, rare: { item: 'spectral_shroud', chance: 0.35 } },
   // --- Karak-Vol: the Magma Titan at the volcano's heart ---
   the_magma_titan:     { name: 'The Magma Titan',     hp: 540, dmg: 42, speed: 2.8, xp: 1360, color: 0xff5a2a, aggro: 20, shape: 'golem', scale: 2.6, boss: true, loot: { gold: 480, magma_core: 6, adamant_bar: 3, ruby: 3, coal: 8 }, rare: { item: 'forgeheart_amulet', chance: 0.35 } },
+  // --- Duskport: the Thieves' Quarter — cutthroats and enforcers guard the Harbor Baron's rackets ---
+  cutthroat:     { name: 'Cutthroat',     hp: 98,  dmg: 21, speed: 4.9, xp: 245, color: 0x3a3f5a, aggro: 15, shape: 'humanoid', loot: { gold: 30, bones: 1 } },
+  dock_enforcer: { name: 'Dock Enforcer', hp: 156, dmg: 26, speed: 3.0, xp: 265, color: 0x4a4258, aggro: 12, shape: 'humanoid', scale: 1.35, loot: { gold: 34, bones: 1 } },
+  the_harbor_baron: { name: 'The Harbor Baron', hp: 470, dmg: 39, speed: 3.6, xp: 1260, color: 0x6a5acf, aggro: 20, shape: 'humanoid', scale: 2.2, boss: true, loot: { gold: 560, ruby: 3, emerald: 2, sapphire: 2, bones: 4 }, rare: { item: 'smugglers_charm', chance: 0.35 } },
 };
 
 // ---------- Combat triangle ----------
@@ -1030,8 +1041,8 @@ export const WEAKNESS = {
   boar: 'ranged', frost_wolf: 'ranged', scorpion: 'ranged', jungle_panther: 'ranged', glimmer_bat: 'ranged',
   scorchling: 'ranged', marsh_crab: 'ranged', blight_wolf: 'ranged', storm_harpy: 'ranged', deep_lurker: 'ranged', lava_hound: 'ranged',
   bandit: 'magic', goblin_brute: 'magic', skeleton: 'magic', crystal_golem: 'magic', crag_golem: 'magic',
-  grave_husk: 'magic', brigand: 'magic', ash_hound: 'magic', thornling: 'magic',
-  wolf: 'melee', goblin: 'melee', serpent: 'melee', crystal_sprite: 'melee', magma_imp: 'melee', wraith: 'melee', tide_priest: 'melee', wisp: 'melee',
+  grave_husk: 'magic', brigand: 'magic', ash_hound: 'magic', thornling: 'magic', dock_enforcer: 'magic',
+  wolf: 'melee', goblin: 'melee', serpent: 'melee', crystal_sprite: 'melee', magma_imp: 'melee', wraith: 'melee', tide_priest: 'melee', wisp: 'melee', cutthroat: 'melee',
   // bosses — spread evenly so switching styles is a real choice
   ember_boss: 'ranged', cinder_colossus: 'ranged', drowned_king: 'ranged', jorath: 'ranged', hollow_king: 'ranged',
   sandwyrm: 'magic', warchief: 'magic', vurak: 'magic', drowned_captain: 'magic',
@@ -1044,7 +1055,7 @@ export const WEAKNESS = {
   glimmer_leech: 'ranged', the_dreamward: 'ranged', frost_wraith: 'magic', glacier_wight: 'melee', heart_of_hoarfrost: 'magic', shade_stalker: 'melee', edgewraith: 'magic', the_reckoner: 'ranged', salt_wraith: 'magic',
   glass_wisp: 'ranged', cinderglass_stalker: 'magic', the_glasswake: 'ranged',
   the_lantern_drowned: 'ranged', the_rimewright: 'magic', the_glassmaw: 'magic', the_hollowed_warden: 'ranged', the_brinemother: 'magic',
-  the_deepwarden: 'ranged', the_pale_lich: 'magic', the_magma_titan: 'magic',
+  the_deepwarden: 'ranged', the_pale_lich: 'magic', the_magma_titan: 'magic', the_harbor_baron: 'melee',
 };
 // The style a foe ATTACKS with (drives Protection prayers). Default melee; only casters/archers are tagged.
 export const ATK_STYLE = {
@@ -1059,7 +1070,7 @@ export const ATK_STYLE = {
   frost_wraith: 'magic', the_dreamward: 'magic', heart_of_hoarfrost: 'magic', the_reckoner: 'magic',
   the_glasswake: 'magic',
   the_lantern_drowned: 'magic', the_glassmaw: 'ranged', the_hollowed_warden: 'magic',
-  the_deepwarden: 'magic', the_pale_lich: 'magic',
+  the_deepwarden: 'magic', the_pale_lich: 'magic', the_harbor_baron: 'ranged',
 };
 
 // ---------- Slayer reward shop ----------  (spend points earned from contracts)
@@ -1092,6 +1103,11 @@ export const AUTO_MODES = [
 ];
 
 export const ENEMY_SPAWNS = [
+  // Duskport — cutthroats work the lantern-lit alleys; the Harbor Baron holds court at the wharf
+  { enemy: 'the_harbor_baron', x: 186, z: 228 },
+  { enemy: 'cutthroat', x: 158, z: 206 }, { enemy: 'cutthroat', x: 182, z: 200 }, { enemy: 'cutthroat', x: 160, z: 226 }, { enemy: 'cutthroat', x: 190, z: 210 },
+  { enemy: 'dock_enforcer', x: 176, z: 234 }, { enemy: 'dock_enforcer', x: 196, z: 222 }, { enemy: 'dock_enforcer', x: 150, z: 216 },
+  { enemy: 'brigand', x: 168, z: 240 }, { enemy: 'brigand', x: 200, z: 232 }, { enemy: 'bandit', x: 148, z: 228 }, { enemy: 'bandit', x: 200, z: 204 },
   // Karak-Vol — fire-things prowl the basalt; the Magma Titan wakes at the volcano's heart
   { enemy: 'the_magma_titan', x: 258, z: -172 },
   { enemy: 'magma_imp', x: 236, z: -150 }, { enemy: 'magma_imp', x: 264, z: -150 }, { enemy: 'magma_imp', x: 242, z: -176 },
@@ -1306,6 +1322,25 @@ export const QUESTS = {
     desc: 'Climb to the caldera and break the Magma Titan before it buries the hold.',
     objectives: [{ id: 'boss', type: 'kill', enemy: 'the_magma_titan', count: 1 }],
     rewards: { xp: { combat: 840, defence: 280 }, items: { gold: 520, forgeheart_amulet: 1 } },
+  },
+  // --- Duskport: the Thieves' Quarter (Guildmaster Vessa) — reclaim the docks from the Harbor Baron ---
+  q_heist1: {
+    name: 'A Cut of the Take', giver: 'vessa', startsAvailable: true, reqSkills: { thieving: 1 },
+    desc: "Freelance cutthroats are skimming the guild's take. Put six of them down in Duskport's alleys.",
+    objectives: [{ id: 'k', type: 'kill', enemy: 'cutthroat', count: 6 }],
+    rewards: { xp: { thieving: 300, combat: 260 }, items: { gold: 200 } },
+  },
+  q_heist2: {
+    name: "The Baron's Muscle", giver: 'vessa', requires: 'q_heist1',
+    desc: "Clear five of the Harbor Baron's dock enforcers off the wharf so the guild can move again.",
+    objectives: [{ id: 'k', type: 'kill', enemy: 'dock_enforcer', count: 5 }],
+    rewards: { xp: { combat: 460, thieving: 200 }, items: { gold: 260, rune_ring: 1 } },
+  },
+  q_heist3: {
+    name: 'The Harbor Baron', saga: true, giver: 'vessa', requires: 'q_heist2',
+    desc: "Break into the wharf and end the Harbor Baron's grip on Duskport for good.",
+    objectives: [{ id: 'boss', type: 'kill', enemy: 'the_harbor_baron', count: 1 }],
+    rewards: { xp: { combat: 820, thieving: 360 }, items: { gold: 560, smugglers_charm: 1 } },
   },
   q_mine: {
     name: 'Coal for the Forge', giver: 'miner', startsAvailable: true,
@@ -1682,6 +1717,33 @@ export const DIALOGUE = {
     a3: node('Forge-Master Durga', 'The caldera lies above the hold. Go, kin — and come back slag or victor.', [end('I go.')]),
     d3: node('Forge-Master Durga', 'The forge remembers you. So will the hold, for a hundred years.', [end('Thank you.')]),
     lore: node('Forge-Master Durga', 'Karak-Vol was cut into a living volcano ten ages back — we mine its bones and forge in its blood. The mountain gives, and the mountain takes. Lately it takes more than its due. But a hold does not abandon its fire.', [end('Stone-strong.')]),
+  },
+  // --- Duskport: Guildmaster Vessa (thieves' guildhall 'talk' station) — the heist trilogy.
+  // NOTE: keyed 'vessa', NOT 'guildmaster' — that key belongs to Guildmaster Aldric (Guild of Trades). ---
+  vessa: {
+    root: (G) => {
+      const s1 = G.quests.status('q_heist1');
+      if (s1 === 'available') return node('Guildmaster Vessa', 'New face. Steady hands? Duskport runs on the quiet trade, and lately freelance cutthroats are lifting the guild’s own take. Put six of them in the harbour and we’ll talk about a cut.',
+        [{ label: 'Consider it done.', action: (g) => g.quests.accept('q_heist1'), to: 'a1' }, { label: 'Who runs Duskport?', to: 'lore' }, end('Not my trade.')]);
+      if (s1 === 'active') { if (G.quests.isReady('q_heist1')) return node('Guildmaster Vessa', 'Six fewer mouths skimming my till, and quietly too. You’re guild now, more or less.', [{ label: 'What’s next?', action: (g) => g.quests.complete('q_heist1'), to: 'd1' }]); return node('Guildmaster Vessa', 'The cutthroats work the lantern-alleys off the black-market row. Six of them. Go.', [end('On it.')]); }
+      const s2 = G.quests.status('q_heist2'), s3 = G.quests.status('q_heist3');
+      if (s2 === 'available') return node('Guildmaster Vessa', 'Here’s the rot: a mainlander calling himself the Harbor Baron has muscled onto my docks, and his enforcers won’t let a soul move a crate. Break five of them and we take the wharf back.',
+        [{ label: 'I’ll clear the docks.', action: (g) => g.quests.accept('q_heist2'), to: 'a2' }, end('Later.')]);
+      if (s2 === 'active') { if (G.quests.isReady('q_heist2')) return node('Guildmaster Vessa', 'The wharf breathes again. The Baron will have felt that — good. Let him sweat.', [{ label: 'And the Baron?', action: (g) => g.quests.complete('q_heist2'), to: 'd2' }]); return node('Guildmaster Vessa', 'Five of the Baron’s enforcers, still standing on my docks. Fix that.', [end('Aye.')]); }
+      if (s2 === 'complete' && s3 === 'available') return node('Guildmaster Vessa', 'Time to cut off the head. The Harbor Baron holds the far wharf with a strongbox full of everything he’s stolen from us. End him and Duskport’s ours again. Get in close — the coward throws knives.',
+        [{ label: 'I’ll end him.', action: (g) => g.quests.accept('q_heist3'), to: 'a3' }, { label: 'Who is the Baron?', to: 'baron' }, end('Soon.')]);
+      if (s3 === 'active') { if (G.quests.isReady('q_heist3')) return node('Guildmaster Vessa', 'The Baron’s cold on his own wharf and the docks are guild again. You’ve made yourself a legend in the quiet trade. His luck-charm’s yours — it was always lucky for the wrong people.', [{ label: 'A pleasure, Guildmaster.', action: (g) => g.quests.complete('q_heist3'), to: 'd3' }]); return node('Guildmaster Vessa', 'The Baron’s on the far wharf, past his enforcers. Close the distance and he’s nothing. Go.', [end('I go.')]); }
+      if (s3 === 'complete') return node('Guildmaster Vessa', 'The one who took the wharf back. Every fence and footpad in Duskport knows your name — and none of them will say it aloud. That’s respect, down here.', [{ label: 'Who runs Duskport?', to: 'lore' }, end('Stay sharp.')]);
+      return node('Guildmaster Vessa', 'The Fence buys what you’d rather not explain, and the stash-vault keeps it quiet. Work the black-market row if your fingers itch — Duskport rewards the quick.', [{ label: 'Who runs Duskport?', to: 'lore' }, end('Farewell.')]);
+    },
+    a1: node('Guildmaster Vessa', 'Six cutthroats. The alleys off the row are thick with them. Quietly, if you can manage it.', [end('Understood.')]),
+    d1: node('Guildmaster Vessa', 'Bigger problem now — come back when your blade’s wiped clean and I’ll lay it out.', [end('Ready.')]),
+    a2: node('Guildmaster Vessa', 'Five enforcers, off my wharf. They’re the big lads in the Baron’s colours.', [end('Right.')]),
+    d2: node('Guildmaster Vessa', 'One job left, and it’s the whole game. Steel your nerve, then see me.', [end('I will.')]),
+    a3: node('Guildmaster Vessa', 'The far wharf. Past the enforcers, under the broken lantern. Bring me his charm.', [end('I go.')]),
+    d3: node('Guildmaster Vessa', 'Duskport’s in good hands — yours, and mine watching yours. Don’t be a stranger.', [end('Never.')]),
+    lore: node('Guildmaster Vessa', 'Nobody runs Duskport, love — that’s rather the point of it. The crown’s writ stops at the causeway. Down here it’s the guild, the tides, and whatever you can hold onto. Keep to the shadows and the lanterns keep to you.', [end('Fair enough.')]),
+    baron: node('Guildmaster Vessa', 'Some deposed harbourmaster from up the coast who decided a knife in the dark pays better than a ledger. He’s not wrong about that. But he took my docks — and that I can’t forgive.', [end('Understood.')]),
   },
   // --- The Necropolis: the High Priest (cathedral 'talk' station) + graveyard ghosts ---
   highpriest: {
@@ -2435,7 +2497,7 @@ export const SHOP = {
     adamant_sword: 260, adamant_armor: 320, adamant_shield: 260, runite_sword: 560, runite_armor: 680, runite_shield: 560,
     oak_longbow: 40, willow_bow: 75, maple_bow: 130, yew_longbow: 240, magic_bow: 430,
     silver_ring: 55, silver_amulet: 90, gold_ring: 160, gold_amulet: 230,
-    deepstone_amulet: 300, spectral_shroud: 300, forgeheart_amulet: 320,
+    deepstone_amulet: 300, spectral_shroud: 300, forgeheart_amulet: 320, smugglers_charm: 300,
   },
 };
 
@@ -2577,6 +2639,12 @@ export const WANDER_VOICE = {
   Bard: { day: ["A song for your trouble? No? Your loss.", "Working a ballad about the keeper. Needs a rhyme for 'boar'.", "The hearth's the best stage on the isle."], night: ["The night wants slow songs.", "Every tavern needs a tune."], any: ["History's just a song folk agreed to remember."] },
   Fisherwife: { day: ["Gut 'em fresh or don't bother.", "My man's out past the shoals again.", "Salt cures fish and tempers both."], night: ["Lamps in the window for the boats.", "The tide's loud tonight."], any: ["The sea gives, the sea takes. Mostly takes."] },
   Stevedore: { day: ["Heave! These crates won't lift themselves.", "Another ship, another aching back.", "Mind the gangplank — slick as an eel."], night: ["Last crate's stowed. Done in.", "Fog's thick off the water tonight."], any: ["Honest work, dockwork. Hard, but honest."] },
+  // --- Duskport townsfolk: shady, lantern-lit, and careful with their words ---
+  Smuggler: { day: ["Didn't see me. You didn't see anyone.", "The tide brings in more than fish, friend.", "Ask no questions, pay no bribes."], night: ["Cargo moves best in the dark.", "Lantern's out for a reason. Move along."], any: ["Everything's for sale in Duskport. Everything."] },
+  Lamplighter: { day: ["Keep to the lit paths, if you're wise.", "I light the lamps; what they show is your business.", "The dark's where the knives are, love."], night: ["One by one, I keep the shadows honest.", "A lit wick's the only law down here.", "Mind the alleys the lamps don't reach."], any: ["Even thieves need a little light."] },
+  Pickpocket: { day: ["Nice purse. Shame to lose it.", "Quick fingers, quicker feet — that's the trade.", "Bump into me and count your coins after."], night: ["Crowds thin at night. Slim pickings.", "You'll never feel it, promise."], any: ["Guild takes a cut of everything, even a smile."] },
+  'Fence’s Runner': { day: ["Got goods? The Fence pays fair — for here.", "No names, no papers, no trouble.", "Vessa wants this delivered quiet. Out of my way."], night: ["Running the night's take to the vault.", "Don't follow me, and we'll stay friends."], any: ["The Fence buys what honest shops won't."] },
+  'Cloaked Figure': { day: ["…", "The Baron watches the wharf. So do others.", "Speak softly here. Walls have knives."], night: ["Some of us prefer the dark. Don't ask why.", "You saw nothing tonight."], any: ["Duskport keeps its secrets. Keep yours."] },
 };
 // Reactive barks: NPCs notice the PLAYER — a fresh boss kill ({boss} filled in), the weather,
 // your wounds, the weapon on your back. Shared pools (varied so they don't read identically).

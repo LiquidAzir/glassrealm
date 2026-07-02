@@ -46,6 +46,8 @@ const BIOMES = {
   necro:     { sea: 0x0a0c12, sand: 0x2c2c32, low: 0x33343c, low2: 0x2b2c34, high: 0x45464f, peak: 0x8a9a94, fol: [0x4a6a54, 0x7cffb0], trunk: 0x3a3a40 },
   // Karak-Vol — near-black basalt (transparent on the display) shot through with molten orange
   basalt:    { sea: 0x1a0a08, sand: 0x3a2420, low: 0x2a1e1c, low2: 0x241a18, high: 0x3e2e2a, peak: 0xff7a3d, fol: [0xff7a3a, 0xffb04a], trunk: 0x2a1a16 },
+  // Duskport — an eternal-dusk harbour of deep indigo, lit gold + violet by a thousand lanterns
+  nocturne:  { sea: 0x0a1424, sand: 0x2a2e3e, low: 0x1e2436, low2: 0x1a2030, high: 0x2e3650, peak: 0x8a6ad6, fol: [0x3a5a7a, 0xffce6a], trunk: 0x2a2e3e },
 };
 
 const REGIONS = [
@@ -83,6 +85,8 @@ const REGIONS = [
   { key: 'gravehallow', x: -120, z: -200, r: 40, biome: 'necro', village: { name: 'Gravehallow', x: -120, z: -200, hut: [0x565662, 0x2f4a3a], cathedral: true }, tree: 'pine', nTree: 18, nBush: 4, nRock: 16, nFish: 0, ore: [['coal', 3]] },
   // --- Karak-Vol: a dwarven forge-hold carved into a live volcano — a great gate, a molten forge-hall, master smiths, and a magma titan. ---
   { key: 'karakvol', x: 250, z: -160, r: 42, biome: 'basalt', village: { name: 'Karak-Vol', x: 250, z: -160, hut: [0x3e2e2a, 0xff7a3a], smithy: true, hold: true }, peak: { x: 258, z: -172, r: 14, h: 13 }, tree: 'cactus', nTree: 8, nBush: 0, nRock: 24, nFish: 0, ore: [['iron', 5], ['coal', 5], ['adamant', 2]] },
+  // --- Duskport: a lantern-lit thieves' harbour — a black-market row, a thieves' guildhall, rooftop runs, and a heist. ---
+  { key: 'duskport', x: 170, z: 215, r: 38, biome: 'nocturne', village: { name: 'Duskport', x: 170, z: 215, hut: [0x2a3040, 0xffce6a], smithy: true, guildhall: true }, tree: 'palm', nTree: 12, nBush: 4, nRock: 8, nFish: 5, ore: [['iron', 3]] },
 ];
 // Region links with a transition TYPE: 'causeway' = rustic plank land bridge (the classic),
 // 'isthmus' = a wide natural land neck where the islands nearly merge (clean, no built deck),
@@ -115,6 +119,8 @@ const BRIDGE_LINKS = [
   ['gravehallow', 'lagoon', 'causeway'], ['gravehallow', 'aurorath', 'iceshelf'],
   // Karak-Vol — a causeway from Duskmere, a switchback mountain pass from Skyreach
   ['karakvol', 'duskmere', 'causeway'], ['karakvol', 'skyreach', 'pass'],
+  // Duskport — a causeway from honest Saltcrest, a smugglers' run from the badlands
+  ['duskport', 'saltcrest', 'causeway'], ['duskport', 'badlands', 'causeway'],
 ];
 // One signature landmark per region (offsets are raw, scaled by WS at build time).
 const REGION_SIG = {
@@ -206,6 +212,9 @@ const SHORTCUT_LINKS = [
   { name: 'Stepping Stones', a: { x: 34, z: -28 }, b: { x: 86, z: -72 }, level: 5 },
   { name: 'Tangle Vines',    a: { x: 16, z: 42 },  b: { x: 24, z: 86 },  level: 1 },
   { name: 'Forest Climb',    a: { x: -40, z: 8 },  b: { x: -86, z: 14 }, level: 3 },
+  // Duskport rooftop runs (Agility) — vault across the harbour tiles
+  { name: 'Rooftop Leap',    a: { x: 158, z: 206 }, b: { x: 182, z: 206 }, level: 12 },
+  { name: 'Dockside Climb',  a: { x: 160, z: 226 }, b: { x: 180, z: 226 }, level: 20 },
 ];
 
 // Grow the whole world uniformly: multiply every world POSITION + land RADIUS by WS, and
@@ -869,6 +878,7 @@ export function createWorld(scene, seed = 1337) {
     royal:    { bldR: 27, svcR: 18,  lampN: 10, plaza: () => statue,          farmA: 1.30 },
     necro:    { bldR: 24, svcR: 17,  lampN: 8,  plaza: () => statue,          farmA: 2.10 },
     basalt:   { bldR: 24, svcR: 16,  lampN: 8,  plaza: () => brazier,         farmA: 2.20 },
+    nocturne: { bldR: 22, svcR: 13,  lampN: 12, plaza: () => fountain,        farmA: 2.40 },
   };
   const PLAZA_ARG = {                                  // biome-specific centerpiece tints (water / canopy / crystal / totem)
     desert: [0x3fb8d0], coast: [0x2fb8e0], lagoon: [0x6fe6c8], saltmarsh: [0xf08fb8],
@@ -992,15 +1002,41 @@ export function createWorld(scene, seed = 1337) {
     glowb(new THREE.BoxGeometry(2.2, 0.2, 13), 0xff5a2a, 0, 0.14, 10.5, 0.85);   // lava channel from the gate
     const dz = 4.5; stations.push({ kind: 'door', label: 'Enter the Forge-Hall', x: cx, z: cz + dz, y: height(cx, cz + dz), building: 'forgehall', biome: 'basalt' });
   }
+  // Duskport's thieves' guildhall: a dark two-storey hall with a black-market awning, lantern-lit
+  // facade, a violet guild-mark, and a shadowed door into the den (fence, guildmaster, stash-vault).
+  function guildhall(cx, cz) {
+    const y0 = height(cx, cz);
+    const wall = lmat(0x2a3040), wall2 = lmat(0x1e2430), roofc = lmat(0x14202e), dark = lmat(0x0e1420);
+    const box = (w, h, d, m, x, y, z, ry) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(cx + x, y0 + y, cz + z); if (ry) me.rotation.y = ry; group.add(me); return me; };
+    const glowb = (geo, c, x, y, z) => { const me = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: c })); me.position.set(cx + x, y0 + y, cz + z); group.add(me); return me; };
+    box(12, 8, 10, wall, 0, 4, 0); box(12.6, 0.6, 10.6, wall2, 0, 8.2, 0);      // main block + cornice
+    box(8, 5, 7, wall2, 0, 10.5, -1);                                          // setback upper storey
+    const roofM = new THREE.Mesh(new THREE.ConeGeometry(5.5, 3, 4), roofc); roofM.position.set(cx, y0 + 14, cz - 1); roofM.rotation.y = Math.PI / 4; group.add(roofM);
+    for (const s of [-1, 1]) { box(0.16, 0.5, 0.16, dark, s * 3, 5.5, 5.1); glowb(new THREE.IcosahedronGeometry(0.22, 0), 0xffce6a, s * 3, 5.1, 5.2); }   // door lanterns
+    box(6, 0.16, 2, lmat(0x6a2f3a), 0, 4.6, 6);                                // black-market awning
+    box(3, 3.6, 0.4, dark, 0, 1.8, 5.1);                                       // shadowed doorway
+    glowb(new THREE.OctahedronGeometry(0.34, 0), 0x8a6ad6, 0, 8.4, 5.15);      // violet guild-mark
+    for (const [ox, oz] of [[-7, 3.5], [7, 2.5], [-6, -4], [6.5, -3.5]]) box(1, 1, 1, lmat(0x3a3020), ox, 0.5, oz);   // crates in the alley
+    ambientEmitters.push({ x: cx, y: y0 + 2, z: cz + 5, color: 0xffce6a, every: 1.2, opts: { n: 2, spread: 2, up: 2, life: 2 } });
+    solids.push({ x: cx, z: cz, r: 6 });
+    const dz = 8; stations.push({ kind: 'door', label: "Enter the Thieves' Guildhall", x: cx, z: cz + dz, y: height(cx, cz + dz), building: 'guildhall', biome: 'nocturne' });
+  }
+  // Duskport's bustling black-market row — extra stalls to pilfer (Thieving)
+  function buildDuskport(v) {
+    const cx = v.x, cz = v.z;
+    for (let i = 0; i < 7; i++) { const a = -1.3 + i * 0.36, r = 13, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (isWalkable(x, z)) stall(x, z); }
+    for (let i = 0; i < 8; i++) { const a = i / 8 * TAU, r = 16, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, y = height(x, z); ambientEmitters.push({ x, y: y + 2, z, color: 0xffce6a, every: 1.6, opts: { n: 1, spread: 1, up: 2, life: 2.2 } }); }
+  }
   for (const v of villages) {
     const L = LAYOUT[v.biome] || LAYOUT.grass;
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
     const bldR = v.castle ? 27 : L.bldR, svcR = v.castle ? 18 : L.svcR, lampN = v.castle ? 10 : L.lampN;
     for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * bldR, v.z + Math.sin(a) * bldR, v.x, v.z, types[i], v.hut, v.biome); }
-    // centrepiece: the castle (capital), the cathedral (necropolis), the forge-hold gate (Karak-Vol), else the biome's plaza
+    // centrepiece: castle (capital), cathedral (necropolis), forge-hold gate (Karak-Vol), guildhall (Duskport), else plaza
     if (v.castle) castle(v.x, v.z);
     else if (v.cathedral) cathedral(v.x, v.z);
     else if (v.hold) hold(v.x, v.z);
+    else if (v.guildhall) { guildhall(v.x, v.z); buildDuskport(v); }
     else { const pf = L.plaza(); const args = PLAZA_ARG[v.biome]; if (args) pf(v.x, v.z, ...args); else pf(v.x, v.z); }
     // service stations spread evenly on an inner ring so each sits in its own clear sector (easy to navigate)
     const svc = [

@@ -47,6 +47,7 @@ const INT_PAL = {
   royal:    { floor: 0x8a7048, wall: 0xcdc2a4, beam: 0x5a4632, rug: 0x8a2438, lamp: 0xffdf9a },
   necro:    { floor: 0x3a3a42, wall: 0x565662, beam: 0x2a2a30, rug: 0x2f4a3a, lamp: 0x7cffb0 },
   basalt:   { floor: 0x2e2422, wall: 0x4a3a34, beam: 0x241a16, rug: 0x6a2a1a, lamp: 0xff8a3a },
+  nocturne: { floor: 0x1e2436, wall: 0x2a3040, beam: 0x14202e, rug: 0x3a2f4a, lamp: 0xffce6a },
 };
 const PAL = (b) => INT_PAL[b] || INT_PAL.grass;
 
@@ -283,9 +284,42 @@ export function createInteriors(scene) {
     cache['forgehall|' + biome] = { group: g, stations, solids, lamp: 0xff8a3a, bounds: { minX: IX - HX + 1.2, maxX: IX + HX - 1.2, minZ: IZ - HZ + 1.2, maxZ: IZ + HZ - 1.2, y: FY }, entry: { x: IX, z: IZ + HZ - 3.5 } };
   }
 
+  // Duskport's thieves' den — a lantern-lit black-market hall: the Fence's counter, the Guildmaster
+  // at the back, a stash-vault, a gambling table with shady patrons, and violet guild-glow.
+  function buildGuildhall(biome) {
+    const g = new THREE.Group(); root.add(g); g.visible = false;
+    const stations = [], solids = [];
+    const P = { floor: mat(0x1e2436), wall: mat(0x2a3040), beam: mat(0x14202e), stone: mat(0x1a2030), rug: mat(0x3a2f4a) };
+    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
+    const wallSolids = (x0, z0, x1, z1) => { const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 2)); for (let i = 0; i <= n; i++) { const t = i / n; solid(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.2); } };
+    const st = (o) => stations.push(Object.assign({ y: FY }, o, { x: IX + o.x, z: IZ + o.z }));
+    const person = (x, z, color, hat) => { const cl = mat(color); box(0.2, 0.7, 0.2, P.beam, x - 0.16, 0.35, z); box(0.2, 0.7, 0.2, P.beam, x + 0.16, 0.35, z); box(0.64, 0.78, 0.4, cl, x, 1.1, z); box(0.18, 0.56, 0.2, cl, x - 0.44, 1.18, z); box(0.18, 0.56, 0.2, cl, x + 0.44, 1.18, z); ico(0.3, mat(0xf2c79a), x, 1.75, z); box(0.5, 0.36, 0.5, mat(hat || 0x14202e), x, 1.95, z); solid(x, z, 0.8); };
+    const lantern = (x, z) => { box(0.14, 1.4, 0.14, P.beam, x, 0.7, z); ico(0.18, glow(0xffce6a), x, 1.5, z); };
+    const HX = 13, HZ = 15, WH = 6;
+    box(HX * 2, 0.3, HZ * 2, P.floor, 0, 0, 0);
+    box(HX * 2, WH, 0.5, P.wall, 0, WH / 2, -HZ); box(0.5, WH, HZ * 2, P.wall, -HX, WH / 2, 0); box(0.5, WH, HZ * 2, P.wall, HX, WH / 2, 0);
+    const dg = 4, sseg = (HX * 2 - dg) / 2; box(sseg, WH, 0.5, P.wall, -(dg / 2 + sseg / 2), WH / 2, HZ); box(sseg, WH, 0.5, P.wall, (dg / 2 + sseg / 2), WH / 2, HZ); box(dg + 1.4, 1.4, 0.5, P.wall, 0, WH - 0.7, HZ);
+    for (let i = -3; i <= 3; i++) box(HX * 2, 0.3, 0.3, P.beam, 0, WH - 0.2, i * HZ / 3.5);
+    box(4, 0.05, HZ * 2 - 3, P.rug, 0, 0.18, 0);
+    ico(0.34, glow(0x8a6ad6), 0, WH - 0.8, -HZ + 1);   // violet guild-mark on the back wall
+    st({ kind: 'exit', label: 'Exit to Duskport', x: 0, z: HZ - 2 });
+    wallSolids(-HX, -HZ, HX, -HZ); wallSolids(-HX, -HZ, -HX, HZ); wallSolids(HX, -HZ, HX, HZ); wallSolids(-HX, HZ, -(dg / 2), HZ); wallSolids(dg / 2, HZ, HX, HZ);
+    box(8, 1.1, 1.3, P.beam, 0, 0.55, -12); for (let dx = -3; dx <= 3; dx += 3) solid(dx, -12, 1.5); person(0, -13.4, 0x8a6ad6, 0x14202e);   // the Guildmaster behind a counter
+    st({ kind: 'talk', label: 'Speak with the Guildmaster', x: 0, z: -10.4, dialogue: 'vessa', npcKey: 'vessa' });
+    box(6, 1.1, 1.3, P.beam, -9, 0.55, 4); solid(-9, 4, 1.6); person(-9, 5, 0x6a2f3a, 0x3a2f4a); st({ kind: 'shop', label: 'The Fence (black market)', x: -9, z: 2.6 });   // the Fence's counter
+    box(1.7, 1.9, 1.1, mat(0x2e3650), 9, 0.95, -12); ico(0.4, glow(0xffce6a), 9, 2.0, -12); solid(9, -12, 1.1); st({ kind: 'bank', label: 'Stash Vault', x: 9, z: -10.4 });   // the stash
+    box(2.6, 1.0, 2.6, P.beam, 8, 0.5, 6); solid(8, 6, 1.6); ico(0.3, glow(0xffce6a), 8, 1.1, 6); person(6.4, 6, 0x3a5a7a, 0x14202e); st({ kind: 'patron', label: 'Sit in on the game', x: 6.4, z: 7.2 });   // gambling table + a gambler
+    person(-4, 8, 0x2e3650, 0x14202e); person(4, -4, 0x3a2f4a, 0x14202e);   // lurking patrons
+    for (const [lx, lz] of [[-6, -6], [6, -6], [-6, 6], [6, 8], [0, 0]]) lantern(lx, lz);
+    for (const lz of [-6, 2, 10]) ico(0.42, glow(0xffce6a), 0, WH - 1.2, lz);
+    cache['guildhall|' + biome] = { group: g, stations, solids, lamp: 0xffce6a, bounds: { minX: IX - HX + 1.2, maxX: IX + HX - 1.2, minZ: IZ - HZ + 1.2, maxZ: IZ + HZ - 1.2, y: FY }, entry: { x: IX, z: IZ + HZ - 3.5 } };
+  }
+
   function enter(type, biome) {
     const key = type + '|' + biome;
-    if (!cache[key]) { if (type === 'castle') buildCastle(biome); else if (type === 'cathedral') buildCathedral(biome); else if (type === 'forgehall') buildForgeHall(biome); else buildType(type, biome); }
+    if (!cache[key]) { if (type === 'castle') buildCastle(biome); else if (type === 'cathedral') buildCathedral(biome); else if (type === 'forgehall') buildForgeHall(biome); else if (type === 'guildhall') buildGuildhall(biome); else buildType(type, biome); }
     for (const k in cache) cache[k].group.visible = (k === key);
     lamp.color.setHex(cache[key].lamp);   // warm/cold/ember light to match the region
     root.visible = true;
