@@ -10,6 +10,8 @@ const COAST_TURN = 0.26;
 const CAM_DIST = 9.5, CAM_HEIGHT = 5.2, CAM_LOOK = 3.0, HEAD_Y = 1.5;
 const ATTACK_DUR = 0.34;
 const GATHER_DUR = 0.6;
+const HURT_DUR = 0.32;     // flinch reaction length
+const smooth = (x) => { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); };   // smoothstep — eased keyframes so poses never snap
 
 // Per-item held models: [shape, tint]. Shape drives the mesh, tint the colour, so
 // every weapon shows a distinct, type-appropriate model in the hand.
@@ -101,9 +103,11 @@ export function createPlayer(scene, world) {
   body.add(mkBox(0.74, 0.82, 0.46, tunic, 0, 1.15, 0));      // torso
   const armL = new THREE.Group(); armL.position.set(-0.5, 1.5, 0); armL.add(mkBox(0.2, 0.62, 0.22, tunic, 0, -0.31, 0)); body.add(armL);   // left arm (swings)
   const leftFist = mkBox(0.18, 0.18, 0.18, skin, 0, -0.62, 0); armL.add(leftFist);   // left hand — completes the silhouette + grips two-handed weapons
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), skin);
-  head.position.set(0, 1.86, 0); body.add(head);
-  body.add(mkBox(0.4, 0.12, 0.06, visorMat, 0, 1.9, 0.3));   // facing visor (+z)
+  // head rides on its own pivot so it can nod + look around independently of the
+  // body (the helm/hood stay on the armor group, so they don't tilt with the face).
+  const headPivot = new THREE.Group(); headPivot.position.set(0, 1.86, 0); body.add(headPivot);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), skin); headPivot.add(head);
+  headPivot.add(mkBox(0.4, 0.12, 0.06, visorMat, 0, 0.04, 0.3));   // facing visor (+z), rides with the head
 
   // armor overlay group — rebuilt to match the equipped armor (chest/shoulders/helm/hood)
   const armorGroup = new THREE.Group(); body.add(armorGroup);
@@ -281,6 +285,7 @@ export function createPlayer(scene, world) {
     coastFwd: 0, coastBack: 0, coastTurn: 0, coastTurnDir: 0,
     moving: false, bob: 0,
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
+    swingDir: 0, hurt: 0, hurtDir: 0,   // alternate swing direction each stroke + flinch reaction (driven by playHurt)
     weaponHands: 1, gripRest: 'ready', gripLeft: 0, hasShield: false,   // held-weapon pose (set by setWeaponMesh / refreshEquipment)
     equipment: { weapon: null, armor: null, amulet: null, ring: null, shield: null },
     prayer: 30, maxPrayer: 30, activePrayer: null,
@@ -304,8 +309,9 @@ export function createPlayer(scene, world) {
   const impulseBack = () => { state.coastBack = COAST_FWD; };
   const impulseTurn = (dir) => { state.coastTurnDir = dir; state.coastTurn = COAST_TURN; };
   function showTool(on) { toolHolder.visible = on; weaponHolder.visible = !on; state.toolActive = on; }
-  function playAttack(style) { if (state.toolActive) showTool(false); state.attackStyle = style || weapon().style; state.attackAnim = ATTACK_DUR; state.animDur = ATTACK_DUR; }
+  function playAttack(style) { if (state.toolActive) showTool(false); state.attackStyle = style || weapon().style; state.attackAnim = ATTACK_DUR; state.animDur = ATTACK_DUR; state.swingDir ^= 1; }
   function playGather(kind) { setToolMesh(kind); showTool(true); state.attackStyle = kind; state.attackAnim = GATHER_DUR; state.animDur = GATHER_DUR; }
+  function playHurt(dir) { state.hurt = HURT_DUR; state.hurtDir = (dir == null) ? (Math.random() < 0.5 ? -1 : 1) : dir; if (state.attackAnim > 0) state.attackAnim = Math.min(state.attackAnim, state.animDur * 0.2); }   // a hit aborts the swing + recoils the body
 
   const inB = (b, x, z) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ;
   function clear(x, z) {
@@ -349,17 +355,19 @@ export function createPlayer(scene, world) {
     group.rotation.y = state.heading;
     state.t = (state.t || 0) + dt;
     if (state.moving) state.bob += dt * 11;
-    const idleBreath = 0.02 + Math.sin(state.t * 1.6) * 0.018;   // gentle breathing so standing still still feels alive
-    body.position.y = state.moving ? Math.abs(Math.sin(state.bob)) * 0.08 : idleBreath;
-
     // magic weapons shimmer: a gentle orb pulse + slow spin
     if (weaponGlows.length) { const pul = 1 + Math.sin(state.t * 5) * 0.16; for (let i = 0; i < weaponGlows.length; i++) { weaponGlows[i].scale.setScalar(pul); weaponGlows[i].rotation.y += dt * 1.4; } }
 
-    // walk cycle — legs swing at the hips
-    const gait = state.moving ? Math.sin(state.bob) * 0.5 : 0;
+    // ---- walk cycle + body life ----
+    const gait = state.moving ? Math.sin(state.bob) * 0.55 : 0;     // legs swing at the hips (slightly bigger stride)
     const gk = Math.min(1, dt * 12);
-    legL.rotation.x += (gait - legL.rotation.x) * gk;
-    legR.rotation.x += (-gait - legR.rotation.x) * gk;
+    const breath = Math.sin(state.t * 1.6);
+    // vertical bob (two footfalls per stride) + a lateral weight-shift so the upper body
+    // sways opposite the legs — the single biggest thing that makes a box rig read as "walking".
+    const bobY = state.moving ? Math.abs(Math.sin(state.bob)) * 0.12 : (0.02 + breath * 0.018);
+    const swayX = state.moving ? Math.sin(state.bob * 0.5) * 0.045 : 0;
+    body.position.x += (swayX - body.position.x) * gk;
+    body.rotation.z += ((-turn * 0.07) - body.rotation.z) * gk;     // lean into turns (a subtle roll; composes with attack/hurt, which don't use .z)
 
     const twoH = state.weaponHands === 2 && !state.toolActive && !state.hasShield;   // both hands grip the haft
     const shoulderRest = state.gripRest === 'shoulder';
@@ -367,53 +375,126 @@ export function createPlayer(scene, world) {
     const leftGrips = twoH && state.gripRest === 'planted';   // only planted polearms bring the off-hand onto the haft; shoulder + cradle carry one-handed (natural for a shouldered greatsword / a cradled book or crossbow)
     const r2hX = shoulderRest ? -0.5 : -0.32, r2hZ = shoulderRest ? -0.18 : (cradleRest ? -0.3 : -0.5);   // right arm draws the weapon toward centre (planted stays nearer upright, not hugged across the body)
     const l2hX = -0.35, l2hZ = 1.15;                                                                        // off-hand reaches the haft without the near-horizontal over-rotation
-    const breath = Math.sin(state.t * 1.6);
 
-    // attack animation (right arm drives the swing)
-    if (state.attackAnim > 0) {
-      state.attackAnim = Math.max(0, state.attackAnim - dt);
-      const t = 1 - state.attackAnim / state.animDur;
-      const s = Math.sin(t * Math.PI);
-      switch (state.attackStyle) {
-        case 'ranged': rightArm.rotation.x = -1.2 - 0.5 * s; break;
-        case 'magic':  rightArm.rotation.x = -1.5 - 0.4 * s; break;
-        case 'chop':   rightArm.rotation.x = -2.0 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two overhead chops
-        case 'mine':   rightArm.rotation.x = -1.8 * Math.abs(Math.sin(t * Math.PI * 2)); break;   // two pick swings
-        case 'fish':   rightArm.rotation.x = -1.5 + 0.6 * s; break;                               // cast & settle
-        case 'cook':   rightArm.rotation.x = -0.9 + 0.3 * Math.sin(t * Math.PI * 3); break;       // stir the pot
-        case 'forage': rightArm.rotation.x = -1.0 * s; break;                                     // reach down
-        default: {   // melee / unarmed: quick overhead wind-up, then a fast slash down & through (no dwell behind the head)
-          if (t < 0.3) { const u = t / 0.3; rightArm.rotation.x = -1.7 * u * u; }
-          else { const u = (t - 0.3) / 0.7; rightArm.rotation.x = -1.7 + 2.3 * u * (2 - u); }
-          break;
-        }
-      }
-      rightArm.rotation.z += ((twoH ? -0.3 : 0) - rightArm.rotation.z) * gk;   // 2H keeps the inward bias through the strike; else stay in-plane
-      hand.rotation.x += (0.22 - hand.rotation.x) * gk;                        // steady grip through the swing
-      if (state.attackAnim === 0 && state.toolActive) showTool(false);
-    } else if (twoH) {
-      // Two-handed carry: the right arm draws the weapon to centre-front (or up to the shoulder), where the off-hand can meet it.
-      rightArm.rotation.x += ((r2hX + breath * 0.03) - rightArm.rotation.x) * gk;
-      rightArm.rotation.z += (r2hZ - rightArm.rotation.z) * gk;
+    let crouch = 0;   // attack dip/rise, folded into the vertical compose below
+
+    // ---- hurt flinch takes priority: a hit aborts the swing and recoils the whole body ----
+    if (state.hurt > 0) {
+      state.hurt = Math.max(0, state.hurt - dt);
+      const k = state.hurt / HURT_DUR, k2 = k * k;                       // 1 → 0, strongest at the moment of impact
+      body.rotation.x = -0.35 * k2;                                      // lean back from the blow
+      body.rotation.y = state.hurtDir * 0.28 * k2;                       // twist away
+      body.position.z = -0.18 * k2;                                      // knocked off the front foot
+      headPivot.rotation.x += (-0.5 * k2 - headPivot.rotation.x) * gk;   // head snaps back
+      armL.rotation.x += (-0.6 * k2 - armL.rotation.x) * gk;             // arms fly wide
+      rightArm.rotation.x += (-0.4 * k2 - rightArm.rotation.x) * gk;
+      armL.rotation.z += (0.4 * k2 - armL.rotation.z) * gk;
+      rightArm.rotation.z += (-0.45 * k2 - rightArm.rotation.z) * gk;
+      legL.rotation.x += (0.3 * k2 - legL.rotation.x) * gk;              // stagger-step
+      legR.rotation.x += (0.3 * k2 - legR.rotation.x) * gk;
       hand.rotation.x += (0.22 - hand.rotation.x) * gk;
-    } else {
-      // One-handed carry: a measured stride-bob while moving, breathing life at rest — moves WITH the arm, never frozen.
-      const targX = (state.moving ? gait * 0.34 : breath * 0.05) - 0.1;
-      const targZ = state.moving ? Math.sin(state.bob * 0.5) * 0.05 : breath * 0.035;
-      rightArm.rotation.x += (targX - rightArm.rotation.x) * gk;
-      rightArm.rotation.z += (targZ - rightArm.rotation.z) * gk;
+    }
+    // ---- attack: a full-body swing, not just an arm pump ----
+    else if (state.attackAnim > 0) {
+      state.attackAnim = Math.max(0, state.attackAnim - dt);
+      const p = 1 - state.attackAnim / state.animDur;                   // 0 → 1 across the move
+      const dir = state.swingDir ? 1 : -1;                             // alternate swing direction each stroke
+      let rArmX = 0, rArmZ = 0, aLX = 0, aLZ = 0, twist = 0, lunge = 0, legF = 0, headX = 0, headY = 0;
+      switch (state.attackStyle) {
+        case 'ranged': {                                               // bow: two-handed draw → loose
+          if (p < 0.5) { const u = smooth(p / 0.5);
+            rArmX = -0.2 - 0.85 * u; aLX = -0.9 - 0.15 * u; aLZ = 0.46; twist = 0.3 * u; crouch = -0.04 * u; headX = 0.05 * u;
+          } else { const u = smooth((p - 0.5) / 0.5);
+            rArmX = -1.05 + 1.35 * u; aLX = -1.05 + 0.1 * u; aLZ = 0.46; twist = 0.3 - 0.3 * u; lunge = 0.12 * u; headX = 0.05 - 0.1 * u;
+          } break; }
+        case 'magic': {                                                // staff: raise both arms to charge → thrust
+          if (p < 0.6) { const u = smooth(p / 0.6);
+            rArmX = -2.2 * u; aLX = -1.7 * u; crouch = 0.06 * u; headX = 0.12 * u;
+          } else { const u = smooth((p - 0.6) / 0.4);
+            rArmX = -2.2 + 1.7 * u; aLX = -1.7 + 1.3 * u; lunge = 0.2 * u; headX = 0.12 - 0.2 * u;
+          } break; }
+        case 'chop': {                                                 // axe: two big overhead bites, leaning in on each
+          const sw = Math.abs(Math.sin(p * Math.PI * 2));
+          rArmX = -2.0 * sw; twist = Math.sin(p * Math.PI * 2) * 0.28; lunge = 0.1 * sw; crouch = -0.12 * (1 - sw); headX = 0.18 * sw;
+          break; }
+        case 'mine': {                                                 // pick: two downward strikes
+          const sw = Math.abs(Math.sin(p * Math.PI * 2));
+          rArmX = -1.8 * sw; twist = Math.sin(p * Math.PI * 2) * 0.22; lunge = 0.08 * sw; crouch = -0.16 * (1 - sw); headX = 0.22 * sw;
+          break; }
+        case 'fish': {                                                 // rod: cast out, then settle
+          const s = Math.sin(p * Math.PI);
+          rArmX = -1.5 + 0.6 * s; lunge = 0.16 * s; twist = 0.12 * s; headX = -0.06 * s; break;
+        }
+        case 'cook': {                                                 // ladle: stir the pot
+          rArmX = -0.9 + 0.3 * Math.sin(p * Math.PI * 3); twist = Math.sin(p * Math.PI * 3) * 0.1; crouch = -0.04; break;
+        }
+        case 'forage': {                                               // reach down to the ground
+          const s = Math.sin(p * Math.PI);
+          rArmX = -1.0 * s; crouch = -0.22 * s; lunge = 0.1 * s; headX = 0.3 * s; break;
+        }
+        default: {                                                     // melee / unarmed: wind-up → full-body slash
+          const big = twoH ? 1.18 : 1;                                  // two-handers swing wider
+          if (p < 0.32) { const u = smooth(p / 0.32);                  // wind-up: coil
+            rArmX = -1.95 * big * u; rArmZ = dir * 0.4 * u; twist = dir * 0.6 * u; crouch = -0.16 * u; lunge = -0.05 * u; legF = 0.35 * u; headX = 0.18 * u;
+          } else { const u = smooth((p - 0.32) / 0.68);                // strike: uncoil + lunge through
+            rArmX = (-1.95 + 2.9 * u) * big; rArmZ = dir * (0.4 - 0.85 * u); twist = dir * (0.6 - 1.25 * u); crouch = -0.16 + 0.26 * u; lunge = -0.05 + 0.34 * u; legF = 0.35 - 0.95 * u; headX = 0.18 - 0.32 * u;
+          }
+          // off-hand: two-handers keep both hands on the haft; one-handers counter-balance
+          if (twoH) { aLX = rArmX * 0.72; aLZ = -0.3; } else { aLX = -rArmX * 0.4; aLZ = dir * 0.2; }
+          break; }
+      }
+      rightArm.rotation.x = rArmX;
+      rightArm.rotation.z += (rArmZ - rightArm.rotation.z) * gk;
+      armL.rotation.x += (aLX - armL.rotation.x) * gk;
+      armL.rotation.z += (aLZ - armL.rotation.z) * gk;
+      body.rotation.y += (twist - body.rotation.y) * gk;               // torso wind-up + whip
+      body.rotation.x += (0 - body.rotation.x) * gk;                   // keep the spine neutral through a swing (flinch owns the lean)
+      body.position.z += (lunge - body.position.z) * gk;               // forward lunge step
+      headPivot.rotation.x += (headX - headPivot.rotation.x) * gk;
+      headPivot.rotation.y += (headY - headPivot.rotation.y) * gk;
+      // legs plant into a lunge (front foot forward, back foot braced) then return to the stride on release
+      const front = dir > 0 ? legR : legL, back = dir > 0 ? legL : legR;
+      front.rotation.x += (legF - front.rotation.x) * gk;
+      back.rotation.x += (-legF * 0.4 - back.rotation.x) * gk;
+      hand.rotation.x += (0.22 - hand.rotation.x) * gk;                // steady grip through the swing
+      if (state.attackAnim === 0 && state.toolActive) showTool(false);
+    }
+    // ---- carry / idle (no attack, no hurt) ----
+    else {
+      legL.rotation.x += (gait - legL.rotation.x) * gk;                // legs return to the stride
+      legR.rotation.x += (-gait - legR.rotation.x) * gk;
+
+      if (twoH) {
+        rightArm.rotation.x += ((r2hX + breath * 0.03) - rightArm.rotation.x) * gk;
+        rightArm.rotation.z += (r2hZ - rightArm.rotation.z) * gk;
+        if (leftGrips) {                                               // planted polearm: off-hand stays on the haft
+          armL.rotation.x += ((l2hX + breath * 0.02) - armL.rotation.x) * gk;
+          armL.rotation.z += (l2hZ - armL.rotation.z) * gk;
+        } else {                                                       // shouldered/cradled: off-hand drifts with the stride
+          armL.rotation.x += (-gait - armL.rotation.x) * gk;
+          armL.rotation.z += (0 - armL.rotation.z) * gk;
+        }
+      } else {
+        const targX = (state.moving ? gait * 0.34 : breath * 0.05) - 0.1;
+        const targZ = state.moving ? Math.sin(state.bob * 0.5) * 0.05 : breath * 0.035;
+        rightArm.rotation.x += (targX - rightArm.rotation.x) * gk;
+        rightArm.rotation.z += (targZ - rightArm.rotation.z) * gk;
+        armL.rotation.x += (-gait * 1.1 - armL.rotation.x) * gk;        // counter-swing, a touch bigger than the legs
+        armL.rotation.z += (0 - armL.rotation.z) * gk;
+      }
       hand.rotation.x += ((0.22 + (state.moving ? Math.abs(Math.sin(state.bob)) * 0.14 : breath * 0.03)) - hand.rotation.x) * gk;
+
+      // settle the secondary channels back to neutral / idle life
+      body.rotation.y += (0 - body.rotation.y) * gk;
+      body.rotation.x += (0 - body.rotation.x) * gk;
+      body.position.z += (0 - body.position.z) * gk;
+      headPivot.rotation.x += ((state.moving ? -Math.abs(Math.sin(state.bob)) * 0.06 : 0) - headPivot.rotation.x) * gk;  // head stays level through the bob
+      headPivot.rotation.y += ((state.moving ? 0 : Math.sin(state.t * 0.5) * 0.09) - headPivot.rotation.y) * gk;         // idle: slow look-around; moving: face forward
     }
 
-    // off-hand (left arm): grips the haft on a planted/cradled two-hander, otherwise counter-swings with the gait
-    if (leftGrips) {
-      const swingLift = state.attackAnim > 0 ? (rightArm.rotation.x + 0.32) * 0.6 : 0;   // rise with the right arm through a swing so the hands stay together
-      armL.rotation.x += ((l2hX + breath * 0.02 + swingLift) - armL.rotation.x) * gk;
-      armL.rotation.z += (l2hZ - armL.rotation.z) * gk;
-    } else {
-      armL.rotation.x += (-gait - armL.rotation.x) * gk;
-      armL.rotation.z += (0 - armL.rotation.z) * gk;   // release any prior two-handed reach
-    }
+    // compose the vertical: walk bob (or idle breath) + attack crouch, eased so poses hand off smoothly
+    const tgtY = bobY + crouch + (state.hurt > 0 ? -0.1 * (state.hurt / HURT_DUR) : 0);
+    body.position.y += (tgtY - body.position.y) * gk;
 
     // swoosh trail follows the blade during a melee swing only (not casts, shots or tool gathering)
     updateTrail(state.attackAnim > 0 && !state.toolActive && !MELEE_TRAIL_SKIP.has(state.attackStyle));
@@ -440,7 +521,7 @@ export function createPlayer(scene, world) {
 
   return {
     group, state, update, updateCamera, impulseForward, impulseBack, impulseTurn, forwardVec,
-    playAttack, playGather, refreshEquipment, weapon, handPosition,
+    playAttack, playGather, playHurt, refreshEquipment, weapon, handPosition,
     setBounds(b) { state.bounds = b; },
     setSolids(w) { if (w && w.inSolidGrid) { state.worldRef = w; state.dynSolids = w.dynSolids; } else { state.worldRef = null; state.dynSolids = Array.isArray(w) ? w : null; } },   // PERF: world ref → grid collision; plain array → interior furniture
     snapCamera() { camReady = false; }, setCape,

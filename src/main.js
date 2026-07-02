@@ -1484,6 +1484,7 @@ try {
     if (G.hasPerk && G.hasPerk('stoneheart')) taken = Math.max(1, Math.round(taken * 0.9));   // Stoneheart: -10% damage taken
     player.state.hp -= taken;
     hurtFlash = 0.25;
+    if (player.playHurt) { const sd = (src && src.pos) ? Math.sign(src.pos.x - player.position.x) || 1 : 0; player.playHurt(sd || undefined); }   // recoil away from the blow
     G.ui.hitsplat(player.position.x, player.position.y + 1.9, player.position.z, taken, 'player');
     G.audio.sfx('hurt');
     if (src && src.def && src.def.poison && !(bf && bf.antipoison) && !player.state.poison) { player.state.poison = { dmg: src.def.poison, t: 12, tick: 2 }; G.ui.toast('You are poisoned!', 'bad', 1600); }

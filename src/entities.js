@@ -32,11 +32,13 @@ function buildPerson({ cloth, skin, hair, weaponMat, helm = null, seed = 0 }) {
   g.add(mkBox(0.72, 0.2, 0.44, darkM, 0, 0.82, 0));          // belt / hips
   const mkArm = (x) => { const p = new THREE.Group(); p.position.set(x, 1.48, 0); p.add(mkBox(0.17, 0.56, 0.2, clothM, 0, -0.26, 0)); p.add(mkBox(0.16, 0.16, 0.16, skinM, 0, -0.56, 0)); g.add(p); return p; };
   const armL = mkArm(-0.45), armR = mkArm(0.45);
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), skinM); head.position.set(0, 1.82, 0); g.add(head);
-  if (hair != null) g.add(mkBox(0.42, 0.18, 0.42, lmat(hair), 0, 2.0, 0));   // hair cap
-  if (helm != null) { g.add(mkBox(0.44, 0.32, 0.44, lmat(helm), 0, 2.02, 0)); g.add(mkBox(0.12, 0.36, 0.5, lmat(0xb0452e), 0, 2.34, 0)); }   // helmet + red crest
+  // head on its own pivot so it can nod + look around (hair + helm ride with the face)
+  const head = new THREE.Group(); head.position.set(0, 1.82, 0); g.add(head);
+  head.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), skinM));
+  if (hair != null) head.add(mkBox(0.42, 0.18, 0.42, lmat(hair), 0, 0.18, 0));   // hair cap (relative to head)
+  if (helm != null) { head.add(mkBox(0.44, 0.32, 0.44, lmat(helm), 0, 0.20, 0)); head.add(mkBox(0.12, 0.36, 0.5, lmat(0xb0452e), 0, 0.52, 0)); }   // helmet + red crest
   if (weaponMat) armR.add(mkBox(0.1, 0.85, 0.1, weaponMat, 0, -0.78, 0));     // weapon held in the right hand
-  g.userData.anim = { legL, legR, armL, armR, biped: true };
+  g.userData.anim = { legL, legR, armL, armR, head, biped: true };
   return g;
 }
 
@@ -841,8 +843,17 @@ export function createEntities(scene, world, G) {
         if (anim.biped) {
           anim.legL.rotation.x += (gait - anim.legL.rotation.x) * k;
           anim.legR.rotation.x += (-gait - anim.legR.rotation.x) * k;
-          anim.armL.rotation.x += (-gait - anim.armL.rotation.x) * k;
-          if (e.atkAnim <= 0) anim.armR.rotation.x += (gait - anim.armR.rotation.x) * k;
+          anim.armL.rotation.x += (-gait - anim.armL.rotation.x) * k;          // off-arm counter-swings
+          if (e.atkAnim > 0) {                                                  // biped strike: wind the arm back, then chop forward
+            const ap = 1 - e.atkAnim / ATK_ANIM;
+            anim.armR.rotation.x = ap < 0.4 ? -1.5 * (ap / 0.4) : -1.5 + 2.1 * ((ap - 0.4) / 0.6);
+          } else {
+            anim.armR.rotation.x += (gait - anim.armR.rotation.x) * k;
+          }
+          if (anim.head) {                                                       // idle head life: a slow look-around + breathing nod
+            anim.head.rotation.y = Math.sin(T * 0.6 + e.home.x) * 0.14;
+            anim.head.rotation.x = Math.sin(T * 1.5 + e.home.x) * 0.04 + (moving ? -Math.abs(Math.sin(e.walkPhase)) * 0.05 : 0);
+          }
         } else if (anim.legs && anim.legs.length >= 4) {
           anim.legs[0].rotation.x = gait; anim.legs[3].rotation.x = gait;     // diagonal trot
           anim.legs[1].rotation.x = -gait; anim.legs[2].rotation.x = -gait;
@@ -852,7 +863,11 @@ export function createEntities(scene, world, G) {
         if (anim.wings) { const f = 0.3 + Math.sin(T * 7 + e.home.x) * 0.45; anim.wings[0].rotation.x = f; anim.wings[1].rotation.x = -f; }   // harpy/raptor wing-flap
         if (anim.sway) anim.sway.rotation.z = Math.sin(T * 2.2 + e.home.x) * 0.12;        // serpent reared-head sway
       }
-      e.group.rotation.x = e.atkAnim > 0 ? -0.5 * Math.sin((1 - e.atkAnim / ATK_ANIM) * Math.PI) : e.group.rotation.x * (1 - Math.min(1, dt * 10));
+      if (moving) e.group.position.y += Math.abs(Math.sin(e.walkPhase)) * 0.05;              // walk bob (on top of the terrain snap above)
+      // forward strike-lean takes priority over a hurt recoil so a hit visibly knocks the foe back
+      if (e.hurtFlash > 0) e.group.rotation.x = 0.3 * Math.min(1, e.hurtFlash / 0.2);
+      else if (e.atkAnim > 0) e.group.rotation.x = -0.5 * Math.sin((1 - e.atkAnim / ATK_ANIM) * Math.PI);
+      else e.group.rotation.x = e.group.rotation.x * (1 - Math.min(1, dt * 10));
       e.group.scale.setScalar((e.hurtFlash > 0 ? 1.14 : 1) * e.baseScale);
     }
     // NPC idle — gentle sway, and turn to face the player when close
@@ -864,8 +879,13 @@ export function createEntities(scene, world, G) {
       let dy = target - n.group.rotation.y; while (dy > Math.PI) dy -= TAU; while (dy < -Math.PI) dy += TAU;
       n.group.rotation.y += dy * Math.min(1, dt * 6);
       n.group.rotation.z = Math.sin(T * 1.4 + n.phase) * 0.03;
-      const a = n.group.userData.anim;   // gentle idle arm sway so they feel alive
-      if (a) { const s = Math.sin(T * 1.3 + n.phase) * 0.09; a.armL.rotation.x = s; a.armR.rotation.x = -s; }
+      const a = n.group.userData.anim;   // gentle idle arm sway + head life so they feel alive
+      if (a) {
+        const s = Math.sin(T * 1.3 + n.phase) * 0.09;
+        a.armL.rotation.x = s; a.armR.rotation.x = -s;
+        if (a.head) { a.head.rotation.y = Math.sin(T * 0.5 + n.phase) * 0.16; a.head.rotation.x = Math.sin(T * 1.4 + n.phase) * 0.05; }   // look around + breathe
+        n.group.position.y = world.height(n.pos.x, n.pos.z) + Math.sin(T * 1.6 + n.phase) * 0.012;   // breathing bob (overrides the static terrain snap)
+      }
     }
     // ambient mobs — squads patrol a loop in formation, wanderers stroll near home; all walk-cycle
     const isNight = (typeof G.tod === 'number') && (G.tod < 0.22 || G.tod > 0.8);   // routine: the town winds down after dusk
