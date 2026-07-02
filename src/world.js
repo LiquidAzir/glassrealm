@@ -503,6 +503,10 @@ export function createWorld(scene, seed = 1337) {
     obsidian: { wall: 0x2c2433, wall2: 0x4a3a4a, roof: 0x7a2a2a, roofStyle: 'pitch',  glow: 0xff6a3a, accents: ['embers', 'stonebase'] },
     umbral:   { wall: 0x3a3248, wall2: 0x282038, roof: 0x4a3a6a, roofStyle: 'steep',  glow: 0xb08adf, accents: ['lanterns', 'stonebase'] },
     saltmarsh:{ wall: 0xe8c0c8, wall2: 0x9a7a6a, roof: 0xd07a8a, roofStyle: 'thatch', glow: 0xf08fb8, accents: ['stilts', 'lanterns'] },
+    // --- frontier Expansion IV villages (previously fell back to the grass look) ---
+    crystal:  { wall: 0xbcd0e6, wall2: 0x5a7aa6, roof: 0x9ad8ff, roofStyle: 'spire',  glow: 0x8af0ff, accents: ['glow', 'lanterns'] },
+    lagoon:   { wall: 0xb0e0d8, wall2: 0x3a9a90, roof: 0x6fe6d0, roofStyle: 'dome',   glow: 0x9ff2e6, accents: ['lanterns', 'awning'] },
+    sky:      { wall: 0xdfe8f6, wall2: 0x9ab0c8, roof: 0xc8d6e8, roofStyle: 'steep',  glow: 0xffe2a0, accents: ['banners', 'lanterns'] },
   };
   function building(bx, bz, vcx, vcz, type, pal, biome) {
     const st = TOWN[biome] || TOWN.grass;
@@ -574,7 +578,7 @@ export function createWorld(scene, seed = 1337) {
       else if (acc === 'vines') { for (const s of [-W * 0.36, 0, W * 0.36]) put(new THREE.BoxGeometry(0.34, 1.6, 0.12), lmat(0x3f8f3f), s, H * 0.55, D / 2 + 0.02); }
     }
     const sx = bx + fx * (D / 2 + 1.2), sz = bz + fz * (D / 2 + 1.2);
-    stations.push({ kind: 'door', label: 'Enter ' + (BLD_NAME[type] || 'building'), x: sx, z: sz, y: height(sx, sz), building: type });
+    stations.push({ kind: 'door', label: 'Enter ' + (BLD_NAME[type] || 'building'), x: sx, z: sz, y: height(sx, sz), building: type, biome });
     solids.push({ x: bx, z: bz, r: 2.9 });
   }
   function well(x, z) {
@@ -584,6 +588,77 @@ export function createWorld(scene, seed = 1337) {
     for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.9, 0.16), lmat(0x6e4a2b)); post.position.set(x + s, y + 1.45, z); group.add(post); }
     const roof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 4), lmat(0x7a8aa0)); roof.position.set(x, y + 2.7, z); roof.rotation.y = Math.PI / 4; group.add(roof);
     solids.push({ x, z, r: 1.6 });
+  }
+  // ---- town-plaza centerpieces: a distinct focal point per biome so each village
+  // reads uniquely at a glance (in addition to the per-biome wall/roof palette) ----
+  function fountain(x, z, water) {                       // desert / coast / lagoon / saltmarsh — a tiered basin
+    water = water || 0x3fd0c4;
+    const y = height(x, z);
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.3, 0.7, 16), lmat(0xb8b8c0)); basin.position.set(x, y + 0.35, z); group.add(basin);
+    const surf = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.15, 16), new THREE.MeshBasicMaterial({ color: water })); surf.position.set(x, y + 0.72, z); group.add(surf);
+    const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 1.2, 10), lmat(0xa0a0a8)); mid.position.set(x, y + 1.1, z); group.add(mid);
+    const jet = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), new THREE.MeshBasicMaterial({ color: water })); jet.position.set(x, y + 2.0, z); group.add(jet);
+    shimMeshes.push({ m: jet, baseY: y + 2.0, seed: x, kind: 'pulse' });
+    solids.push({ x, z, r: 2.3 });
+  }
+  function plazaTree(x, z, trunk, canopy) {              // jungle / autumn / forest — a grand shade tree
+    const y = height(x, z);
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 3.4, 8), lmat(trunk || 0x5c4326)); tr.position.set(x, y + 1.7, z); group.add(tr);
+    for (let i = 0; i < 3; i++) { const cv = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6 - i * 0.3, 0), lmat(canopy || 0x3f8f3f)); cv.position.set(x + (i % 2 ? 0.4 : -0.3), y + 3.4 + i * 1.0, z); cv.scale.y = 0.85; group.add(cv); }
+    solids.push({ x, z, r: 1.4 });
+  }
+  function brazier(x, z) {                               // volcanic / obsidian — a lit iron fire-basket
+    const y = height(x, z);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.6, 10), lmat(0x55585f)); leg.position.set(x, y + 0.7, z); group.add(leg);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.5, 0.5, 10), lmat(0x40434a)); bowl.position.set(x, y + 1.15, z); group.add(bowl);
+    const ember = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshBasicMaterial({ color: 0xff7a33 })); ember.position.set(x, y + 1.45, z); group.add(ember);
+    fireMeshes.push({ m: ember, baseY: y + 1.45, seed: x });
+    ambientEmitters.push({ x, y: y + 0.8, z, color: 0xff8a3d, every: 0.6, opts: { n: 2, spread: 0.6, up: 2.0, life: 1.0 } });
+    solids.push({ x, z, r: 1.3 });
+  }
+  function plazaCrystal(x, z, col) {                      // fae / crystal — a glowing crystal cluster on a dais
+    const y = height(x, z);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.9, 0.6, 8), lmat(0x6a6a78)); base.position.set(x, y + 0.3, z); group.add(base);
+    for (let i = 0; i < 5; i++) { const a = i / 5 * TAU, h = 1.6 + (i % 2) * 0.9; const c = new THREE.Mesh(new THREE.ConeGeometry(0.32, h, 4), new THREE.MeshBasicMaterial({ color: col || 0x8af0ff })); c.position.set(x + Math.cos(a) * 0.7, y + 0.6 + h / 2, z + Math.sin(a) * 0.7); c.rotation.y = a; group.add(c); }
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshBasicMaterial({ color: col || 0x8af0ff })); core.position.set(x, y + 2.6, z); group.add(core);
+    shimMeshes.push({ m: core, baseY: y + 2.6, seed: x, kind: 'pulse' });
+    solids.push({ x, z, r: 1.9 });
+  }
+  function statue(x, z) {                                // highland — a stone hero on a plinth
+    const y = height(x, z);
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.6), lmat(0x8a8a92)); plinth.position.set(x, y + 0.6, z); group.add(plinth);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 2.0, 6), lmat(0xc8ccd2)); body.position.set(x, y + 2.2, z); group.add(body);
+    const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), lmat(0xdfe4ee)); head.position.set(x, y + 3.5, z); group.add(head);
+    const sword = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 0.12), lmat(0xb0b4ba)); sword.position.set(x + 0.5, y + 2.0, z); group.add(sword);
+    solids.push({ x, z, r: 1.3 });
+  }
+  function totem(x, z, base, top) {                       // swamp / umbral — a carved totem pole
+    const y = height(x, z);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 4.6, 7), lmat(base || 0x6a4a2a)); post.position.set(x, y + 2.3, z); group.add(post);
+    for (let i = 0; i < 3; i++) { const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.4, 7), lmat([0xc97a3a, 0x4f7a32, 0x9a4f3a][i])); ring.position.set(x, y + 1.4 + i * 1.3, z); group.add(ring); }
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 0), new THREE.MeshBasicMaterial({ color: top || 0xffd24a })); crown.position.set(x, y + 5.0, z); group.add(crown);
+    shimMeshes.push({ m: crown, baseY: y + 5.0, seed: x, kind: 'pulse' });
+    solids.push({ x, z, r: 1.3 });
+  }
+  function lanternCluster(x, z) {                         // twilight — a post of hanging lanterns
+    const y = height(x, z);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 3.2, 6), lmat(0x2a2018)); post.position.set(x, y + 1.6, z); group.add(post);
+    for (let i = 0; i < 4; i++) { const a = i / 4 * TAU; const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1.2), lmat(0x2a2018)); arm.position.set(x + Math.cos(a) * 0.6, y + 3.0, z + Math.sin(a) * 0.6); arm.rotation.y = a; group.add(arm); const ln = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: 0xffce6a })); ln.position.set(x + Math.cos(a) * 1.1, y + 2.7, z + Math.sin(a) * 1.1); group.add(ln); }
+    solids.push({ x, z, r: 1.4 });
+  }
+  function snowCairn(x, z) {                              // aurora — a stacked stone cairn with a glowing capstone
+    const y = height(x, z);
+    for (const [ox, oy, s, oz] of [[-0.6, 0.5, 1.0, -0.3], [0.6, 0.4, 0.8, 0.3], [0, 0.9, 1.2, 0], [-0.2, 1.7, 0.6, 0.1]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), lmat(0xcfe0ee)); m.position.set(x + ox, y + oy + s / 2, z + oz); group.add(m); }
+    const glow = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), new THREE.MeshBasicMaterial({ color: 0x9bf2ff })); glow.position.set(x, y + 3.0, z); group.add(glow);
+    shimMeshes.push({ m: glow, baseY: y + 3.0, seed: x, kind: 'pulse' });
+    solids.push({ x, z, r: 1.5 });
+  }
+  function obelisk(x, z) {                               // sky — a sundial obelisk on a stepped base
+    const y = height(x, z);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 1.4), lmat(0x8a8a92)); base.position.set(x, y + 0.25, z); group.add(base);
+    const shaft = new THREE.Mesh(new THREE.ConeGeometry(0.7, 4.2, 4), lmat(0xc8ccd2)); shaft.position.set(x, y + 2.6, z); shaft.rotation.y = Math.PI / 4; group.add(shaft);
+    const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: 0xffe066 })); cap.position.set(x, y + 4.9, z); group.add(cap);
+    solids.push({ x, z, r: 1.2 });
   }
   function lampPost(x, z) {
     const y = height(x, z);
@@ -699,10 +774,42 @@ export function createWorld(scene, seed = 1337) {
     waystones.push({ key, name, x, z, y });
     stations.push({ kind: 'waystone', label: 'Waystone Network', x, z, y });
   }
+  // per-biome town layout: spread (building-ring radius), service-ring radius, lamp
+  // count, the plaza centerpiece, and the direction the farm garden faces — so each
+  // village is laid out differently, not a copy of the same ring. (lampR is derived
+  // between the service ring and the building-door radius so lamps never clip a door.)
+  const LAYOUT = {
+    grass:    { bldR: 15, svcR: 7.5, lampN: 5, plaza: () => well,            farmA: 0.20 },
+    desert:   { bldR: 17, svcR: 8.4, lampN: 6, plaza: () => fountain,        farmA: 1.20 },
+    volcanic: { bldR: 15, svcR: 7.5, lampN: 5, plaza: () => brazier,         farmA: 2.00 },
+    swamp:    { bldR: 13, svcR: 6.8, lampN: 4, plaza: () => totem,          farmA: 0.60 },
+    jungle:   { bldR: 16, svcR: 8.0, lampN: 6, plaza: () => plazaTree,       farmA: 2.40 },
+    highland: { bldR: 16, svcR: 8.0, lampN: 5, plaza: () => statue,          farmA: 1.60 },
+    fae:      { bldR: 14, svcR: 7.2, lampN: 5, plaza: () => plazaCrystal,    farmA: 0.90 },
+    coast:    { bldR: 16, svcR: 8.0, lampN: 6, plaza: () => fountain,        farmA: 2.20 },
+    autumn:   { bldR: 15, svcR: 7.6, lampN: 5, plaza: () => plazaTree,       farmA: 1.00 },
+    crystal:  { bldR: 14, svcR: 7.2, lampN: 5, plaza: () => plazaCrystal,    farmA: 1.80 },
+    lagoon:   { bldR: 15, svcR: 7.6, lampN: 6, plaza: () => fountain,        farmA: 0.50 },
+    sky:      { bldR: 16, svcR: 8.0, lampN: 5, plaza: () => obelisk,         farmA: 2.00 },
+    twilight: { bldR: 15, svcR: 7.6, lampN: 7, plaza: () => lanternCluster,  farmA: 1.40 },
+    aurora:   { bldR: 15, svcR: 7.6, lampN: 5, plaza: () => snowCairn,       farmA: 0.80 },
+    obsidian: { bldR: 15, svcR: 7.6, lampN: 5, plaza: () => brazier,         farmA: 2.20 },
+    umbral:   { bldR: 14, svcR: 7.2, lampN: 5, plaza: () => totem,           farmA: 1.50 },
+    saltmarsh:{ bldR: 15, svcR: 7.6, lampN: 5, plaza: () => fountain,        farmA: 0.70 },
+  };
+  const PLAZA_ARG = {                                  // biome-specific centerpiece tints (water / canopy / crystal / totem)
+    desert: [0x3fb8d0], coast: [0x2fb8e0], lagoon: [0x6fe6c8], saltmarsh: [0xf08fb8],
+    jungle: [0x5c4326, 0x3f9f3f], autumn: [0x6a4a2a, 0xd85a26],
+    fae: [0x8af0ff], crystal: [0x9ad8ff],
+    swamp: [0x6a4a2a, 0x9affb0], umbral: [0x3a2f4a, 0xb88ad6],
+  };
   for (const v of villages) {
+    const L = LAYOUT[v.biome] || LAYOUT.grass;
     const types = v.smithy ? ['home', 'store', 'bank', 'workshop', 'tavern', 'forge'] : ['home', 'store', 'bank', 'workshop', 'tavern'];
-    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * 13, v.z + Math.sin(a) * 13, v.x, v.z, types[i], v.hut, v.biome); }
-    well(v.x, v.z);
+    for (let i = 0; i < types.length; i++) { const a = (i / types.length) * TAU + 0.5; building(v.x + Math.cos(a) * L.bldR, v.z + Math.sin(a) * L.bldR, v.x, v.z, types[i], v.hut, v.biome); }
+    // plaza centerpiece (biome-specific) in the centre
+    const pf = L.plaza(); const args = PLAZA_ARG[v.biome];
+    if (args) pf(v.x, v.z, ...args); else pf(v.x, v.z);
     // service stations spread evenly on an inner ring so each sits in its own clear sector (easy to navigate)
     const svc = [
       (x, z) => fire(x, z),
@@ -714,9 +821,16 @@ export function createWorld(scene, seed = 1337) {
       (x, z) => { signpost(x, z, 0xffd45f); stations.push({ kind: 'ledger', label: 'Merchants’ Guild', x, z, y: height(x, z) }); },
       (x, z) => { signpost(x, z, 0x9bf2ff); stations.push({ kind: 'jobboard', label: 'Job Board', x, z, y: height(x, z) }); },
     ];
-    svc.forEach((fn, i) => { const a = (i / svc.length) * TAU + 0.3; fn(v.x + Math.cos(a) * 6.5, v.z + Math.sin(a) * 6.5); });
-    for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU + 0.78; lampPost(v.x + Math.cos(a) * 8, v.z + Math.sin(a) * 8); }
-    plot(v.x + 15, v.z + 1.4); plot(v.x + 15.6, v.z + 2.9); plot(v.x + 14.7, v.z + 4.3);
+    svc.forEach((fn, i) => { const a = (i / svc.length) * TAU + 0.3; fn(v.x + Math.cos(a) * L.svcR, v.z + Math.sin(a) * L.svcR); });
+    // lamps sit between the service ring and the building doors (derived so they never clip)
+    const lampR = L.svcR + (L.bldR - 3.8 - L.svcR) * 0.5;
+    for (let i = 0; i < L.lampN; i++) { const a = (i / L.lampN) * TAU + 0.78; lampPost(v.x + Math.cos(a) * lampR, v.z + Math.sin(a) * lampR); }
+    // farm garden off to the biome's own side (radius scales with the building ring so it never clips a building)
+    const fa = L.farmA, fr = L.bldR + 3.5;
+    const px = Math.cos(fa), pz = Math.sin(fa), rx = -Math.sin(fa), rz = Math.cos(fa);
+    plot(v.x + px * fr + rx * 1.0, v.z + pz * fr + rz * 1.0);
+    plot(v.x + px * fr + rx * 2.4, v.z + pz * fr + rz * 2.4);
+    plot(v.x + px * fr - rx * 0.3, v.z + pz * fr - rz * 1.0);
     waystone('ws_' + v.name.replace(/\W+/g, '').toLowerCase(), v.name, v.x - 9, v.z - 9);
   }
   waystone('ws_emberdeep', 'Emberdeep Waystone', CAVE.x + 6, CAVE.z + 6);   // a couple of frontier stones away from towns
