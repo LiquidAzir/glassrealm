@@ -326,14 +326,24 @@ export function createPlayer(scene, world) {
     if (s) for (let i = 0; i < s.length; i++) { const o = s[i]; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return false; }
     return true;
   }
+  // Wall-slide deflection ladder: try the intended direction, then steer to ever-wider
+  // angles so you GLIDE along diagonal terrain / bridge edges (and around obstacles)
+  // instead of stopping dead. Deflected steps project onto the intent (cos), so hugging
+  // a wall is a touch slower but movement never sticks — the #1 fix for bridge crossings.
+  const SLIDE = [0, 0.3, -0.3, 0.6, -0.6, 0.95, -0.95, 1.3, -1.3];
   function tryMove(dt, dir) {
-    const f = forwardVec();
-    const step = SPEED * dt * dir;
+    const step = SPEED * dt * Math.abs(dir);
+    const base = state.heading + (dir < 0 ? Math.PI : 0);   // movement direction (forward, or the slower back-pedal)
     const x = group.position.x, z = group.position.z;
-    const nx = x + f.x * step, nz = z + f.z * step;
-    if (clear(nx, nz)) { group.position.x = nx; group.position.z = nz; }      // full move
-    else if (clear(nx, z)) { group.position.x = nx; }                          // slide along X
-    else if (clear(x, nz)) { group.position.z = nz; }                          // slide along Z
+    for (let i = 0; i < SLIDE.length; i++) {
+      const a = base + SLIDE[i], sc = i === 0 ? 1 : Math.cos(SLIDE[i]);
+      const nx = x + Math.sin(a) * step * sc, nz = z + Math.cos(a) * step * sc;
+      if (clear(nx, nz)) { group.position.x = nx; group.position.z = nz; return; }
+    }
+    // last resort: full-speed slide along a single axis (head-on walls / tight gaps)
+    const fx = Math.sin(base) * step, fz = Math.cos(base) * step;
+    if (clear(x + fx, z)) { group.position.x = x + fx; return; }
+    if (clear(x, z + fz)) { group.position.z = z + fz; }
   }
 
   function update(dt, input) {

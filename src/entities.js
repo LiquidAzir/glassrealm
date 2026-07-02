@@ -798,8 +798,8 @@ export function createEntities(scene, world, G) {
         }
         e.heading = Math.atan2(player.position.x - e.pos.x, player.position.z - e.pos.z);
         if (d > 1.7) {
-          const sx = Math.sin(e.heading) * e.def.speed * dt, sz = Math.cos(e.heading) * e.def.speed * dt;
-          if (stepSlide(e.group, e.pos.x, e.pos.z, sx, sz)) moving = true;   // route around walls toward the player
+          const used = seekStep(e.group, e.pos.x, e.pos.z, e.heading, e.def.speed, dt);   // fan out around walls / bridge edges toward the player
+          if (used != null) { moving = true; e.heading = used; }
         } else {
           e.attackCd -= dt;
           if (e.attackCd <= 0) { e.attackCd = e.enraged ? 0.85 : 1.3; e.atkAnim = ATK_ANIM; G.damagePlayer(Math.round(e.def.dmg * (e.enraged ? 1.25 : 1)), e); }
@@ -807,19 +807,18 @@ export function createEntities(scene, world, G) {
       } else {
         const homeDist = dist2D(e.pos.x, e.pos.z, e.home.x, e.home.z);
         if (homeDist > e.leash) {
-          // beyond leash (e.g. kited out of its arena) — walk straight back toward home
-          e.heading = Math.atan2(e.home.x - e.pos.x, e.home.z - e.pos.z);
-          const sx = Math.sin(e.heading) * e.def.speed * 0.6 * dt, sz = Math.cos(e.heading) * e.def.speed * 0.6 * dt;
-          if (stepSlide(e.group, e.pos.x, e.pos.z, sx, sz)) moving = true;
+          // beyond leash (e.g. kited out of its arena) — head back toward home, routing around obstacles
+          const desired = Math.atan2(e.home.x - e.pos.x, e.home.z - e.pos.z);
+          const used = seekStep(e.group, e.pos.x, e.pos.z, desired, e.def.speed * 0.6, dt);
+          e.heading = (used != null) ? used : desired; if (used != null) moving = true;
           e.wanderT = 0;
         } else {
           e.wanderT -= dt;
           if (e.wanderT <= 0) { e.wanderT = 1 + Math.random() * 2.5; e.heading = Math.random() * TAU; e.moving = Math.random() > 0.45; }
           if (e.moving) {
             const sp = e.def.speed * 0.4;
-            const sx = Math.sin(e.heading) * sp * dt, sz = Math.cos(e.heading) * sp * dt;
-            if (stepSlide(e.group, e.pos.x, e.pos.z, sx, sz, (nx, nz) => dist2D(nx, nz, e.home.x, e.home.z) < e.leash)) moving = true;
-            else e.wanderT = 0;
+            const used = seekStep(e.group, e.pos.x, e.pos.z, e.heading, sp, dt, (nx, nz) => dist2D(nx, nz, e.home.x, e.home.z) < e.leash);
+            if (used != null) { moving = true; e.heading = used; } else e.wanderT = 0;
           }
         }
       }

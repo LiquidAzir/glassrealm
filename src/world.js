@@ -253,11 +253,16 @@ export function createWorld(scene, seed = 1337) {
     h += (land - 1) * 1.6;
     for (const b of LAND_BRIDGES) {
       const d = distToSeg(x, z, b.ax, b.az, b.bx, b.bz);
-      if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.4 * fl); }
-      else if (b.type === 'iceshelf') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 0.6 * fl); }   // broad frozen sea-shelf sitting just above the water
+      if (d > b.halfW + 2) continue;   // PERF + clarity: nowhere near this bridge
+      // decks stay FULL height across nearly the whole width, ramping only in the outer
+      // ~2 units — so the entire visible bridge is a comfortable walkable corridor rather
+      // than a thin central spine you keep sliding off. (edge() → 1 until d ≈ halfW-2.)
+      const edge = smoothstep(clamp((b.halfW - d) / 2.0, 0, 1));
+      if (b.type === 'isthmus') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.8 * fl); }
+      else if (b.type === 'iceshelf') { if (edge > 0) h = Math.max(h, 1.35 * edge); }   // frozen sea-shelf — lifted well clear of the 0.35 water line
       else if (b.type === 'pass') { const fl = smoothstep(clamp((b.halfW - d) / b.fall, 0, 1)); if (fl > 0) h = Math.max(h, 1.4 * fl + 9 * fl * Math.sin(segT(x, z, b) * Math.PI)); }   // a ridge that humps up over a saddle and back down
-      else if (b.type === 'vinespan') { const fl = smoothstep(clamp((b.halfW - d) / 4, 0, 1)); const deckY = 2.4 - 1.2 * Math.sin(segT(x, z, b) * Math.PI); h = h * (1 - fl) + deckY * fl; }   // suspension deck that SAGS at midspan
-      else { const fl = smoothstep(clamp((b.halfW - d) / 4, 0, 1)); h = h * (1 - fl) + b.flat * fl; }   // causeway / span / pier — flat deck
+      else if (b.type === 'vinespan') { const deckY = 2.4 - 1.2 * Math.sin(segT(x, z, b) * Math.PI); h = h * (1 - edge) + deckY * edge; }   // suspension deck that SAGS at midspan
+      else { h = h * (1 - edge) + b.flat * edge; }   // causeway / span / pier — flat deck
     }
     for (const v of villages) { const flat = smoothstep(clamp((16.5 - dist2D(x, z, v.x, v.z)) / 16.5, 0, 1)); h = h * (1 - flat) + 2.0 * flat; }
     for (const dg of FLAT_DUNGEONS) { const flat = smoothstep(clamp((dg.r - 3 - dist2D(x, z, dg.x, dg.z)) / 6, 0, 1)); h = h * (1 - flat) + 1.8 * flat; }
