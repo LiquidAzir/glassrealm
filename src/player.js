@@ -296,7 +296,8 @@ export function createPlayer(scene, world) {
     heading: Math.PI,
     hp: 100, maxHp: 100,
     coastFwd: 0, coastBack: 0, coastTurn: 0, coastTurnDir: 0,
-    moving: false, bob: 0,
+    moving: false, bob: 0, slideBias: 0, slideHold: 0,   // committed wall-slide side + pocket-escape hold (see tryMove)
+
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
     swingDir: 0, hurt: 0, hurtDir: 0,   // alternate swing direction each stroke + flinch reaction (driven by playHurt)
     weaponHands: 1, gripRest: 'ready', gripLeft: 0, gripTilt: 0, armed: false, hasShield: false,   // held-weapon pose (set by setWeaponMesh / refreshEquipment)
@@ -340,20 +341,36 @@ export function createPlayer(scene, world) {
   // angles so you GLIDE along diagonal terrain / bridge edges (and around obstacles)
   // instead of stopping dead. Deflected steps project onto the intent (cos), so hugging
   // a wall is a touch slower but movement never sticks — the #1 fix for bridge crossings.
-  const SLIDE = [0, 0.3, -0.3, 0.6, -0.6, 0.95, -0.95, 1.3, -1.3];
+  // slideBias COMMITS to the side that worked last frame: without it, re-aiming at a target
+  // behind an obstacle alternates ±deflections each frame and they cancel (pinned in place,
+  // "orbiting" a lamp/well forever). With it you keep sliding ONE way and round the obstacle.
+  // Magnitudes run PAST 90° (1.7, 2.1 rad): wedged in a concave pocket between two solids
+  // (plaza lamp + well), every ≤75° deflection still lands inside a circle — the only way out
+  // is briefly sideways-backward. Speed floors at 0.25 there so escaping still moves you.
+  const SLIDE_MAG = [0.3, 0.6, 0.95, 1.3, 1.7, 2.1];
   function tryMove(dt, dir) {
     const step = SPEED * dt * Math.abs(dir);
     const base = state.heading + (dir < 0 ? Math.PI : 0);   // movement direction (forward, or the slower back-pedal)
     const x = group.position.x, z = group.position.z;
-    for (let i = 0; i < SLIDE.length; i++) {
-      const a = base + SLIDE[i], sc = i === 0 ? 1 : Math.cos(SLIDE[i]);
+    const attempt = (ang, spd) => {
+      const a = base + ang, sc = spd != null ? spd : (ang === 0 ? 1 : Math.max(0.25, Math.cos(ang)));
       const nx = x + Math.sin(a) * step * sc, nz = z + Math.cos(a) * step * sc;
-      if (clear(nx, nz)) { group.position.x = nx; group.position.z = nz; return; }
-    }
-    // last resort: full-speed slide along a single axis (head-on walls / tight gaps)
+      if (!clear(nx, nz)) return false;
+      group.position.x = nx; group.position.z = nz;
+      state.slideBias = ang === 0 ? 0 : Math.sign(ang);   // remember which side we slid — keep circling the same way next frame
+      if (Math.abs(ang) >= 1.3) state.slideHold = 6;      // deep in a pocket: hold the slide a few frames so we crab OUT instead of oscillating in-out
+      return true;
+    };
+    if (state.slideHold > 0) state.slideHold--;
+    else if (attempt(0)) return;                           // (during a hold, skip the straight attempt — it would just re-enter the pocket)
+    const first = state.slideBias >= 0 ? 1 : -1;   // committed side first (default right)
+    for (const m of SLIDE_MAG) { if (attempt(first * m) || attempt(-first * m)) return; }
+    // last resorts: axis slide (head-on walls), then a plain backstep — you walked in, so the
+    // way back is open by construction: guarantees you can never be permanently pinned.
     const fx = Math.sin(base) * step, fz = Math.cos(base) * step;
     if (clear(x + fx, z)) { group.position.x = x + fx; return; }
-    if (clear(x, z + fz)) { group.position.z = z + fz; }
+    if (clear(x, z + fz)) { group.position.z = z + fz; return; }
+    attempt(Math.PI, 0.5);
   }
 
   function update(dt, input) {

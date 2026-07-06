@@ -188,7 +188,9 @@ export function createUI(G) {
     if (TABS[tab] === 'Prayer') return PRAYERS.length;
     if (TABS[tab] === 'Spells') return SPELLS.length;
     if (TABS[tab] === 'Skills') return 4 + G.skills.DEFS.length;
-    if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status === 'active').length;
+    if (TABS[tab] === 'Quests') return G.quests.all().filter((q) => q.status !== 'locked').length;   // active + available + completed — all scrollable (select only acts on actives)
+    if (TABS[tab] === 'Bestiary') return Object.keys(ENEMIES).length;
+    if (TABS[tab] === 'Log') return Object.keys(ITEMS).filter((k) => ({ weapon: 1, armor: 1, amulet: 1, ring: 1, shield: 1 })[ITEMS[k].type]).length;
     if (TABS[tab] === 'Auto') return AUTO_MODES.length;
     if (TABS[tab] === 'Pets') return G.petRows().length;
     if (TABS[tab] === 'Mastery') return G.masteryRows().length + G.perkRows().length;
@@ -324,12 +326,12 @@ export function createUI(G) {
   function renderBestiary() {
     const kt = G.stats.killsByType || {};
     let html = '<div class="section-head">Bestiary</div>';
-    html += Object.keys(ENEMIES).map((k) => {
+    html += Object.keys(ENEMIES).map((k, i) => {
       const e = ENEMIES[k], n = kt[k] || 0, seen = n > 0;
       const GLY = { melee: '⚔️', ranged: '🏹', magic: '🪄' };
       const wk = WEAKNESS[k], atk = ATK_STYLE[k] || 'melee';
       const sub = seen ? `HP ${e.hp} · dmg ${e.dmg} · ${e.xp} xp${e.boss ? ' · BOSS' : ''}${wk ? ` · weak ${GLY[wk]}` : ''} · hits ${GLY[atk]}` : '??? — defeat one to learn its ways';
-      return `<div class="row" style="${seen ? '' : 'opacity:.5'}"><span class="row-icon">${e.boss ? '👑' : '☠️'}</span><div class="row-main"><div class="row-title">${seen ? e.name : '???'}${seen ? ` <span style="color:var(--text-mut)">×${n}</span>` : ''}</div><div class="row-sub">${sub}</div></div></div>`;
+      return `<div class="row ${i === row ? 'sel' : ''}" style="${seen ? '' : 'opacity:.5'}"><span class="row-icon">${e.boss ? '👑' : '☠️'}</span><div class="row-main"><div class="row-title">${seen ? e.name : '???'}${seen ? ` <span style="color:var(--text-mut)">×${n}</span>` : ''}</div><div class="row-sub">${sub}</div></div></div>`;
     }).join('');
     els.menuBody.innerHTML = html;
   }
@@ -379,10 +381,13 @@ export function createUI(G) {
       const tracked = G.trackedQuest === q.id;
       return `<div class="row ${i === row ? 'sel' : ''}"><div class="row-main"><div class="row-title">${tracked ? '📍 ' : ''}${q.def.saga ? '📜 ' : ''}${q.def.name}${tracked ? ' <span style="color:var(--gold)">tracking</span>' : ''}</div><div class="row-sub">${q.def.desc} &nbsp;·&nbsp; tap to ${tracked ? 'untrack' : 'track'}</div>${objs}</div></div>`;
     };
+    // Global row indexing across the three sections, so ↑/↓ scrolls the WHOLE quest log
+    // (long Available/Completed lists were unreachable before). Select still only acts on actives.
+    const actives = all.filter((q) => q.status === 'active'), avails = all.filter((q) => q.status === 'available'), comps = all.filter((q) => q.status === 'complete');
     let html = `<div class="section-head">⭐ Quest points: ${G.quests.points()}/${G.quests.maxPoints()}</div>`;
-    html += sect('Active', all.filter((q) => q.status === 'active'), active);
-    html += sect('Available', all.filter((q) => q.status === 'available'), (q) => { const req = G.quests.reqText(q.id), can = G.quests.canAccept(q.id); return `<div class="row" style="${can ? '' : 'opacity:.5'}"><div class="row-main"><div class="row-title">${q.def.saga ? '📜 ' : ''}${q.def.name}</div><div class="row-sub">See ${npcName(q.def.giver)}${req ? ` &nbsp;·&nbsp; ${can ? '' : '🔒 '}needs ${req}` : ''} &nbsp;·&nbsp; ${q.def.desc}</div></div></div>`; });
-    html += sect('Completed', all.filter((q) => q.status === 'complete'), (q) => `<div class="row" style="opacity:.55"><div class="row-main"><div class="row-title">✓ ${q.def.name}</div></div></div>`);
+    html += sect('Active', actives, active);
+    html += sect('Available', avails, (q, j) => { const i = actives.length + j; const req = G.quests.reqText(q.id), can = G.quests.canAccept(q.id); return `<div class="row ${i === row ? 'sel' : ''}" style="${can ? '' : 'opacity:.5'}"><div class="row-main"><div class="row-title">${q.def.saga ? '📜 ' : ''}${q.def.name}</div><div class="row-sub">See ${npcName(q.def.giver)}${req ? ` &nbsp;·&nbsp; ${can ? '' : '🔒 '}needs ${req}` : ''} &nbsp;·&nbsp; ${q.def.desc}</div></div></div>`; });
+    html += sect('Completed', comps, (q, k) => { const i = actives.length + avails.length + k; return `<div class="row ${i === row ? 'sel' : ''}" style="opacity:.55"><div class="row-main"><div class="row-title">✓ ${q.def.name}</div></div></div>`; });
     els.menuBody.innerHTML = html || `<div class="empty-note">No quests yet. Speak with the villagers around the hearth.</div>`;
   }
   function renderLog() {
@@ -391,7 +396,7 @@ export function createUI(G) {
     const have = G.collection || new Set();
     const got = keys.filter((k) => have.has(k)).length;
     let html = `<div class="section-head">Collection Log — ${got}/${keys.length} gear</div>`;
-    html += keys.map((k) => { const it = ITEMS[k], owned = have.has(k); return `<div class="row" style="${owned ? '' : 'opacity:.4'}"><span class="row-icon">${it.icon}</span><div class="row-main"><div class="row-title">${owned ? it.name : '???'}</div><div class="row-sub">${owned ? it.desc : 'Not yet collected'}</div></div>${owned ? '<div class="row-trail">✓</div>' : ''}</div>`; }).join('');
+    html += keys.map((k, i) => { const it = ITEMS[k], owned = have.has(k); return `<div class="row ${i === row ? 'sel' : ''}" style="${owned ? '' : 'opacity:.4'}"><span class="row-icon">${it.icon}</span><div class="row-main"><div class="row-title">${owned ? it.name : '???'}</div><div class="row-sub">${owned ? it.desc : 'Not yet collected'}</div></div>${owned ? '<div class="row-trail">✓</div>' : ''}</div>`; }).join('');
     els.menuBody.innerHTML = html;
   }
   function renderSpells() {

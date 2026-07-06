@@ -1598,6 +1598,10 @@ try {
     if (player.state.hp <= 0) {
       cancelChannel(); clearCombat();
       if (G.colosseum) { G.endColosseum('died'); return; }   // arena death is safe — no gravestone, no item loss
+      // Hardening: if death ever lands while indoors (future hazards/content), step out FIRST —
+      // exitInterior restores world visibility/bounds/mode and puts us at the door, so the grave
+      // drops at the building's door instead of at unreachable interior coords (item loss + softlock).
+      if (G.inInterior) G.exitInterior();
       onDeath();   // drop goods to a gravestone at the death spot (unless Safe mode)
       player.state.hp = player.state.maxHp;
       const sx = world.village.x, sz = world.village.z + 12;
@@ -1639,7 +1643,7 @@ try {
   // ---------- mode state machine ----------
   let mode = 'world';
   let backSeq = [];                                    // ↑↓↑↓ open/close gesture buffer
-  function setMode(m) { mode = m; backSeq = []; if (m !== 'world') { G.ui.hidePrompt(); if (G.ui.clearBubbles) G.ui.clearBubbles(); } }   // reset gesture history + clear NPC speech bubbles across overlays
+  function setMode(m) { mode = m; backSeq = []; if (m !== 'world') { G.ui.hidePrompt(); if (G.ui.clearBubbles) G.ui.clearBubbles(); } if (m !== 'world' && m !== 'interior') input.clearHeld(); }   // reset gestures + bubbles across overlays; drop held walk-keys so a missed pointerup can't leave you auto-walking after the overlay closes
   function openMenu() { cancelChannel(); clearCombat(); setMode('menu'); G.ui.openMenu(); G.audio.sfx('ui'); }
   function closeMenu() { G.ui.closeMenu(); setMode(G.inInterior ? 'interior' : 'world'); }
 

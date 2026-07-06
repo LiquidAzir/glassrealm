@@ -779,6 +779,7 @@ export function createEntities(scene, world, G) {
         }
         e.respawn -= dt;
         if (e.respawn <= 0) {
+          if (dist2D(player.position.x, player.position.z, e.home.x, e.home.z) < 4) { e.respawn = 1.2; continue; }   // never pop back into existence on top of the player — wait till they step away
           e.hp = e.maxHp; e.alive = true; e.state = 'wander'; e.provoked = false; e.group.visible = true;
           e.hurtFlash = 0; e.atkAnim = 0; e.group.rotation.x = 0; e.group.rotation.z = 0; e.group.scale.setScalar(e.baseScale);
           e.group.position.set(e.home.x, world.height(e.home.x, e.home.z), e.home.z);
