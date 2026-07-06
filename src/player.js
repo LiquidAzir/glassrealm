@@ -493,7 +493,7 @@ export function createPlayer(scene, world) {
           if (twoH) { aLX = rArmX * 0.72; aLZ = -0.3; } else { aLX = -rArmX * 0.4; aLZ = dir * 0.2; }
           break; }
       }
-      rightArm.rotation.x = rArmX;
+      rightArm.rotation.x += (rArmX - rightArm.rotation.x) * Math.min(1, dt * 22);   // fast-track the swing keyframes (~1 frame lag) without the single-frame pop out of the carry pose
       rightArm.rotation.z += (rArmZ - rightArm.rotation.z) * gk;
       forearm.rotation.x += (0 - forearm.rotation.x) * gk;             // straight elbow through the swing → identical arc to the one-segment arm
       forearm.rotation.z += (0 - forearm.rotation.z) * gk;

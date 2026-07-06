@@ -714,12 +714,25 @@ export function createEntities(scene, world, G) {
   // Steer toward `heading`, fanning out to ever-wider angles when the direct path is
   // blocked, so ambient folk route AROUND fences/walls instead of pressing into them.
   // Returns the heading actually travelled (to face that way), or null if boxed in.
+  // Like the player's tryMove, the fan COMMITS to the side that worked last step
+  // (group.userData._sb) — without it the ±deflections alternate frame-to-frame and
+  // the walker jitters its facing / ping-pongs against obstacles instead of rounding them.
   function seekStep(group, px, pz, heading, spd, dt, gate) {
-    for (const off of [0, 0.6, -0.6, 1.15, -1.15, 1.7, -1.7, 2.4, -2.4]) {
-      const h = heading + off, sx = Math.sin(h) * spd * dt, sz = Math.cos(h) * spd * dt;
-      if (stepSlide(group, px, pz, sx, sz, gate)) return h;
+    const ud = group.userData, first = (ud._sb || 0) >= 0 ? 1 : -1;
+    for (const m of [0, 0.6, 1.15, 1.7, 2.4]) {
+      for (const s of (m === 0 ? [0] : [first, -first])) {
+        const off = m * s, h = heading + off, sx = Math.sin(h) * spd * dt, sz = Math.cos(h) * spd * dt;
+        if (stepSlide(group, px, pz, sx, sz, gate)) { ud._sb = m === 0 ? 0 : Math.sign(off); return h; }
+      }
     }
     return null;
+  }
+  // Turn a walker's facing smoothly toward `target` (shortest way around the ±π seam) —
+  // creatures TURN instead of snapping 180° in a single frame at patrol corners.
+  function faceTo(group, target, dt, rate) {
+    let d = target - group.rotation.y;
+    while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU;
+    group.rotation.y += d * Math.min(1, dt * rate);
   }
 
   // companion pet — one tamed animal (or a rare boss pet) that trails a step behind the player
@@ -853,7 +866,7 @@ export function createEntities(scene, world, G) {
         }
       }
       e.group.position.y = world.height(e.pos.x, e.pos.z);
-      e.group.rotation.y = e.heading;
+      faceTo(e.group, e.heading, dt, 11);   // smooth turn (chasing foes still feel responsive)
       // walk cycle (limbs swing at hips/shoulders) + a subtle body waddle + attack lean
       if (moving) e.walkPhase += dt * 9;
       e.group.rotation.z = moving ? Math.sin(e.walkPhase) * 0.05 : e.group.rotation.z * (1 - Math.min(1, dt * 8));
@@ -960,7 +973,7 @@ export function createEntities(scene, world, G) {
         }
       }
       m.group.position.y = world.height(m.pos.x, m.pos.z);
-      m.group.rotation.y = m.heading;
+      faceTo(m.group, m.heading, dt, 9);   // guards/wanderers TURN at patrol corners instead of about-facing in one frame
       if (moving) m.walkPhase += dt * 9;
       const a = m.group.userData.anim;
       if (a) {
@@ -1001,7 +1014,7 @@ export function createEntities(scene, world, G) {
       }
       const gh = world.height(a.pos.x, a.pos.z);
       a.group.position.y = (D.water && gh <= 0.4) ? world.WATER_Y + 0.06 : gh;   // waterfowl float on the surface
-      a.group.rotation.y = a.heading;
+      faceTo(a.group, a.heading, dt, 8);   // grazing critters amble around, no snap-turns
       if (moving) a.walkPhase += dt * (D.hop ? 7 : 9);
       if (anim) {
         if (anim.hop) anim.vis.position.y = moving ? Math.abs(Math.sin(a.walkPhase)) * 0.22 : 0;
@@ -1031,7 +1044,7 @@ export function createEntities(scene, world, G) {
       const bx = player.position.x - Math.sin(ph) * 2.4 + Math.cos(ph) * 1.0;
       const bz = player.position.z - Math.cos(ph) * 2.4 - Math.sin(ph) * 1.0;
       const dx = bx - pet.group.position.x, dz = bz - pet.group.position.z, moving = Math.hypot(dx, dz) > 0.4;
-      if (moving) pet.group.rotation.y = Math.atan2(dx, dz);
+      if (moving) faceTo(pet.group, Math.atan2(dx, dz), dt, 10);   // the companion swings round smoothly as it trails you
       const k = pet.snap ? 1 : Math.min(1, dt * 4); pet.snap = false;
       pet.group.position.x += dx * k; pet.group.position.z += dz * k;
       pet.group.position.y = world.height(pet.group.position.x, pet.group.position.z);
