@@ -571,6 +571,10 @@ function makeAnimal(kind) {
 export function createEntities(scene, world, G) {
   let T = 0;
   const npcs = NPCS.map((def) => {
+    // Snap every NPC onto clear, walkable land (like enemy spawns) — an authored position that
+    // lands a hair offshore or in a terrain dip would strand a quest-giver in the sea, blocking
+    // their whole questline. Mutating def.pos keeps quest markers/turn-in targets consistent.
+    if (!world.isWalkable(def.pos.x, def.pos.z)) { const s = world.findClear(def.pos.x, def.pos.z); def.pos.x = s.x; def.pos.z = s.z; }
     const group = makeNpc(def, world);
     scene.add(group);
     return { def, group, kind: 'npc', baseRot: group.rotation.y, phase: Math.random() * TAU, get pos() { return group.position; } };
