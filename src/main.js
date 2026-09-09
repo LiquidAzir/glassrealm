@@ -1912,39 +1912,44 @@ try {
 
   const STATION_PIP = { cook: '🍳', bank: '🏦', anvil: '⚒️', furnace: '🔥', craft: '💍', cauldron: '⚗️', bed: '🛏️', shop: '🛒', exit: '🚪', ledger: '🏛️', jobboard: '📋' };
   function updateMarkers() {
+    const t = G.currentTarget;
+    const p = player.position;
     if (mode === 'interior') {
       const il = [];
-      for (const s of (G.interiorStations || [])) il.push({ id: 'is_' + s.kind + Math.round(s.x) + Math.round(s.z), x: s.x, y: s.y + 2.2, z: s.z, kind: s.kind === 'exit' ? 'quest' : 'item', pip: STATION_PIP[s.kind] || '◆', label: s.label });
+      for (const s of (G.interiorStations || [])) {
+        const target = !!(t && t.ref === s);
+        il.push({ id: target ? 'target' : 'is_' + s.kind + Math.round(s.x) + Math.round(s.z), x: s.x, y: s.y + 2.2, z: s.z, kind: s.kind === 'exit' ? 'quest' : 'item', pip: STATION_PIP[s.kind] || '◆', label: s.label, target, action: target && !G.channel, priority: target ? 1000 : 150 - dist2D(p.x, p.z, s.x, s.z) });
+      }
       G.ui.setQuestArrow(null);
       G.questGuide = null;
       G.ui.updateMarkers(il);
       return;
     }
     const list = [];
-    const p = player.position;
+    if (mode !== 'world') { G.ui.updateMarkers([]); return; }
     const guide = mode === 'world' ? questTarget() : null;
     G.questGuide = guide;   // shared with the minimap
     if (guide) {
-      list.push({ id: 'questguide', x: guide.x, y: guide.y, z: guide.z, kind: 'questguide', pip: '◈', label: guide.label });
+      list.push({ id: 'questguide', x: guide.x, y: guide.y, z: guide.z, kind: 'questguide', pip: '◈', label: guide.label, priority: 500 });
       let rel = Math.atan2(guide.x - p.x, guide.z - p.z) - player.state.heading;
       while (rel > Math.PI) rel -= Math.PI * 2;
       while (rel < -Math.PI) rel += Math.PI * 2;
       G.ui.setQuestArrow(rel, guide.label, Math.round(dist2D(p.x, p.z, guide.x, guide.z)));
     } else G.ui.setQuestArrow(null);
     for (const n of G.entities.npcs) {
+      if (t && t.ref === n) continue;
       const d = dist2D(p.x, p.z, n.pos.x, n.pos.z);
-      if (d < 36) list.push({ id: 'npc_' + n.def.key, x: n.pos.x, y: n.pos.y + 2.6, z: n.pos.z, kind: 'npc', pip: '◆', label: n.def.name, far: d > 20 });
+      if (d < 28) list.push({ id: 'npc_' + n.def.key, sourceId: 'npc_' + n.def.key, x: n.pos.x, y: n.pos.y + 2.65, z: n.pos.z, kind: 'npc', label: n.def.name, far: d > 20, priority: 160 - d });
     }
     G.entities.enemies.forEach((e, i) => {
-      if (!e.alive) return;
+      if (!e.alive || (t && t.ref === e)) return;
       const d = dist2D(p.x, p.z, e.pos.x, e.pos.z);
-      if (d < 28 && (e.state === 'chase' || e.hp < e.maxHp)) list.push({ id: 'enemy_' + i, x: e.pos.x, y: e.pos.y + 2.2, z: e.pos.z, kind: 'enemy', pip: '♥ ' + Math.max(0, Math.ceil(e.hp)) });
+      if (d < 28 && (e.state === 'chase' || e.hp < e.maxHp)) list.push({ id: 'enemy_' + i, x: e.pos.x, y: e.pos.y + 2.4, z: e.pos.z, kind: 'enemy', pip: '♥ ' + Math.max(0, Math.ceil(e.hp)), label: e.def.name, priority: 700 - d });
     });
-    const t = G.currentTarget;
     if (t && mode === 'world') {
-      const gy = (t.kind === 'npc' || t.kind === 'enemy') ? t.ref.pos.y : t.ref.y;
-      const yOff = t.kind === 'npc' ? 3.1 : t.kind === 'enemy' ? 2.7 : 1.9;
-      list.push({ id: 'target', x: t.x, y: gy + yOff, z: t.z, kind: t.kind === 'enemy' ? 'enemy' : t.kind === 'npc' ? 'quest' : 'item', pip: '▾' });
+      const gy = t.ref.pos ? t.ref.pos.y : (t.ref.y == null ? world.height(t.x, t.z) : t.ref.y);
+      const yOff = t.kind === 'npc' || t.kind === 'mob' ? 2.8 : t.kind === 'enemy' ? 2.7 : 1.9;
+      list.push({ id: 'target', sourceId: t.kind === 'npc' ? 'npc_' + t.ref.def.key : null, x: t.x, y: gy + yOff, z: t.z, kind: t.kind === 'enemy' ? 'enemy' : 'item', label: t.label.replace(/^Use Enter /, 'Enter '), health: t.kind === 'enemy' ? Math.max(0, Math.ceil(t.ref.hp)) : null, target: true, action: !G.channel, priority: 1000 });
     }
     G.ui.updateMarkers(list);
   }

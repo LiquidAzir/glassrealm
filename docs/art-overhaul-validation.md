@@ -1,4 +1,43 @@
-# Glass Realm artwork validation — 2026-09-08
+# Glass Realm second visual pass — 2026-09-08
+
+The user requested a further full visual pass and production deployment after verification. Both checkouts and GitHub main started at the previous production release, `cac4ffc311cd063b94c4634c63d11f804a5a315a`. The evidence for this pass is under workspace `.visual-review/realm-round2/`.
+
+## Current changes
+
+- Eight additional original Blender models bring the kit to 28 models and 2,859,819 bytes: detailed well, market stall, furnace, anvil, cauldron, articulated arm parts and shield. The original twenty model arrays remain unchanged by hash.
+- Opaque building and station cutaways replace whole-building transparency. Foreground trees have a clear center and a narrow stippled edge around the player sightline. Ceiling ties disappear with cutaway ceilings.
+- Path geometry is clipped to the exact terrain triangles: all 1,738 tested path triangles stay approximately 0.024 units above the ground. Decorative sampling never primes gameplay height caches.
+- Fitted helmets and open hoods avoid intersecting the hair/face. Sleeves match equipped armor, shields follow the left arm, and swords have tapered blades, guards, grips and pommels. Bows have strings. Contact shading grounds the hero.
+- One prioritized action plate replaces duplicate target labels. Labels and speech share a bounded layout that protects HUD, controls, hero and NPC faces. Notifications queue; XP, objectives and progress each have space. Normal station labels are fully readable.
+- The castle, cathedral, forge hall and guildhall now use shared detailed people, carved furniture, grounded lantern holders, framed glass and readable floor palettes. Ceiling orbs and platform/boot intersections are removed. The snow arena's compact Frostmaw carving clears the existing trees inside the original collision footprint.
+
+## Verification status
+
+The completed build passes all objective checks. Final release approval is recorded by the independent critic in the workspace evidence before publication.
+
+Completed independent checks: ten gameplay flows; twenty-two UI checks; ten interior types with four headings; screen/glasses 600×600 buffers without dynamic shadows; exact baseline/current resource and door XYZ hashes; procedural fallback with missing art; save/reload; banner layering; and zero runtime/shader errors. The preliminary 48-angle sweep improved from 34 views with label/HUD collisions and 37 prompts covering the hero to zero in both categories. An additional shopkeeper-face overlap found during inspection was corrected and independently rechecked.
+
+The final 48-angle sweep also has zero nameplate/HUD/edge collisions and zero prompts over the player. All six deep-room service dialogues pass; all ten room types preserve exact stations, solids, bounds and entry records with and without the art kit. Five real browser touch checks at 390×844 pass. The final resource/door signature still matches cac4ffc after the Frostmaw correction. The final standard gameplay-client screenshot and state were inspected in `integration/client-release/`.
+
+| World scene | Previous calls | Updated calls | Previous triangles | Updated triangles |
+| --- | ---: | ---: | ---: | ---: |
+| Village | 220 | 235 | 84,897 | 90,892 |
+| Forest | 133 | 148 | 65,199 | 66,089 |
+| Desert | 133 | 140 | 68,070 | 71,343 |
+| Snow | 178 | 184 | 73,833 | 75,134 |
+| Village at night | 243 | 250 | 89,161 | 94,953 |
+
+All five matched **world** representatives remain below 100,000 triangles and within 25% draw-call growth. The expanded direction sweep peaks at 472 calls and 96,319 triangles. Animated NPC visibility causes modest run-to-run variation. The furnished bespoke interiors have a documented relative-cost exception: some exceed 25% growth from their sparse baseline, but the sampled maximum is only 119 calls and 8,488 triangles. Do not generalize the world-relative limit to every interior view.
+
+The rendering buffer and 30Hz world-draw cap remain unchanged. No dynamic shadow maps, postprocessing, engine migration, new dependencies, controller changes, cloud worker or cloud configuration changes. Tests use isolated storage and intercept cloud requests. Physical glasses brightness, comfort and sustained performance have not been measured.
+
+The final independent reports, matched performance counts, live release commit, and production file/browser checks are retained in `.visual-review/realm-round2/verification/` and `.visual-review/realm-round2/production/`. The local review page remains `.visual-review/realm/review.html`, now comparing this pass against cac4ffc and loading current runtime files in an isolated playable frame.
+
+---
+
+# First-release archive — 2026-09-08
+
+The following records the earlier release. Its subjective scores and statements about remaining visual issues were superseded by the user's feedback and the second-pass critique above.
 
 GitHub main and both clean local checkouts were verified at `a9f729af1438b4b0ca0159c4fc5b33da1d879379` before work. Both `glassrealm` and `Glass Realm` contain the same verified artwork changes. The user approved production deployment on 2026-09-08; GitHub deployment statuses record the release outcome at https://glassrealm.onrender.com.
 

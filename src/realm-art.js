@@ -140,16 +140,36 @@ export function meadowGeometry(){
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geo.computeVertexNormals();return geo;
 }
 
-export function makeGroundPath(points, height, width = 1.8, color = 0xe6cfaa) {
+export function makeGroundPath(points, height, width = 1.8, color = 0xe6cfaa, grid = {x:0,z:0,size:6}) {
   const pos = [], uv = [];
+  // Clip each path into the exact terrain triangles. Sampling a coarse strip
+  // lets its faces cut through sloped terrain between sample points.
+  const cross=(a,b,p)=>(b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]);
+  function clip(poly,a,b){
+    const out=[];
+    for(let n=0;n<poly.length;n++){
+      const p=poly[n],q=poly[(n+1)%poly.length],cp=cross(a,b,p),cq=cross(a,b,q),pin=cp>=-1e-7,qin=cq>=-1e-7;
+      if(pin)out.push(p);
+      if(pin!==qin){const t=cp/(cp-cq);out.push([p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t]);}
+    }
+    return out;
+  }
   for (let i = 1; i < points.length; i++) {
-    const a = points[i-1], b = points[i], dx = b.x-a.x, dz = b.z-a.z, len = Math.hypot(dx,dz), n = Math.max(1,Math.ceil(len/1.4));
+    const a = points[i-1], b = points[i], dx = b.x-a.x, dz = b.z-a.z, len = Math.hypot(dx,dz);
     if (!len) continue;
     const sx = -dz/len*width*.5, sz = dx/len*width*.5;
-    for (let s = 0; s < n; s++) {
-      const x = a.x+dx*s/n, z = a.z+dz*s/n, ex = a.x+dx*(s+1)/n, ez = a.z+dz*(s+1)/n;
-      const p = [[x+sx,z+sz],[ex+sx,ez+sz],[x-sx,z-sz],[ex-sx,ez-sz]];
-      for (const j of [0,1,2,2,1,3]) { const v=p[j];pos.push(v[0],height(v[0],v[1])+.045,v[1]);uv.push(v[0]/3.2,v[1]/3.2); }
+    const outline=[[a.x+sx,a.z+sz],[b.x+sx,b.z+sz],[b.x-sx,b.z-sz],[a.x-sx,a.z-sz]],s=grid.size;
+    const minX=Math.floor((Math.min(...outline.map(p=>p[0]))-grid.x)/s),maxX=Math.floor((Math.max(...outline.map(p=>p[0]))-grid.x)/s);
+    const minZ=Math.floor((Math.min(...outline.map(p=>p[1]))-grid.z)/s),maxZ=Math.floor((Math.max(...outline.map(p=>p[1]))-grid.z)/s);
+    for(let gx=minX;gx<=maxX;gx++)for(let gz=minZ;gz<=maxZ;gz++){
+      const x=grid.x+gx*s,z=grid.z+gz*s,tl=[x,z],tr=[x+s,z],bl=[x,z+s],br=[x+s,z+s];
+      for(const tri of [[tl,tr,bl],[tr,br,bl]]){
+        let polygon=outline;for(let edge=0;edge<3&&polygon.length;edge++)polygon=clip(polygon,tri[edge],tri[(edge+1)%3]);
+        for(let n=1;n<polygon.length-1;n++){
+          const vertices=[polygon[0],polygon[n],polygon[n+1]];if(Math.abs(cross(...vertices))<1e-7)continue;
+          for(const v of vertices){pos.push(v[0],height(v[0],v[1])+.024,v[1]);uv.push(v[0]/3.2,v[1]/3.2);}
+        }
+      }
     }
   }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.computeVertexNormals();

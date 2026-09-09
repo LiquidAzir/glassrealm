@@ -43,14 +43,19 @@ function buildPerson({ cloth, skin, hair, weaponMat, helm = null, seed = 0 }) {
   const legL = mkLeg(-0.16), legR = mkLeg(0.16);
   g.add(mkPart('hero_torso',cloth,0,1.15,0)||mkBox(0.66, 0.8, 0.4, clothM, 0, 1.15, 0));
   g.add(mkBox(0.72, 0.2, 0.44, darkM, 0, 0.82, 0));          // belt / hips
-  const mkArm = (x) => { const p = new THREE.Group(); p.position.set(x, 1.48, 0); p.add(mkBox(0.17, 0.56, 0.2, clothM, 0, -0.26, 0)); p.add(mkBox(0.16, 0.16, 0.16, skinM, 0, -0.56, 0)); g.add(p); return p; };
+  const mkArm = (x) => {
+    const p=new THREE.Group();p.position.set(x,1.48,0);
+    p.add(mkPart('hero_upper_arm',cloth,0,0,0)||mkBox(.17,.31,.2,clothM,0,-.155,0));
+    p.add(mkPart('hero_forearm',0x65584a,0,-.31,0)||mkBox(.17,.31,.2,clothM,0,-.465,0));
+    p.add(mkBox(.16,.16,.16,skinM,0,-.62,0));g.add(p);return p;
+  };
   const armL = mkArm(-0.45), armR = mkArm(0.45);
   // head on its own pivot so it can nod + look around (hair + helm ride with the face)
   const head = new THREE.Group(); head.position.set(0, 1.82, 0); g.add(head);
   const sculptedHead=mkPart('hero_head',seed%4===3?0xccb09a:0xffffff,0,0,0);
   head.add(sculptedHead||new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), skinM));
   if (hair != null&&!sculptedHead) head.add(mkBox(0.42, 0.18, 0.42, lmat(hair), 0, 0.18, 0));
-  if (helm != null) { head.add(mkBox(0.44, 0.32, 0.44, lmat(helm), 0, 0.20, 0)); head.add(mkBox(0.12, 0.36, 0.5, lmat(0xb0452e), 0, 0.52, 0)); }   // helmet + red crest
+  if (helm != null) { head.add(new THREE.Mesh(new THREE.SphereGeometry(.365,10,4,0,TAU,0,Math.PI*.42),lmat(helm))); head.add(mkBox(.09,.2,.4,lmat(0xb0452e),0,.39,0)); }
   if (weaponMat) armR.add(mkBox(0.1, 0.85, 0.1, weaponMat, 0, -0.78, 0));     // weapon held in the right hand
   g.userData.anim = { legL, legR, armL, armR, head, biped: true };
   return g;

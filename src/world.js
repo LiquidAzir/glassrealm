@@ -508,12 +508,17 @@ export function createWorld(scene, seed = 1337) {
   // trees (instanced, per-instance colour); canopies sway in the wind on the GPU — a vertex-shader
   // offset that grows toward the treetop, phased per-instance, so all ~900 trees breathe for free
   const windUniform = { value: 0 };
+  const treeViewCamera={value:new THREE.Vector3()},treeViewTarget={value:new THREE.Vector3()};
   const applyWindSway = (mat) => {
     mat.onBeforeCompile = (sh) => {
       sh.uniforms.uWind = windUniform;
+      sh.uniforms.uTreeCamera=treeViewCamera;sh.uniforms.uTreeTarget=treeViewTarget;
       sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', '#include <common>\nuniform float uWind;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_INSTANCING\nfloat wph = uWind + instanceMatrix[3].x * 0.18 + instanceMatrix[3].z * 0.18;\nfloat wsw = max(0.0, position.y) * 0.035;\ntransformed.x += sin(wph) * wsw;\ntransformed.z += cos(wph * 0.8) * wsw * 0.7;\n#endif');
+        .replace('#include <common>', '#include <common>\nuniform float uWind;\nvarying vec3 vTreeWorld;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_INSTANCING\nfloat wph = uWind + instanceMatrix[3].x * 0.18 + instanceMatrix[3].z * 0.18;\nfloat wsw = max(0.0, position.y) * 0.035;\ntransformed.x += sin(wph) * wsw;\ntransformed.z += cos(wph * 0.8) * wsw * 0.7;\nvTreeWorld = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n#endif');
+      sh.fragmentShader=sh.fragmentShader
+        .replace('#include <common>','#include <common>\nuniform vec3 uTreeCamera;\nuniform vec3 uTreeTarget;\nvarying vec3 vTreeWorld;')
+        .replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nvec3 sight=uTreeTarget-uTreeCamera;\nfloat sightT=dot(vTreeWorld-uTreeCamera,sight)/max(dot(sight,sight),.01);\nfloat sightGap=length(vTreeWorld-(uTreeCamera+sight*sightT));\nif(sightT>0.0 && sightT<.97 && vTreeWorld.y>uTreeTarget.y-.95){\nfloat coverage=smoothstep(.76,1.03,sightGap);\nfloat stipple=(mod(gl_FragCoord.x+2.0*gl_FragCoord.y,4.0)+.5)*.25;\nif(coverage<stipple) discard;\n}');
     };
   };
   // Consume exactly the original one random number/tree so saved resource IDs stay stable.
@@ -607,9 +612,17 @@ export function createWorld(scene, seed = 1337) {
   const animalSpawns = [];                 // {kind,x,z,home,roam,penned} — farm livestock + wild creatures (entities.js builds them)
   const stations = [];
   const visualBuildings=[];
+  const cutFloorGeometry=new THREE.PlaneGeometry(4.15,4.15).rotateX(-Math.PI/2);
+  const cutFloorMaterial=new THREE.MeshLambertMaterial({color:0xb3a085,map:groundTexture('paving')});
   // PERF: cache world build materials by colour — settlements reuse the same palette colours extensively
   const _wmatCache = {};
   const lmat = (c) => { if (_wmatCache[c]) return _wmatCache[c]; const m = new THREE.MeshLambertMaterial({ color: c, flatShading: true }); _wmatCache[c] = m; return m; };
+  function placeArt(key,x,y,z,scale=1,cutaway=false){
+    const mesh=artModel(key);if(!mesh)return null;
+    mesh.position.set(x,y,z);mesh.scale.setScalar(scale);group.add(mesh);
+    if(cutaway){mesh.updateMatrix();const bounds=mesh.geometry.boundingBox;visualBuildings.push({x,z,y,height:bounds.max.y*scale,r:Math.max(bounds.max.x,bounds.max.z)*scale,mesh,baseMaterial:mesh.material,box:bounds.clone().applyMatrix4(mesh.matrix),cutHeight:y+bounds.max.y*scale+.5});}
+    return mesh;
+  }
   const waystones = [];   // fast-travel network nodes
   const snapLand = (x, z) => { if (isWalkable(x, z)) return { x, z }; for (let r = 3; r <= 44; r += 3) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz)) return { x: nx, z: nz }; } return { x, z }; };
   // nearest walkable tile that sits right by the water's edge (for ducks/waterfowl)
@@ -668,12 +681,13 @@ export function createWorld(scene, seed = 1337) {
     const fx = Math.sin(faceA), fz = Math.cos(faceA), rx = Math.cos(faceA), rz = -Math.sin(faceA);
     const cfg = BLD[type] || BLD.home, W = 5.2, D = 5.2, H = cfg.h;
     const sx = bx + fx * (D / 2 + 1.2), sz = bz + fz * (D / 2 + 1.2);
-    group.add(makeGroundPath([{x:vcx,z:vcz},{x:sx,z:sz}],surfaceHeight,2.1));
+    group.add(makeGroundPath([{x:vcx,z:vcz},{x:sx,z:sz}],surfaceHeight,2.1,0xd1c6aa,{x:CX-SIZE/2,z:CZ-SIZE/2,size:SIZE/SEG}));
     const model=artModel(type,['snow','aurora','sky','highland'].includes(biome)?0xddebf6:['fae','arcane','umbral','crystal'].includes(biome)?0xe0cff3:['desert','badlands','autumn'].includes(biome)?0xffe1b6:0xffffff);
     if(model){
       model.position.set(bx,y,bz);model.rotation.y=faceA;group.add(model);
       model.updateMatrix();
-      visualBuildings.push({x:bx,z:bz,y,height:model.geometry.boundingBox.max.y,r:3.2,mesh:model,baseMaterial:model.material,box:model.geometry.boundingBox.clone().applyMatrix4(model.matrix).expandByScalar(.25),fade:1});
+      const floor=new THREE.Mesh(cutFloorGeometry,cutFloorMaterial);floor.position.set(bx,y+.28,bz);floor.rotation.y=faceA;floor.visible=false;group.add(floor);
+      visualBuildings.push({x:bx,z:bz,y,height:model.geometry.boundingBox.max.y,r:3.2,mesh:model,floor,baseMaterial:model.material,box:model.geometry.boundingBox.clone().applyMatrix4(model.matrix).expandByScalar(.25),cutHeight:y+model.geometry.boundingBox.max.y+.5});
       stations.push({kind:'door',label:'Enter '+(BLD_NAME[type]||'building'),x:sx,z:sz,y:height(sx,sz),building:type,biome});
       solids.push({x:bx,z:bz,r:2.9});
       return;
@@ -747,6 +761,7 @@ export function createWorld(scene, seed = 1337) {
   }
   function well(x, z) {
     const y = height(x, z);
+    if(placeArt('well',x,y,z,1,true)){solids.push({x,z,r:1.6});return;}
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.1, 1.0, 10), lmat(0x8a8a92)); ring.position.set(x, y + 0.5, z); group.add(ring);
     const water = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.1, 10), new THREE.MeshBasicMaterial({ color: 0x2bd6cf })); water.position.set(x, y + 0.95, z); group.add(water);
     for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.9, 0.16), lmat(0x6e4a2b)); post.position.set(x + s, y + 1.45, z); group.add(post); }
@@ -849,6 +864,7 @@ export function createWorld(scene, seed = 1337) {
   }
   function lampPost(x, z) {
     const y = height(x, z);
+    if(placeArt('lantern',x,y,z,1.2))return;
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 2.6, 6), lmat(0x40434a)); post.position.set(x, y + 1.3, z); group.add(post);
     const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lamp.position.set(x, y + 2.7, z); group.add(lamp);
   }
@@ -859,6 +875,7 @@ export function createWorld(scene, seed = 1337) {
   }
   function fire(x, z) {   // a proper cast-iron stove with a flickering fire window + pot
     const y = height(x, z);
+    if(placeArt('furnace',x,y,z,.82,true)){stations.push({kind:'cook',label:'Cooking hearth',x,z,y});return;}
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.3, 1.4), lmat(0x55585f)); body.position.set(x, y + 0.65, z); group.add(body);
     const top = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.18, 1.6), lmat(0x3a3d44)); top.position.set(x, y + 1.35, z); group.add(top);
     const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 1.7, 6), lmat(0x40434a)); chimney.position.set(x + 0.7, y + 2.1, z - 0.3); group.add(chimney);
@@ -875,9 +892,11 @@ export function createWorld(scene, seed = 1337) {
   }
   function altar(x, z) {
     const y = height(x, z);
-    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 1.6), new THREE.MeshLambertMaterial({ color: 0xd8d2e6, flatShading: true })); base.position.set(x, y + 0.5, z);
-    const glow = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshBasicMaterial({ color: 0xbf9bff })); glow.position.set(x, y + 1.35, z);
-    group.add(base, glow); stations.push({ kind: 'altar', label: 'Altar', x, z, y });
+    const foot=new THREE.Mesh(new THREE.CylinderGeometry(.86,.95,.22,8),lmat(0x96918b));foot.position.set(x,y+.11,z);
+    const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(.54,.68,.74,8),lmat(0xc3b9a7));pedestal.position.set(x,y+.57,z);
+    const rim=new THREE.Mesh(new THREE.CylinderGeometry(.76,.76,.16,8),lmat(0x8d8274));rim.position.set(x,y+.98,z);
+    const glow=new THREE.Mesh(new THREE.OctahedronGeometry(.34,0),new THREE.MeshLambertMaterial({color:0xc6adf2,emissive:0x352256}));glow.scale.y=1.5;glow.position.set(x,y+1.58,z);
+    group.add(foot,pedestal,rim,glow); stations.push({ kind: 'altar', label: 'Altar', x, z, y });
   }
   function runeAltar(x, z) {
     const y = height(x, z);
@@ -895,6 +914,7 @@ export function createWorld(scene, seed = 1337) {
   }
   function cauldron(x, z) {
     const y = height(x, z);
+    if(placeArt('cauldron',x,y,z)){stations.push({kind:'cauldron',label:'Cauldron',x,z,y});return;}
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.5, 0.9, 8), new THREE.MeshLambertMaterial({ color: 0x40454d, flatShading: true })); pot.position.set(x, y + 0.5, z);
     const brew = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.12, 8), new THREE.MeshBasicMaterial({ color: 0x7cffb0 })); brew.position.set(x, y + 0.96, z);
     group.add(pot, brew); stations.push({ kind: 'cauldron', label: 'Cauldron', x, z, y });
@@ -916,6 +936,10 @@ export function createWorld(scene, seed = 1337) {
   }
   function smithy(x, z) {
     const fy = height(x, z);
+    if(placeArt('furnace',x,fy,z,1,true)){
+      stations.push({kind:'furnace',label:'Furnace',x,z,y:fy});
+      const ax=x-2,az=z+3,ay=height(ax,az);placeArt('anvil',ax,ay,az);stations.push({kind:'anvil',label:'Anvil',x:ax,z:az,y:ay});return;
+    }
     const furnace = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.0, 1.8), new THREE.MeshLambertMaterial({ color: 0x7a6f66, flatShading: true })); furnace.position.set(x, fy + 1.0, z);
     const glow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.4), new THREE.MeshBasicMaterial({ color: 0xff7a33 })); glow.position.set(x, fy + 0.8, z + 0.95);
     group.add(furnace, glow); stations.push({ kind: 'furnace', label: 'Furnace', x, z, y: fy });
@@ -928,6 +952,7 @@ export function createWorld(scene, seed = 1337) {
   const goodsMat = new THREE.MeshLambertMaterial({ color: 0xffd45f, flatShading: true });
   function stall(x, z) {
     const y = height(x, z);
+    if(placeArt('market_stall',x,y,z,1,true)){stalls.push({x,z,y,cooldown:0});return;}
     const table = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.2, 1.2), stallMat); table.position.set(x, y + 0.9, z);
     for (const lx of [-0.8, 0.8]) for (const lz of [-0.4, 0.4]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.9, 0.15), stallMat); leg.position.set(x + lx, y + 0.45, z + lz); group.add(leg); }
     const goods = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), goodsMat); goods.position.set(x, y + 1.2, z);
@@ -1496,17 +1521,30 @@ export function createWorld(scene, seed = 1337) {
   (function frostmaw() {
     const reg = byKey.snow; if (!reg) return;
     const p = snapLand(reg.x, reg.z + 18), fx = p.x, fz = p.z, fy = height(fx, fz);
-    const body = new THREE.Mesh(new THREE.IcosahedronGeometry(3.0, 0), lmat(0x9bd0ff)); body.position.set(fx, fy + 3, fz); body.scale.y = 1.5; group.add(body);
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.4, 5), lmat(0xcfeaff)); horn.position.set(fx - 1, fy + 5.2, fz); horn.rotation.z = 0.45; group.add(horn);
-    const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.4, 5), lmat(0xcfeaff)); horn2.position.set(fx + 1, fy + 5.2, fz); horn2.rotation.z = -0.45; group.add(horn2);
-    const eye = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0), new THREE.MeshBasicMaterial({ color: 0x2bd6ff })); eye.position.set(fx, fy + 4.2, fz + 2.4); group.add(eye);
-    shimMeshes.push({ m: eye, baseY: fy + 4.2, seed: 7, kind: 'spin' });
+    // Carve a compact frost idol into the western side of the original footprint.
+    // The old giant polygon intersected three saved trees. Tree identities and
+    // the arena's collision/service coordinates remain exactly where they were.
+    const ix=fx-1.35,ice=lmat(0x91bccb),edge=lmat(0xcbdfe5),stone=lmat(0x799198),eyeGlow=new THREE.MeshBasicMaterial({color:0x8bdfe7});
+    const carved=(geo,mat,x,y,z,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);group.add(m);return m;};
+    carved(new THREE.CylinderGeometry(1.3,1.4,.26,8),stone,ix,fy+.13,fz);
+    carved(new THREE.CylinderGeometry(.92,1.04,.3,8),edge,ix,fy+.4,fz);
+    carved(new THREE.IcosahedronGeometry(.95,0),ice,ix,fy+1.25,fz,.9,1.15,.72);
+    carved(new THREE.IcosahedronGeometry(.72,0),edge,ix,fy+2.55,fz,1,.88,.92);
+    carved(new THREE.DodecahedronGeometry(.4,0),ice,ix,fy+2.36,fz+.57,1,.7,1.2);
+    carved(new THREE.BoxGeometry(.32,.13,.09),stone,ix,fy+2.43,fz+1.01);
+    for(const side of [-1,1]){
+      const horn=carved(new THREE.ConeGeometry(.17,.85,5),edge,ix+side*.49,fy+3.12,fz-.12);horn.rotation.z=-side*.24;
+      carved(new THREE.IcosahedronGeometry(.14,0),stone,ix+side*.3,fy+2.65,fz+.56,1,.7,.35);
+      carved(new THREE.IcosahedronGeometry(.065,0),eyeGlow,ix+side*.3,fy+2.65,fz+.6);
+      const fang=carved(new THREE.ConeGeometry(.075,.22,4),edge,ix+side*.17,fy+2.14,fz+.81);fang.rotation.z=Math.PI;
+    }
     solids.push({ x: fx, z: fz, r: 3.0 });
     const bx = fx, bz = fz + 6, by = height(bx, bz);
     const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 1.1, 8), lmat(0x4a4036)); stand.position.set(bx, by + 0.55, bz); group.add(stand);
     const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.55, 0.4, 8), lmat(0x6a5a44)); bowl.position.set(bx, by + 1.2, bz); group.add(bowl);
-    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.1, 6), new THREE.MeshBasicMaterial({ color: 0xff8a3d })); fire.position.set(bx, by + 1.95, bz); group.add(fire);
-    shimMeshes.push({ m: fire, baseY: by + 1.95, seed: 3, kind: 'spin' });
+    const rim=carved(new THREE.TorusGeometry(.74,.055,4,10),lmat(0x4d5053),bx,by+1.41,bz);rim.rotation.x=Math.PI/2;
+    const fire = new THREE.Mesh(new THREE.ConeGeometry(.35,.65,5),new THREE.MeshBasicMaterial({color:0xffaa51}));fire.position.set(bx,by+1.68,bz);group.add(fire);
+    shimMeshes.push({ m: fire, baseY: by + 1.68, seed: 3, kind: 'spin' });
     stations.push({ kind: 'frostmaw', label: 'Frostmaw Brazier', x: bx, z: bz, y: by });
     locations.push({ name: 'The Frostmaw', x: fx, z: fz });
   })();
@@ -1672,22 +1710,38 @@ export function createWorld(scene, seed = 1337) {
   for (const f of (ferryBoats || [])) _live(f.m);
 
   const cameraRay=new THREE.Ray(),cameraTarget=new THREE.Vector3(),cameraDirection=new THREE.Vector3(),cameraHit=new THREE.Vector3();
+  const labelRay=new THREE.Ray(),labelDirection=new THREE.Vector3(),labelHit=new THREE.Vector3(),labelBox=new THREE.Box3();
+  function isLabelOccluded(origin,point){
+    labelDirection.subVectors(point,origin);const distance=labelDirection.length();labelDirection.normalize();labelRay.set(origin,labelDirection);
+    for(const b of visualBuildings){
+      if(!b.mesh||Math.hypot(origin.x-b.x,origin.z-b.z)>distance+b.r+5)continue;
+      labelBox.copy(b.box);labelBox.max.y=Math.min(labelBox.max.y,b.cutHeight);
+      if(labelRay.intersectBox(labelBox,labelHit)&&origin.distanceTo(labelHit)<distance-.45)return true;
+    }
+    return false;
+  }
   function updateView(camera,player){
     cameraTarget.set(player.x,player.y+1.15,player.z);
+    treeViewCamera.value.copy(camera.position);treeViewTarget.value.copy(cameraTarget);
     cameraDirection.subVectors(cameraTarget,camera.position);const distance=cameraDirection.length();cameraDirection.normalize();
     cameraRay.set(camera.position,cameraDirection);
     for(const b of visualBuildings){
       if(!b.mesh)continue;
       const hit=cameraRay.intersectBox(b.box,cameraHit),blocked=hit&&camera.position.distanceTo(cameraHit)<distance-.35;
-      b.fade+=( (blocked?.16:1)-b.fade)*.22;
-      if(b.fade<.995){
-        if(!b.fadeMaterial){b.fadeMaterial=b.baseMaterial.clone();b.fadeMaterial.transparent=true;b.fadeMaterial.depthWrite=false;rimLight(b.fadeMaterial,.3);}
-        b.fadeMaterial.opacity=b.fade;b.mesh.material=b.fadeMaterial;
-      }else b.mesh.material=b.baseMaterial;
+      const fullHeight=b.y+b.height+.5;
+      b.cutHeight+=((blocked?b.y+.48:fullHeight)-b.cutHeight)*.24;
+      if(b.floor)b.floor.visible=b.cutHeight<fullHeight-.025;
+      if(b.cutHeight<fullHeight-.025){
+        if(!b.cutMaterial){
+          b.cutPlane=new THREE.Plane(new THREE.Vector3(0,-1,0),b.cutHeight);
+          b.cutMaterial=b.baseMaterial.clone();b.cutMaterial.clippingPlanes=[b.cutPlane];rimLight(b.cutMaterial,.3);
+        }
+        b.cutPlane.constant=b.cutHeight;b.mesh.material=b.cutMaterial;
+      }else {b.cutHeight=fullHeight;b.mesh.material=b.baseMaterial;}
     }
   }
   return {
-    group, height, isWalkable, WATER_Y, visualBuildings, updateView,
+    group, height, surfaceHeight, isWalkable, WATER_Y, visualBuildings, updateView, isLabelOccluded,
     village: VILLAGE_A,
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],

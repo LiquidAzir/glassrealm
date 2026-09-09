@@ -10,7 +10,7 @@ from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'assets'
-REVIEW = ROOT.parent / '.visual-review' / 'realm' / 'assets'
+REVIEW = ROOT.parent / '.visual-review' / 'realm-round2' / 'assets'
 OUT.mkdir(exist_ok=True)
 (OUT / 'source').mkdir(exist_ok=True)
 REVIEW.mkdir(parents=True, exist_ok=True)
@@ -609,11 +609,156 @@ def make_furniture():
     for j in range(5): box('table plank',(0,1.096,-.54+j*.27),(2.40,.008,.25),'timber_light' if j%2 else 'endgrain')
     finish('table')
 
+def ring_stone(name,a,b,outer,inner,y,h,mat):
+    corners=[(outer,a),(outer,b),(inner,b),(inner,a)]
+    vs=[(math.cos(ang)*r,yy,math.sin(ang)*r) for yy in [y,y+h] for r,ang in corners]
+    return mesh(name,vs,[(0,1,2,3),(4,7,6,5),(0,4,5,1),(1,5,6,2),(2,6,7,3),(3,7,4,0)],mat)
+
+def tube(name,a,b,r,mat,n=8,end_radius=None):
+    a,b=Vector(a),Vector(b); axis=(b-a).normalized()
+    ref=Vector((0,0,1)) if abs(axis.z)<.9 else Vector((1,0,0))
+    right=axis.cross(ref).normalized(); front=right.cross(axis).normalized()
+    vs=[tuple(p+rr*(math.cos(k*2*math.pi/n)*right+math.sin(k*2*math.pi/n)*front)) for p,rr in [(a,r),(b,r if end_radius is None else end_radius)] for k in range(n)]
+    faces=[tuple(range(n)),tuple(reversed(range(n,2*n)))]
+    faces += [(k,k+n,(k+1)%n+n,(k+1)%n) for k in range(n)]
+    return mesh(name,vs,faces,mat)
+
+def metal_loop(name,loc,radius,mat,axis='x'):
+    bpy.ops.mesh.primitive_torus_add(major_segments=10,minor_segments=4,major_radius=radius,minor_radius=.028,location=cv(loc))
+    o=bpy.context.object; o.name=name
+    if axis=='x': o.rotation_euler=(0,math.pi/2,0)
+    elif axis=='z': o.rotation_euler=(math.pi/2,0,0)
+    o.data.materials.append(MATS[mat]); PARTS.append(o)
+    return o
+
+def make_stations():
+    # Well: visible bore and water, hand-laid ring, roof canopy and working crank.
+    for row in range(2):
+        for k in range(8):
+            a=k*math.pi/4+row*math.pi/8+.016; b=(k+1)*math.pi/4+row*math.pi/8-.016
+            ring_stone('well masonry course',a,b,1.03,.76,row*.29,.275,['stone','stone_light','stone_dark'][(k+row)%3])
+    for k in range(8): ring_stone('well coping stone',k*math.pi/4+.012,(k+1)*math.pi/4-.012,1.10,.70,.58,.16,'stone_light' if k%3 else 'stone')
+    cylinder('well dark water',(0,.11,0),.748,.012,'water',12)
+    for x in [-.89,.89]:
+        box('well roof post',(x,1.08,0),(.145,2.16,.16),'timber')
+        for z in [-.55,.55]: beam('well knee brace',(x,1.76,0),(x,2.20,z),.08,'timber_light')
+    wedge_roof('well worn slate canopy',.98,.82,2.13,2.65,['slate','slate_light','slate_dark'],courses=3)
+    tube('well windlass',(-1.02,1.64,0),(1.02,1.64,0),.11,'timber_light',8)
+    tube('well iron axle',(-1.09,1.64,0),(1.10,1.64,0),.035,'iron',6)
+    beam('well crank arm',(1.10,1.64,0),(1.10,1.64,.27),.06,'iron')
+    tube('well crank grip',(1.10,1.64,.27),(1.27,1.64,.27),.05,'timber_light',6)
+    beam('well rope',(0,1.62,.115),(0,.28,.115),.022,'cream')
+    finish('well')
+
+    # Anvil: forged horn and heel, narrow waist and secured stump base.
+    cylinder('anvil oak stump',(0,.265,0),.49,.53,'bark',9,top=.45)
+    cylinder('anvil stump endgrain',(0,.535,0),.451,.025,'endgrain',9)
+    for a in [0,2.1,4.2]:
+        x,z=math.cos(a)*.445,math.sin(a)*.445
+        beam('stump bark groove',(x,.06,z),(x*.91,.47,z*.91),.034,'timber')
+    profile('anvil foot',[(.53,.37,.24),(.64,.29,.20),(.75,.16,.145),(.91,.28,.24),(1.015,.34,.26)],'iron',['iron','stone_dark','iron','stone'])
+    beveled_slab('anvil hardened face',-.06,1.055,0,.86,.09,.55,'stone',.045)
+    tube('anvil drawn horn',(.33,.98,0),(.80,1.04,0),.12,'stone_dark',8,end_radius=.018)
+    box('anvil hardy hole',(-.29,1.102,0),(.074,.006,.085),'recess')
+    for x in [-.30,.29]:
+        for z in [-.18,.18]: cylinder('anvil fixing bolt',(x,.583,z),.045,.07,'iron',6)
+    finish('anvil')
+
+    # Furnace: genuinely open front, voussoir arch, recessed fire and tall flue.
+    for row in range(3):
+        for k in range(12):
+            if k in [2,3]: continue
+            a=k*math.pi/6+.014; b=(k+1)*math.pi/6-.014
+            ring_stone('furnace stone wall',a,b,1.00,.68,.04+row*.45,.43,['stone_dark','stone','stone_dark','stone_light'][k%4])
+    for x in [-.48,.48]:
+        for row in range(2): box('firebox jamb',(x,.36+row*.35,.873),(.20,.325,.25),'stone_light' if row else 'stone')
+    for k in range(6):
+        a=k*math.pi/6+.02; b=(k+1)*math.pi/6-.02
+        vs=[(math.cos(ang)*r,.89+math.sin(ang)*r,z) for z in [.735,1.00] for r,ang in [(.59,a),(.59,b),(.38,b),(.38,a)]]
+        mesh('firebox arch voussoir',vs,[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)],'stone_light' if k%2 else 'stone')
+    cylinder('furnace shoulder',(0,1.495,0),1.01,.28,'stone_dark',12,top=.52)
+    cylinder('tapered furnace flue',(0,2.02,0),.53,.95,'stone_dark',8,top=.35)
+    for y,r in [(1.64,.526),(1.95,.47),(2.29,.414)]: cylinder('flue stone band',(0,y,0),r,.085,'stone',8)
+    cylinder('flue crown',(0,2.60,0),.47,.25,'stone_light',8)
+    cylinder('open black flue',(0,2.73,0),.32,.02,'coal',8)
+    cylinder('furnace coals',(0,.20,.08),.64,.055,'coal',10)
+    for x,z in [(-.31,.23),(.24,.29),(.02,.58)]:
+        ico('furnace glowing coal',(x,.26,z),(.21,.09,.16),'fire',1,['fire','terracotta'],0)
+    for x,y in [(-.20,.54),(.07,.72),(.25,.49)]:
+        mesh('furnace flame',[(x-.10,.29,.48),(x+.10,.29,.48),(x+.025,y,.43)],[(0,1,2)],'fire')
+    finish('furnace')
+
+    # Open pot, inset broth, cast handle loops and tripod over coals.
+    for a in [0,2.094,4.189]:
+        x,z=math.cos(a),math.sin(a)
+        beam('cauldron tripod leg',(x*.88,0,z*.88),(x*.64,.74,z*.64),.12,'iron')
+    n=12; rings=[(.35,.34),(.52,.64),(.90,.76),(1.19,.65),(1.25,.67),(1.25,.59),(.96,.56)]
+    vs=[(math.cos(k*2*math.pi/n)*r,y,math.sin(k*2*math.pi/n)*r) for y,r in rings for k in range(n)]
+    fs=[tuple(range(n))]; mats=['iron']
+    for row in range(len(rings)-1):
+        for k in range(n):
+            fs.append((row*n+k,(row+1)*n+k,(row+1)*n+(k+1)%n,row*n+(k+1)%n))
+            mats.append('stone_dark' if row==4 else 'iron' if row%2 else 'stone_dark')
+    mesh('open iron cauldron',vs,fs,'iron',mats)
+    cylinder('cauldron broth',(0,.965,0),.557,.012,'leaf_dark',12)
+    for x in [-.76,.76]:
+        metal_loop('cast cauldron handle',(x,1.24,0),.20,'iron','x')
+    for x,z in [(-.22,.18),(.17,-.15),(.1,.22)]:
+        mesh('broth herb',[(x-.08,.974,z),(x,.975,z+.06),(x+.07,.974,z-.02)],[(0,1,2)],'leaf_light')
+    for a in [0,.9,1.8]:
+        tube('cauldron charcoal log',(-math.cos(a)*.50,.11,-math.sin(a)*.50),(math.cos(a)*.5,.11,math.sin(a)*.5),.09,'coal',6)
+    for x,z in [(-.21,.12),(.24,-.04)]: ico('cauldron ember',(x,.14,z),(.22,.10,.16),'fire',1,['fire','terracotta'],0)
+    finish('cauldron')
+
+    # Market stall: a compact striped canopy above grouped goods and timber joinery.
+    for x in [-1.35,1.35]:
+        for z in [-.65,.65]:
+            box('stall upright',(x,1.08,z),(.11,2.16,.11),'timber')
+        for z in [-.65,.65]: beam('stall knee brace',(x,1.71,z),(x*.72,2.10,z),.06,'timber_light')
+    for k in range(8):
+        x0=-1.5+k*.375; x1=x0+.368
+        mat='fabric' if k%2 else 'fabric_light'
+        mesh('stall canvas roof',[(x0,2.14,.90),(x1,2.14,.90),(x1,2.46,0),(x0,2.46,0),(x0,2.18,-.90),(x1,2.18,-.90)],[(0,1,2,3),(3,2,5,4)],mat)
+        mesh('stall scalloped valance',[(x0,2.145,.90),(x1,2.145,.90),(x1,2.015,.90),((x0+x1)/2,1.985,.90),(x0,2.015,.90)],[(0,4,3,2,1)],mat)
+    for z,y in [(-.83,2.19),(.83,2.14),(0,2.46)]: beam('stall canopy rib',(-1.48,y,z),(1.48,y,z),.065,'timber_light')
+    box('stall counter apron',(0,.62,.61),(2.60,.52,.08),'timber')
+    for x in [-.98,0,.98]: box('stall apron field',(x,.61,.664),(.82,.41,.034),'timber_light')
+    beveled_slab('stall counter top',0,.91,.04,2.72,.11,1.45,'timber_light',.05)
+    grain_sack(-.83,.945,-.10); pottery(-.26,.965,-.12,.46,'terracotta')
+    pottery(.28,.965,-.12,.35,'copper')
+    box('market fruit tray',(.86,1.02,.17),(.46,.11,.47),'timber')
+    for x,z in [(.72,.06),(.94,.06),(.80,.26),(.99,.28)]: ico('market apples',(x,1.14,z),(.095,.095,.095),'leaf_gold',1,['leaf_gold','leaf_light'],0)
+    finish('market_stall')
+
+    # Arms use attachment pivots; shield is centered, forward-facing and tintable.
+    profile('rounded upper sleeve',[(-.31,.077,.086),(-.24,.09,.102),(-.09,.11,.12),(0,.093,.105)],'cloth_gray',['cloth_gray','cloth_high','cloth_gray','cloth_fold'])
+    profile('sleeve rolled cuff',[(-.28,.091,.102),(-.24,.093,.104)],'cloth_fold')
+    finish('hero_upper_arm',False)
+    profile('tapered forearm',[(-.31,.067,.073),(-.235,.075,.083),(-.085,.094,.112),(0,.087,.097)],'boot_gray',['boot_gray','cloth_fold','boot_gray','boot_shadow'])
+    for yy in [-.265,-.05]: profile('bracer strap',[(yy,.089 if yy>-.1 else .075,.114 if yy>-.1 else .087),(yy+.035,.089 if yy>-.1 else .075,.114 if yy>-.1 else .087)],'armor_shadow')
+    mesh('bracer raised plate',[(-.052,-.06,.115),(.052,-.06,.115),(.036,-.245,.087),(0,-.255,.109),(-.036,-.245,.087),(0,-.07,.129)],[(0,4,3,5),(5,3,2,1),(0,5,1)],'armor_gray')
+    finish('hero_forearm',False)
+    outline=[(-.25,.41),(.25,.41),(.30,.31),(.26,-.10),(.13,-.29),(0,-.41),(-.13,-.29),(-.26,-.10),(-.30,.31)]
+    n=len(outline)
+    vs=[(x,y,-.035) for x,y in outline]+[(x,y,.035) for x,y in outline]+[(x*.84,y*.85,.049) for x,y in outline]+[(0,0,.063)]
+    fs=[tuple(range(n))]; ms=['armor_shadow']
+    for k in range(n):
+        kk=(k+1)%n
+        fs.append((k,kk,n+kk,n+k)); ms.append('armor_shadow')
+        fs.append((n+k,n+kk,2*n+kk,2*n+k)); ms.append('armor_edge')
+        fs.append((2*n+k,2*n+kk,3*n)); ms.append('cloth_gray')
+    # Outline runs clockwise from the front, so flip visible forward-facing bands.
+    for j in range(1,len(fs)): fs[j]=tuple(reversed(fs[j]))
+    mesh('beveled heater shield',vs,fs,'armor_gray',ms)
+    mesh('shield raised boss',[(-.063,0,.064),(0,.075,.064),(.063,0,.064),(0,-.075,.064),(0,0,.085)],[(0,4,1),(1,4,2),(2,4,3),(3,4,0)],'armor_edge')
+    finish('hero_shield',False)
+
 make_buildings()
 make_nature()
 make_props()
 make_character()
 make_furniture()
+make_stations()
 
 def export_asset(obj):
     data=obj.data; data.calc_loop_triangles()
@@ -733,9 +878,10 @@ instance('hero_head',(0,1.82,0))
 for s in [-1,1]:
     instance('hero_boot',(s*.175,.70,0),(.35,.28,.21))
     instance('hero_shoulder',(s*.415,1.42,0),(.47,.56,.58))
-    beam('study upper sleeve',(s*.43,1.34,0),(s*.52,1.02,.02),.19,'fabric')
-    beam('study bracer',(s*.52,1.03,.02),(s*.54,.79,.045),.15,'timber_light')
+    upper=instance('hero_upper_arm',(s*.45,1.36,0),(.22,.42,.48))
+    forearm=instance('hero_forearm',(s*.50,1.05,.02),(.35,.28,.21))
     ico('study hand',(s*.55,.75,.05),(.105,.14,.09),'skin',1,None,0)
+instance('hero_shield',(-.69,.97,.18),(.47,.56,.58))
 box('study leather belt',(0,.85,.01),(.65,.115,.50),'timber')
 box('study brass buckle',(0,.85,.279),(.16,.13,.045),'bronze')
 beam('study sword grip',(.55,.75,.07),(.60,.49,.11),.07,'timber')
@@ -747,5 +893,23 @@ cam.data.ortho_scale=2.80
 area('portrait softbox',(-3,5,4),280,5,(1,.88,.72))
 scene.render.resolution_x=1100; scene.render.resolution_y=1300
 scene.render.filepath=str(REVIEW/'realm-adventurer-contact.png')
+bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'source'/'realm-kit.blend'))
+bpy.ops.render.render(write_still=True)
+
+# Station study: ground-origin runtime meshes, with no baked display platforms.
+for o in scene.objects:
+    if o.type in {'MESH','FONT'}:
+        o.hide_render=True
+        o.hide_set(True)
+for name,loc in [('well',(-4,0,-1.2)),('furnace',(0,0,-1.2)),('market_stall',(4,0,-1.2)),('anvil',(-2.4,0,2.9)),('cauldron',(2.4,0,2.9))]:
+    instance(name,loc)
+    bpy.ops.object.text_add(location=cv((loc[0],.015,loc[2]+1.35)))
+    label=bpy.context.object; label.data.body=name.upper().replace('_',' ')
+    label.data.align_x='CENTER'; label.data.size=.20; label.data.materials.append(MATS['cream'])
+box('station study ground',(0,-.09,.8),(13,.16,9),'review_ground')
+cam.location=cv((7.5,8.8,15.0)); cam.rotation_euler=(Vector(cv((0,1.10,.6)))-cam.location).to_track_quat('-Z','Y').to_euler()
+cam.data.ortho_scale=14.2
+scene.render.resolution_x=1800; scene.render.resolution_y=1300
+scene.render.filepath=str(REVIEW/'realm-stations-contact.png')
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'source'/'realm-kit.blend'))
 bpy.ops.render.render(write_still=True)

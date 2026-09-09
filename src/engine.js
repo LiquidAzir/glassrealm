@@ -18,6 +18,7 @@ export function createEngine(canvas) {
   renderer.setSize(600, 600, false);
   renderer.setClearColor(0x000000, 1);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.localClippingEnabled = true; // opaque architectural cutaways; no extra rendering pass
 
   const scene = new THREE.Scene();
   const FOG = 0x000000;

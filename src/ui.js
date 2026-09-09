@@ -45,14 +45,15 @@ export function createUI(G) {
 
   // quest guidance arrow (points toward current objective, relative to facing)
   const questGuide = document.createElement('div'); questGuide.id = 'questGuide'; questGuide.className = 'hidden';
-  questGuide.innerHTML = '<svg class="qg-arrow" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M12 2.5 L12 21.5 M12 2.5 L5 10 M12 2.5 L19 10" fill="none" stroke="#8fd0ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="qg-label"></span>';
+  questGuide.innerHTML = '<svg class="qg-arrow" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M12 2.5 L12 21.5 M12 2.5 L5 10 M12 2.5 L19 10" fill="none" stroke="#8fd0ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="qg-label"></span><span class="qg-distance"></span>';
   document.getElementById('hud').appendChild(questGuide);
-  const qgArrow = questGuide.querySelector('.qg-arrow'), qgLabel = questGuide.querySelector('.qg-label');
+  const qgArrow = questGuide.querySelector('.qg-arrow'), qgLabel = questGuide.querySelector('.qg-label'), qgDistance = questGuide.querySelector('.qg-distance');
   function setQuestArrow(rad, label, dist) {
     if (rad == null) { questGuide.classList.add('hidden'); return; }
     questGuide.classList.remove('hidden');
     qgArrow.style.transform = `rotate(${rad}rad)`;
-    qgLabel.textContent = label + (dist != null ? `  ·  ${dist}m` : '');
+    qgLabel.textContent = label; qgLabel.title = label;
+    qgDistance.textContent = dist != null ? `${dist}m` : '';
   }
 
   // minimap (top-right) — a live local map centred on the player
@@ -66,39 +67,169 @@ export function createUI(G) {
   channelEl.innerHTML = '<span class="ch-label"></span><span class="ch-track"><span class="ch-fill"></span></span>';
   document.getElementById('hud').appendChild(channelEl);
   const chLabel = channelEl.querySelector('.ch-label'), chFill = channelEl.querySelector('.ch-fill');
-  function setChannel(frac, label) { channelEl.classList.remove('hidden'); chLabel.textContent = label; chFill.style.width = Math.round(frac * 100) + '%'; }
+  function setChannel(frac, label) { const changed = channelEl.classList.contains('hidden') || chLabel.textContent !== label; channelEl.classList.remove('hidden'); chLabel.textContent = label; chFill.style.width = Math.round(frac * 100) + '%'; if (changed && latestMarkers.length) updateMarkers(latestMarkers); }
   function hideChannel() { channelEl.classList.add('hidden'); }
-  function showPrompt(t) { els.promptText.textContent = t; els.prompt.classList.remove('hidden'); }
+  function showPrompt(t) { const text = t.replace(/^Use Enter /, 'Enter '); if (els.promptText.textContent !== text) els.promptText.textContent = text; els.prompt.classList.remove('hidden'); }
   function hidePrompt() { els.prompt.classList.add('hidden'); }
-  function toast(text, type = '', ms = 2400) {
+  // One readable notification at a time; bursts queue instead of covering the
+  // village with four overlapping cards. This changes presentation only.
+  const toastQueue = [];
+  let activeToast = null, toastTimer = 0;
+  function nextToast() {
+    if (activeToast && activeToast.el.isConnected) return;
+    activeToast = null;
+    const item = toastQueue.shift(); if (!item) return;
     const d = document.createElement('div');
-    d.className = 'toast ' + type; d.textContent = text;
-    els.toasts.appendChild(d);
-    while (els.toasts.children.length > 4) els.toasts.firstChild.remove();
-    setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 320); }, ms);
+    d.className = 'toast ' + item.type; d.textContent = item.text;
+    els.toasts.replaceChildren(d); activeToast = { ...item, el: d };
+    if (latestMarkers.length) updateMarkers(latestMarkers);
+    toastTimer = setTimeout(() => {
+      d.classList.add('out');
+      toastTimer = setTimeout(() => { d.remove(); activeToast = null; nextToast(); }, 200);
+    }, item.ms);
+  }
+  function toast(text, type = '', ms = 2400) {
+    if (activeToast && !activeToast.el.isConnected) { clearTimeout(toastTimer); activeToast = null; }
+    if ((activeToast && activeToast.text === text) || toastQueue.some(t => t.text === text)) return;
+    if (type === 'bad' && activeToast && activeToast.type !== 'bad') { clearTimeout(toastTimer); activeToast.el.remove(); activeToast = null; }
+    const item = { text, type, ms: Math.max(1200, Math.min(ms, 7000)) };
+    if (type === 'bad') toastQueue.unshift(item); else toastQueue.push(item);
+    if (toastQueue.length > 6) toastQueue.splice(type === 'bad' ? 6 : 0, 1);
+    nextToast();
   }
 
   // ---- 3D-projected markers ----
   const markerPool = new Map();
-  const v = new THREE.Vector3();
-  function updateMarkers(list) {
-    const cam = G.engine.camera;
-    const seen = new Set();
-    for (const m of list) {
-      let el = markerPool.get(m.id);
-      if (!el) { el = document.createElement('div'); els.markers.appendChild(el); markerPool.set(m.id, el); }
-      seen.add(m.id);
-      v.set(m.x, m.y, m.z).project(cam);
-      if (v.z > 1 || v.x < -1.3 || v.x > 1.3) { el.style.display = 'none'; continue; }
-      el.style.display = '';
-      const cls = 'marker ' + m.kind + (m.far ? ' far' : '');
-      if (el._cls !== cls) { el.className = cls; el._cls = cls; }   // only touch the DOM when content changes
-      const html = (m.pip ? `<span class="pip">${m.pip}</span>` : '') + (m.label ? `<span class="label">${m.label}</span>` : '');
-      if (el._html !== html) { el.innerHTML = html; el._html = html; }
-      el.style.left = ((v.x * 0.5 + 0.5) * 600) + 'px';
-      el.style.top = ((-v.y * 0.5 + 0.5) * 600) + 'px';
+  const measure = document.createElement('canvas').getContext('2d');
+  const previousLabels = new Map();
+  let latestMarkers = [];
+  const actorHeads = new WeakMap(), headCenter = new THREE.Vector3(), headEdge = new THREE.Vector3();
+  let indoorHeadStamp = null, indoorHeads = [];
+  let labelInfo = { visible: [], hidden: [], reserved: [] };
+  const overlaps = (a, b) => a.x < b.x + b.w + 4 && a.x + a.w + 4 > b.x && a.y < b.y + b.h + 4 && a.y + a.h + 4 > b.y;
+  const uiBlocks = ['vitals', 'compass', 'minimap', 'questGuide', 'tcToggle', 'channelBar', 'prompt', 'toasts', 'autoTag', 'levelBanner', 'xpdrops'];
+  function worldOverlayOpen() { return ['menu', 'shop', 'dialogue', 'syncPanel'].some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden'); }); }
+  function hideWorldLabels() { els.markers.classList.add('hidden'); bubbleLayer.classList.add('hidden'); els.prompt.classList.remove('target-labeled'); }
+  function reservedLabelRects() {
+    const appRect = document.getElementById('app').getBoundingClientRect(), scale = appRect.width / 600;
+    const blocked = [];
+    const add = e => {
+      if (!e || e.classList.contains('hidden') || !e.getClientRects().length) return;
+      const r = e.getBoundingClientRect(); if (!r.width || !r.height) return;
+      blocked.push({ x: (r.x - appRect.x) / scale - 5, y: (r.y - appRect.y) / scale - 5, w: r.width / scale + 10, h: r.height / scale + 10 });
+    };
+    uiBlocks.forEach(id => add(document.getElementById(id)));
+    if (document.body.classList.contains('controls-on')) document.querySelectorAll('#touchPad .tcbtn').forEach(add);
+    // Keep the hero silhouette clear even when the scene is crowded.
+    const p = G.player.position, head = project(p.x, p.y + 2.45, p.z), feet = project(p.x, p.y, p.z);
+    if (head && feet) blocked.push({ x: Math.min(head.x, feet.x) - 20, y: Math.min(head.y, feet.y) - 6, w: Math.abs(head.x - feet.x) + 40, h: Math.abs(head.y - feet.y) + 12 });
+    const reserveHead = mesh => {
+      for (let n = mesh; n; n = n.parent) if (!n.visible) return;
+      if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
+      mesh.updateWorldMatrix(true, false);
+      headCenter.copy(mesh.geometry.boundingSphere.center).applyMatrix4(mesh.matrixWorld);
+      const s = project(headCenter.x, headCenter.y, headCenter.z);
+      if (!s || s.x < 0 || s.x > 600 || s.y < 0 || s.y > 600) return;
+      if (!G.inInterior && G.world.isLabelOccluded && G.world.isLabelOccluded(G.engine.camera.position, headCenter)) return;
+      const e = mesh.matrixWorld.elements, radius = mesh.geometry.boundingSphere.radius * Math.max(Math.hypot(e[0], e[1], e[2]), Math.hypot(e[4], e[5], e[6]), Math.hypot(e[8], e[9], e[10]));
+      const cam = G.engine.camera.matrixWorld.elements;
+      headEdge.set(cam[0], cam[1], cam[2]).multiplyScalar(radius).add(headCenter);
+      const right = project(headEdge.x, headEdge.y, headEdge.z);
+      headEdge.set(cam[4], cam[5], cam[6]).multiplyScalar(radius).add(headCenter);
+      const up = project(headEdge.x, headEdge.y, headEdge.z);
+      if (!right || !up) return;
+      const rx = Math.max(7, Math.abs(right.x - s.x)) + 3, ry = Math.max(7, Math.abs(up.y - s.y)) + 3;
+      blocked.push({ x: s.x - rx, y: s.y - ry, w: rx * 2, h: ry * 2 });
+    };
+    if (G.inInterior) {
+      if (indoorHeadStamp !== G.interiorStations) {
+        indoorHeadStamp = G.interiorStations; indoorHeads = [];
+        G.engine.scene.traverseVisible(mesh => { if (mesh.isMesh && mesh.name === 'Blender hero_head') indoorHeads.push(mesh); });
+      }
+      indoorHeads.forEach(reserveHead);
+    } else {
+      indoorHeadStamp = null;
+      for (const actor of [...(G.entities.npcs || []), ...(G.entities.mobs || [])]) {
+        if (!actor.group || Math.abs(actor.pos.x - p.x) > 32 || Math.abs(actor.pos.z - p.z) > 32) continue;
+        let heads = actorHeads.get(actor.group);
+        if (!heads) { heads = []; actor.group.traverse(mesh => { if (mesh.isMesh && mesh.name === 'Blender hero_head') heads.push(mesh); }); actorHeads.set(actor.group, heads); }
+        heads.forEach(reserveHead);
+      }
     }
-    for (const [id, el] of markerPool) if (!seen.has(id)) el.style.display = 'none';
+    return blocked;
+  }
+  function markerSize(m) {
+    measure.font = m.target ? '700 12px "Segoe UI",sans-serif' : '600 11px "Segoe UI",sans-serif';
+    const labelWidth = measure.measureText(m.label || '').width;
+    measure.font = '700 10px "Segoe UI",sans-serif';
+    const healthWidth = m.health == null ? 0 : measure.measureText(m.health + ' HP').width + 5;
+    measure.font = '600 10px "Segoe UI",sans-serif';
+    const pipWidth = m.action ? 32 : m.pip ? Math.max(16, measure.measureText(m.pip).width) : 0;
+    return { w: Math.min(m.target ? 238 : 176, Math.ceil(Math.max(24, labelWidth + (pipWidth ? pipWidth + 5 : 0) + healthWidth + 20))), h: m.target ? 28 : 22 };
+  }
+  function updateMarkers(list) {
+    latestMarkers = list;
+    if (worldOverlayOpen()) { hideWorldLabels(); labelInfo = { visible: [], hidden: [], reserved: [], overlay: true }; return; }
+    els.markers.classList.remove('hidden'); bubbleLayer.classList.remove('hidden');
+    const blocked = reservedLabelRects(), occupied = blocked.slice(), candidates = [], visible = [], hidden = [];
+    for (const el of markerPool.values()) el.style.display = 'none';
+    for (const b of bubbles) b.el.style.display = 'none';
+    const target = list.find(m => m.target);
+    for (const m of list) {
+      const s = project(m.x, m.y, m.z);
+      if (!s || s.x < 8 || s.x > 592 || s.y < 8 || s.y > 592) { hidden.push({ id: m.id, reason: 'offscreen' }); continue; }
+      if (!G.inInterior && G.world.isLabelOccluded && G.world.isLabelOccluded(G.engine.camera.position, m)) { hidden.push({ id: m.id, reason: 'occluded' }); continue; }
+      if (m.kind === 'questguide' && target && Math.hypot(m.x - target.x, m.z - target.z) < 2.6) continue;
+      const sz = markerSize(m), recent = previousLabels.get(m.id);
+      candidates.push({ ...m, ...sz, sx: s.x, sy: s.y - 8, priority: (m.priority || 0) + (recent ? 7 : 0), previous: recent });
+    }
+    for (const b of bubbles) {
+      if (target && b.owner === target.sourceId) continue;
+      const s = project(b.anchor.x, b.anchor.y + b.yOff, b.anchor.z);
+      if (!s || s.x < 8 || s.x > 592 || s.y < 8 || s.y > 592) continue;
+      const point = { x: b.anchor.x, y: b.anchor.y + b.yOff, z: b.anchor.z };
+      if (!G.inInterior && G.world.isLabelOccluded && G.world.isLabelOccluded(G.engine.camera.position, point)) continue;
+      candidates.push({ id: 'bubble_' + b.owner, kind: 'bubble', bubble: b, w: b.w, h: b.h, sx: s.x, sy: s.y - 8, priority: 340 - Math.hypot(b.anchor.x - G.player.position.x, b.anchor.z - G.player.position.z), previous: previousLabels.get('bubble_' + b.owner) });
+    }
+    candidates.sort((a, b) => b.priority - a.priority || String(a.id).localeCompare(String(b.id)));
+    let bubbleCount = 0, targetPlaced = false;
+    const acceptedOwners = new Set(), nextPositions = new Map();
+    for (const c of candidates) {
+      if (visible.length >= 5 || (c.bubble && bubbleCount >= 1) || (c.sourceId && acceptedOwners.has(c.sourceId))) { hidden.push({ id: c.id, reason: 'budget' }); continue; }
+      const offsets = c.target ? [[0, 0], [0, 14], [0, -30], [0, -60], [-36, -24], [36, -24]] : [[0, 0], [0, -26]];
+      // Ordinary names keep their last safe offset. The selected action returns
+      // to its natural anchor as soon as it is clear, so orbiting the camera
+      // cannot leave an old shifted plate floating over a shopkeeper's face.
+      if (c.previous) { if (c.target) offsets.splice(1, 0, c.previous); else offsets.unshift(c.previous); }
+      let rect = null, chosen = null;
+      for (const [dx, dy] of offsets) {
+        const r = { x: c.sx + dx - c.w / 2, y: c.sy + dy - c.h, w: c.w, h: c.h };
+        if (r.x < 8 || r.y < 8 || r.x + r.w > 592 || r.y + r.h > 592 || occupied.some(b => overlaps(r, b))) continue;
+        rect = r; chosen = [dx, dy]; break;
+      }
+      if (!rect) { hidden.push({ id: c.id, reason: 'collision' }); continue; }
+      let el;
+      if (c.bubble) { el = c.bubble.el; bubbleCount++; acceptedOwners.add(c.bubble.owner); }
+      else {
+        el = markerPool.get(c.id);
+        if (!el) { el = document.createElement('div'); el.innerHTML = '<span class="pip"></span><span class="label"></span><span class="health"></span>'; els.markers.appendChild(el); markerPool.set(c.id, el); }
+        const cls = 'marker ' + c.kind + (c.target ? ' target' : '') + (c.far ? ' far' : '');
+        if (el.className !== cls) el.className = cls;
+        const pip = c.action ? 'TAP' : c.pip || '';
+        if (el._pip !== pip) { el.firstChild.textContent = pip; el.firstChild.classList.toggle('hidden', !pip); el._pip = pip; }
+        if (el._label !== c.label) { el.children[1].textContent = c.label || ''; el._label = c.label; }
+        const hpText = c.health == null ? '' : c.health + ' HP';
+        if (el._health !== hpText) { el.lastChild.textContent = hpText; el.lastChild.classList.toggle('hidden', !hpText); el._health = hpText; }
+        if (c.target && c.action) targetPlaced = true;
+        if (c.sourceId) acceptedOwners.add(c.sourceId);
+      }
+      el.dataset.labelId = c.id; el.style.display = ''; el.style.left = rect.x + 'px'; el.style.top = rect.y + 'px'; el.style.width = rect.w + 'px'; el.style.height = rect.h + 'px';
+      if (c.bubble) el.style.opacity = String(Math.min(1, c.bubble.t / .2, (c.bubble.dur - c.bubble.t) / .5));
+      occupied.push(rect); visible.push({ id: c.id, kind: c.kind, target: !!c.target, ...rect }); nextPositions.set(c.id, chosen);
+    }
+    previousLabels.clear(); nextPositions.forEach((p, id) => previousLabels.set(id, p));
+    els.prompt.classList.toggle('target-labeled', targetPlaced);
+    labelInfo = { visible, hidden, reserved: blocked, limit: 5 };
   }
 
   // ---- floating text: hitsplats, xp drops, level-up banner ----
@@ -110,7 +241,7 @@ export function createUI(G) {
   const projv = new THREE.Vector3();
   function project(x, y, z) {
     projv.set(x, y, z).project(G.engine.camera);
-    if (projv.z > 1) return null;
+    if (!Number.isFinite(projv.x) || projv.z > 1 || projv.z < -1) return null;
     return { x: (projv.x * 0.5 + 0.5) * 600, y: (-projv.y * 0.5 + 0.5) * 600 };
   }
   function hitsplat(x, y, z, amount, kind) {
@@ -123,11 +254,13 @@ export function createUI(G) {
   function xpDrop(text) {
     const d = document.createElement('div'); d.className = 'xpdrop'; d.textContent = text;
     xpLayer.appendChild(d); setTimeout(() => d.remove(), 1500);
-    while (xpLayer.children.length > 6) xpLayer.firstChild.remove();
+    while (xpLayer.children.length > 3) xpLayer.firstChild.remove();
+    if (latestMarkers.length) updateMarkers(latestMarkers);
   }
   function levelBanner(text) {
     banner.textContent = text; banner.classList.remove('hidden', 'show'); void banner.offsetWidth; banner.classList.add('show');
     clearTimeout(bannerT); bannerT = setTimeout(() => banner.classList.add('hidden'), 2800);
+    if (latestMarkers.length) updateMarkers(latestMarkers);
   }
 
   // ---- NPC speech bubbles: ambient barks + overheard conversations, projected above heads ----
@@ -150,21 +283,22 @@ export function createUI(G) {
     if (!anchor) return;
     let b = opts.owner != null ? bubbles.find((x) => x.owner === opts.owner) : null;
     if (!b) {
-      if (bubbles.length >= 7) { const old = bubbles.shift(); old.el.remove(); }
+      if (bubbles.length >= 4) { const old = bubbles.shift(); old.el.remove(); }
       const el = document.createElement('div'); bubbleLayer.appendChild(el);
       b = { el, owner: opts.owner }; bubbles.push(b);
     }
     b.anchor = anchor; b.yOff = opts.yOff != null ? opts.yOff : 2.7; b.t = 0; b.dur = dur;
     b.el.className = 'bubble' + (opts.chat ? ' chat' : ''); b.el.textContent = text; b.el.style.opacity = '0';
+    measure.font = '600 12px "Segoe UI",sans-serif';
+    let lines = 1, line = '';
+    for (const word of text.split(/\s+/)) { const next = line ? line + ' ' + word : word; if (measure.measureText(next).width > 164 && line) { lines++; line = word; } else line = next; }
+    b.w = 180; b.h = Math.min(3, lines) * 16 + 12;
   }
   function updateBubbles(dt) {
     for (let i = bubbles.length - 1; i >= 0; i--) {
       const b = bubbles[i]; b.t += dt;
       if (b.t >= b.dur) { b.el.remove(); bubbles.splice(i, 1); continue; }
-      const s = project(b.anchor.x, b.anchor.y + b.yOff, b.anchor.z);
-      if (!s || s.x < -40 || s.x > 640 || s.y < -40 || s.y > 640) { b.el.style.opacity = '0'; continue; }
-      const op = Math.min(Math.min(1, b.t / 0.2), Math.min(1, (b.dur - b.t) / 0.5));   // fade in then out
-      b.el.style.opacity = String(op); b.el.style.left = s.x + 'px'; b.el.style.top = (s.y - 6) + 'px';
+      // Projection and placement share the nameplate collision pass (~30Hz).
     }
   }
   function clearBubbles() { for (const b of bubbles) b.el.remove(); bubbles.length = 0; }
@@ -198,7 +332,7 @@ export function createUI(G) {
     if (TABS[tab] === 'Tasks') return G.diaryRows().length;
     return 0;
   }
-  function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); els.menuBody.scrollTop=0; }
+  function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); hideWorldLabels(); clearBubbles(); row = 0; renderMenu(); els.menuBody.scrollTop=0; }
   function closeMenu() { api.menuOpen = false; els.menu.classList.add('hidden'); }
   function menuTab(dir) { tab = (tab + dir + TABS.length) % TABS.length; row = 0; renderMenu(); els.menuBody.scrollTop=0; }
   function menuMove(dir) {
@@ -541,7 +675,7 @@ export function createUI(G) {
     });
     pickerBodyEl.innerHTML = pickerRows.length ? html : `<div class="empty-note">${pickerCfg.empty || 'Nothing here.'}</div>`;
   }
-  function openPicker(cfg) { pickerCfg = cfg; pickerRow = 0; pickerHintEl.textContent = cfg.hint || '↑ ↓ select · tap · ↑↓↑↓ leave'; pickerEl.classList.remove('hidden'); renderPicker(); pickerBodyEl.scrollTop=0; }
+  function openPicker(cfg) { pickerCfg = cfg; pickerRow = 0; pickerHintEl.textContent = cfg.hint || '↑ ↓ select · tap · ↑↓↑↓ leave'; pickerEl.classList.remove('hidden'); hideWorldLabels(); clearBubbles(); renderPicker(); pickerBodyEl.scrollTop=0; }
   function closePicker() { pickerEl.classList.add('hidden'); pickerCfg = null; }
   function pickerMove(dir) { if (!pickerRows.length) return; pickerRow = (pickerRow + dir + pickerRows.length) % pickerRows.length; renderPicker(); const s = pickerBodyEl.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
   function pickerSelect() { const r = pickerRows[pickerRow]; if (r && pickerCfg) pickerCfg.onSelect(r); renderPicker(); }
@@ -561,7 +695,7 @@ export function createUI(G) {
   function syncOpen() { return !syncEl.classList.contains('hidden'); }
 
   // ---- dialogue ----
-  function showDialogue() { els.dialogue.classList.remove('hidden'); }
+  function showDialogue() { els.dialogue.classList.remove('hidden'); hideWorldLabels(); clearBubbles(); }
   function hideDialogue() { els.dialogue.classList.add('hidden'); }
   function renderDialogue(speaker, text, choices, idx) {
     els.dlgSpeaker.textContent = speaker;
@@ -580,6 +714,7 @@ export function createUI(G) {
     menuOpen: false,
     setCompass, setHealth, setLocation, setPrayer, setSpec, setQuestArrow, showPrompt, hidePrompt, toast, updateMarkers, updateMinimap, setMinimapVisible, setChannel, hideChannel, setAutoIndicator,
     hitsplat, xpDrop, levelBanner, sayAt, updateBubbles, clearBubbles,
+    labelLayoutInfo: () => labelInfo,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
     openPicker, closePicker, pickerMove, pickerSelect,
     showSync, hideSync, syncOpen,

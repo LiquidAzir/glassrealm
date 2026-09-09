@@ -33,15 +33,20 @@ body { display:flex; align-items:center; justify-content:center; }
 
 /* Floating names stay subordinate to the world. */
 #markers { position:absolute; inset:0; pointer-events:none; z-index:5; }
-.marker { position:absolute; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; gap:3px; white-space:nowrap; font-size:12px; font-weight:700; text-shadow:0 1px 2px #000,1px 0 2px #000; transition:opacity 160ms linear; }
-.marker .pip { font-size:14px; line-height:1; }
+.marker { position:absolute; display:flex; flex-direction:row; align-items:center; justify-content:center; gap:5px; padding:3px 6px; white-space:nowrap; font-size:11px; font-weight:600; color:#fff2cb; background:rgba(17,28,20,.92); border:1px solid #8b9068; border-radius:4px; text-shadow:0 1px 1px #142016; }
+.marker .pip { flex:0 0 auto; font-size:10px; line-height:1; }
 .marker.npc { color:#f1d496; }
 .marker.questguide,.marker.quest { color:#ffe29e; }
 .marker.enemy { color:var(--red); }
 .marker.item { color:var(--gold); }
-.marker .label { font-size:11px; color:#fff7e2; background:rgba(12,22,18,.64); padding:2px 5px; border-radius:3px; }
-.marker.far { opacity:.62; font-size:10px; }
-#bubbles .bubble { color:#f6ecd1; background:rgba(24,33,26,.9); border:1px solid #aaa17d; border-radius:7px; box-shadow:0 2px 4px #0005; }
+.marker .label { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:11px; line-height:14px; color:#fff7e2; }
+.marker.far { opacity:.78; }
+.marker.target { border-color:#f0d49c; background:#34402b; box-shadow:0 2px 3px #0007; font-weight:700; }
+.marker.target .label { font-size:12px; color:#fff3ce; }
+.marker .health { flex:0 0 auto; font-size:10px; line-height:14px; font-weight:700; color:#ffb29b; }
+.marker.target .pip { padding:3px 4px; border-radius:2px; background:#dec18b; color:#24301e; font-size:9px; font-weight:800; letter-spacing:.3px; }
+.marker.target::after { content:""; position:absolute; left:50%; top:100%; width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:4px solid #e5c98e; }
+#bubbles .bubble { transform:none; padding:5px 7px; overflow:hidden; font:600 12px/16px "Segoe UI",sans-serif; color:#f6ecd1; background:rgba(24,33,26,.96); border:1px solid #aaa17d; border-radius:6px; box-shadow:0 2px 4px #0005; }
 #bubbles .bubble.chat { color:#ffe8b0; border-color:#c1a06a; }
 #bubbles .bubble::after { border-top-color:#29382c; }
 #reticle { position:absolute; left:50%; top:50%; width:20px; height:20px; transform:translate(-50%,-50%) rotate(45deg); border:1.5px solid #f7dfa9; border-radius:3px; box-shadow:0 0 0 1px #15201c; z-index:6; pointer-events:none; opacity:.9; }
@@ -68,20 +73,22 @@ body { display:flex; align-items:center; justify-content:center; }
 .qg-arrow { display:inline-block; flex:0 0 20px; width:20px; height:25px; transition:transform 120ms linear; }
 .qg-arrow path { stroke:#f2d395; }
 .qg-label { font-size:12px; line-height:1.35; font-weight:700; color:#f5e2b4; }
-#channelBar { position:absolute; left:50%; bottom:130px; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:6px; padding:9px 14px; background:#1d2a21; border:1px solid #b39a67; border-radius:5px; box-shadow:0 3px 8px #0006; }
+#channelBar { position:absolute; left:50%; bottom:96px; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:6px; padding:9px 14px; background:#1d2a21; border:1px solid #b39a67; border-radius:5px; box-shadow:0 3px 8px #0006; }
 .ch-label { font-size:13px; font-weight:700; color:var(--text); }
 .ch-track { position:relative; width:164px; height:7px; border-radius:2px; background:#0f1913; overflow:hidden; }
 .ch-fill { position:absolute; left:0; top:0; bottom:0; width:0%; background:linear-gradient(90deg,#a7854d,#efd295); border-radius:2px; transition:width 100ms linear; }
 #prompt { position:absolute; left:50%; bottom:84px; transform:translateX(-50%); display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(22,31,25,.96); border:1px solid #c1a56e; border-radius:6px; box-shadow:0 3px 8px #0006; max-width:400px; }
+#prompt.target-labeled { visibility:hidden; }
 .prompt-key { font-size:10px; font-weight:800; letter-spacing:.6px; color:#25271d; background:#e3c68b; padding:4px 6px; border:1px solid #f0ddb2; border-radius:3px; }
 .prompt-text { font-size:14px; font-weight:600; color:var(--text); }
-body.controls-on #prompt { max-width:296px; bottom:224px; }
-body.controls-on #channelBar { bottom:276px; }
-#toasts { position:absolute; top:141px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:6px; width:508px; }
+/* The lower middle lane clears the hero and both control pads. */
+body.controls-on #prompt { left:56%; max-width:276px; bottom:52px; }
+body.controls-on #channelBar { left:56%; bottom:110px; }
+#toasts { position:absolute; top:141px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:6px; width:420px; }
 /* The legacy auto indicator assigns inline presentation: override only its
    appearance/placement so it cannot obscure the compass or overlay menus. */
 #app #autoTag { top:112px!important; z-index:15!important; max-width:280px; overflow:hidden; text-overflow:ellipsis; background:#263a28!important; border-color:#9fa674!important; color:#dbedbd!important; border-radius:4px!important; box-shadow:none!important; }
-.toast { max-width:508px; padding:8px 14px; background:#1e2b22; border:1px solid #7f886b; border-radius:5px; font-size:13px; line-height:1.35; font-weight:600; text-align:center; box-shadow:0 3px 6px #0006; animation:toastIn 200ms var(--ease-focus-on); }
+.toast { max-width:420px; padding:8px 14px; background:#1e2b22; border:1px solid #7f886b; border-radius:5px; font-size:13px; line-height:1.35; font-weight:600; text-align:center; box-shadow:0 3px 6px #0006; animation:toastIn 200ms var(--ease-focus-on); }
 .toast.xp { color:var(--xp); border-color:#847494; }
 .toast.good { color:var(--green); border-color:#6e9765; }
 .toast.gold { color:var(--gold); border-color:#aa8d54; }
@@ -183,3 +190,13 @@ body.controls-on .dialogue-box { margin-bottom:226px; max-height:362px; }
   .tab,.row,.choice,.marker,.bar-fill,.qg-arrow,.ch-fill { transition:none; }
   .tabs { scroll-behavior:auto; }
 }
+
+/* Distinct feedback lanes keep long objectives, experience and celebration cards
+   clear of one another and the hero. Full labels remain available to assistive UI. */
+.vitals-loc { max-width:164px; }
+.qg-label { min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.qg-distance { flex:0 0 auto; color:#e7cc90; font-size:10px; font-weight:700; }
+#xpdrops { top:218px; right:14px; max-width:168px; }
+.xpdrop { max-width:168px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+#levelBanner { top:220px; left:12px; transform:none; max-width:388px; padding:10px 14px; font:700 17px/1.3 var(--display); display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+@keyframes lvlPop { 0% { opacity:0; transform:translateY(5px); } 12%,80% { opacity:1; transform:none; } 100% { opacity:0; transform:translateY(-5px); } }
