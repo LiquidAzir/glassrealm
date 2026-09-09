@@ -198,9 +198,9 @@ export function createUI(G) {
     if (TABS[tab] === 'Tasks') return G.diaryRows().length;
     return 0;
   }
-  function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); }
+  function openMenu() { api.menuOpen = true; els.menu.classList.remove('hidden'); row = 0; renderMenu(); els.menuBody.scrollTop=0; }
   function closeMenu() { api.menuOpen = false; els.menu.classList.add('hidden'); }
-  function menuTab(dir) { tab = (tab + dir + TABS.length) % TABS.length; row = 0; renderMenu(); }
+  function menuTab(dir) { tab = (tab + dir + TABS.length) % TABS.length; row = 0; renderMenu(); els.menuBody.scrollTop=0; }
   function menuMove(dir) {
     const n = rowCount();
     if (n > 0) { row = (row + dir + n) % n; renderMenu(); const s = els.menuBody.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
@@ -513,10 +513,10 @@ export function createUI(G) {
     for (const e of G.entities.enemies) { if (!e.alive) continue; const dx = e.pos.x - px, dz = e.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 3 : 1.7, 0, 7); ctx.fill(); }
     if (G.questGuide) { const [x, y] = to(G.questGuide.x, G.questGuide.z); ctx.fillStyle = '#6db3ff'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#ffffff'; ctx.stroke(); }
     ctx.restore();
-    ctx.strokeStyle = '#243240'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 1, 0, 7); ctx.stroke();
+    ctx.strokeStyle = '#8c7549'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 1, 0, 7); ctx.stroke();
     ctx.save(); ctx.translate(S / 2, S / 2); ctx.rotate(Math.PI - G.player.state.heading);
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(4, 4); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill(); ctx.restore();
-    ctx.fillStyle = '#5fe3ff'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('N', S / 2, 11);
+    ctx.fillStyle = '#e6cd8d'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('N', S / 2, 11);
   }
 
   // ---- picker (shop / forge / bank) — generic list overlay ----
@@ -541,7 +541,7 @@ export function createUI(G) {
     });
     pickerBodyEl.innerHTML = pickerRows.length ? html : `<div class="empty-note">${pickerCfg.empty || 'Nothing here.'}</div>`;
   }
-  function openPicker(cfg) { pickerCfg = cfg; pickerRow = 0; pickerHintEl.textContent = cfg.hint || '↑ ↓ select · tap · ↑↓↑↓ leave'; pickerEl.classList.remove('hidden'); renderPicker(); }
+  function openPicker(cfg) { pickerCfg = cfg; pickerRow = 0; pickerHintEl.textContent = cfg.hint || '↑ ↓ select · tap · ↑↓↑↓ leave'; pickerEl.classList.remove('hidden'); renderPicker(); pickerBodyEl.scrollTop=0; }
   function closePicker() { pickerEl.classList.add('hidden'); pickerCfg = null; }
   function pickerMove(dir) { if (!pickerRows.length) return; pickerRow = (pickerRow + dir + pickerRows.length) % pickerRows.length; renderPicker(); const s = pickerBodyEl.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
   function pickerSelect() { const r = pickerRows[pickerRow]; if (r && pickerCfg) pickerCfg.onSelect(r); renderPicker(); }
@@ -572,6 +572,8 @@ export function createUI(G) {
       return `<div class="choice ${i === idx ? 'sel' : ''}">${tag}${label}</div>`;
     }).join('');
     els.dlgHint.textContent = choices.length > 1 ? 'tap select  ·  ◂ ▸ choose  ·  ↑↓↑↓ end' : 'tap continue  ·  ↑↓↑↓ end';
+    const selectedChoice=els.dlgChoices.querySelector('.choice.sel');
+    if(selectedChoice)selectedChoice.scrollIntoView({block:'nearest'});
   }
 
   const api = {

@@ -23,7 +23,7 @@
 
     <!-- Heads-up display -->
     <div id="hud">
-      <div id="vitals">
+      <div id="vitals" aria-label="Health, prayer and special energy">
         <div class="bar">
           <span class="bar-fill health" id="healthFill"></span>
           <span class="bar-label" id="healthLabel">100 / 100</span>
@@ -47,6 +47,7 @@
     <!-- Menu overlay (Inventory / Skills / Quests / Map) -->
     <div id="menu" class="overlay hidden" aria-hidden="true">
       <div class="panel">
+        <div class="journal-heading" aria-hidden="true"><span class="journal-seal">✦</span><span>Adventurer’s Journal<small>GLASS REALM</small></span><span class="journal-rule"></span></div>
         <div class="tabs" id="menuTabs"></div>
         <div class="menu-body" id="menuBody"></div>
         <div class="hint">↑↓ navigate &nbsp;·&nbsp; ◂ ▸ tabs &nbsp;·&nbsp; tap select &nbsp;·&nbsp; ↑↓↑↓ to close</div>
@@ -65,7 +66,9 @@
 
     <!-- Boot / loading -->
     <div id="boot">
-      <div class="boot-glow"></div>
+      <div class="boot-glow" aria-hidden="true"></div>
+      <svg class="realm-crest" viewBox="0 0 128 152" aria-hidden="true"><path d="M64 5 113 25 108 91Q98 125 64 145Q30 125 20 91L15 25Z" fill="#142626" stroke="#c8a66c" stroke-width="3"/><path d="M64 14 103 31 99 88Q90 115 64 133Q38 115 29 88L25 31Z" fill="none" stroke="#745b3a"/><path d="m40 99 10-51 14-17 14 17 10 51-24 17Z" fill="#bca477"/><path d="M64 34v80M42 98h44M49 55h30" fill="none" stroke="#e9d6a7" stroke-width="2"/><path d="m27 94 17-23 8 12 12-25 24 40" fill="none" stroke="#294b43" stroke-width="5"/><path d="M59 62h10v18H59z" fill="#233c35"/><path d="m64 20 4 6-4 6-4-6Z" fill="#f1dca6"/></svg>
+      <div class="boot-eyebrow">A WORLD BEYOND THE EVERYDAY</div>
       <div class="boot-title">GLASSREALM</div>
       <div class="boot-sub" id="bootSub">Summoning the isle…</div>
     </div>

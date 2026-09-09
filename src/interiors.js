@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { rimLight } from './shaders.js';
+import { artModel, groundTexture } from './realm-art.js';
 
 // Building interiors. Rooms are built on a far-away "interior plot" (IX,IZ); the
 // overworld fogs to black around it, so we just teleport the player in/out and
@@ -51,22 +52,38 @@ const INT_PAL = {
 };
 const PAL = (b) => INT_PAL[b] || INT_PAL.grass;
 
+// Inward-facing room walls give an architectural cutaway when the follow camera
+// is outside a room. The far walls remain visible; the near wall cannot hide play.
+function roomBox(g,w,h,d,m,x,y,z,isWall){
+  let geometry,rotation=0;
+  if(isWall && d<=.55 && Math.abs(z)>=6.8){geometry=new THREE.PlaneGeometry(w,h);rotation=z>0?Math.PI:0;}
+  else if(isWall && w<=.55 && Math.abs(x)>=7.8){geometry=new THREE.PlaneGeometry(d,h);rotation=x>0?-Math.PI/2:Math.PI/2;}
+  else geometry=new THREE.BoxGeometry(w,h,d);
+  let material=m;
+  if(h<=.35&&w>=8&&d>=8){material=m.clone();material.color.multiplyScalar(1.45);material.map=groundTexture('planks');}
+  const mesh=new THREE.Mesh(geometry,material);mesh.rotation.y=rotation;mesh.position.set(IX+x,FY+y,IZ+z);g.add(mesh);return mesh;
+}
+
 // furniture pieces — each registers a solid obstacle so the player can't walk through it
-function furniture(box, solid, P) {
+function furniture(box, solid, P, g) {
+  const model=(key,x,z,sx=1,sy=1,sz=1,angle=0)=>{
+    const mesh=artModel(key);if(!mesh)return false;
+    mesh.position.set(IX+x,FY+.15,IZ+z);mesh.scale.set(sx,sy,sz);mesh.rotation.y=angle;g.add(mesh);return true;
+  };
   return {
     rug: (x, z) => box(5.5, 0.05, 4.5, P.rug, x, 0.18, z),
     stove: (x, z) => { box(2.4, 1.6, 1.7, M.metal, x, 0.8, z); box(1.2, 0.7, 0.12, M.fire, x, 0.7, z + 0.86); box(0.5, 1.9, 0.5, M.stone, x + 0.95, 2.4, z); box(0.6, 0.25, 0.6, M.dark, x - 0.4, 1.75, z); box(0.6, 0.25, 0.6, M.dark, x + 0.5, 1.75, z); solid(x, z, 1.6); },
     bed: (x, z) => { box(2.2, 0.5, 3.4, M.wood, x, 0.4, z); box(2.0, 0.3, 3.2, M.cloth, x, 0.75, z); box(1.9, 0.45, 0.8, M.white, x, 0.85, z - 1.2); solid(x, z, 1.7); },
-    table: (x, z) => { box(2.6, 0.2, 1.5, M.wood, x, 1.0, z); for (const lx of [-1.1, 1.1]) for (const lz of [-0.55, 0.55]) box(0.16, 1.0, 0.16, M.wood, x + lx, 0.5, z + lz); solid(x, z, 1.4); },
-    counter: (x, z, w = 8) => { box(w, 1.1, 1.3, M.wood, x, 0.55, z); box(w, 0.18, 1.5, M.dark, x, 1.18, z); for (let dx = -w / 2 + 1.3; dx <= w / 2 - 1.3 + 0.01; dx += (w - 2.6) / 2) solid(x + dx, z, 1.5); },
+    table: (x, z) => { if(!model('table',x,z)){box(2.6, 0.2, 1.5, M.wood, x, 1.0, z); for (const lx of [-1.1, 1.1]) for (const lz of [-0.55, 0.55]) box(0.16, 1.0, 0.16, M.wood, x + lx, 0.5, z + lz);} solid(x, z, 1.4); },
+    counter: (x, z, w = 8) => { if(!model('counter',x,z,w/3)){box(w, 1.1, 1.3, M.wood, x, 0.55, z); box(w, 0.18, 1.5, M.dark, x, 1.18, z);} for (let dx = -w / 2 + 1.3; dx <= w / 2 - 1.3 + 0.01; dx += (w - 2.6) / 2) solid(x + dx, z, 1.5); },
     shelf: (x, z, vertical) => { const w = vertical ? 0.5 : 3, d = vertical ? 3 : 0.5; box(w, 3.2, d, M.wood, x, 1.6, z); for (let i = 0; i < 3; i++) box(w * 0.92, 0.12, d * 0.92, M.dark, x, 0.8 + i * 0.9, z); solid(x, z, vertical ? 1.4 : 1.6); },
-    goods: (x, z, vertical) => { const w = vertical ? 0.5 : 3, d = vertical ? 3 : 0.5; box(w, 3.2, d, M.wood, x, 1.6, z); for (let i = 0; i < 6; i++) { const off = (i % 3 - 1) * 0.85, lvl = 0.95 + Math.floor(i / 3) * 0.95; box(0.45, 0.45, 0.45, GOODS[i], x + (vertical ? 0 : off), lvl, z + (vertical ? off : 0)); } solid(x, z, vertical ? 1.4 : 1.6); },
+    goods: (x, z, vertical) => { if(!model('stocked_shelf',x,z,1,1,1,vertical?(x<0?Math.PI/2:-Math.PI/2):0)){const w = vertical ? 0.5 : 3, d = vertical ? 3 : 0.5; box(w, 3.2, d, M.wood, x, 1.6, z); for (let i = 0; i < 6; i++) { const off = (i % 3 - 1) * 0.85, lvl = 0.95 + Math.floor(i / 3) * 0.95; box(0.45, 0.45, 0.45, GOODS[i], x + (vertical ? 0 : off), lvl, z + (vertical ? off : 0)); }} solid(x, z, vertical ? 1.4 : 1.6); },
     vault: (x, z) => { box(1.7, 1.9, 1.1, M.metal, x, 0.95, z); box(0.6, 0.6, 0.12, M.gold, x, 0.95, z + 0.56); solid(x, z, 1.1); },
     furnace: (x, z) => { box(2.6, 2.8, 2.4, M.stone, x, 1.4, z); box(1.3, 1.3, 0.2, M.fire, x, 1.0, z + 1.21); box(0.7, 2.2, 0.7, M.stone, x + 1.2, 3.6, z); solid(x, z, 1.7); },
     anvil: (x, z) => { box(1.2, 1.0, 1.2, M.wood, x, 0.5, z); box(0.8, 0.6, 1.5, M.metal, x, 1.3, z); box(1.6, 0.4, 0.5, M.metal, x, 1.75, z); solid(x, z, 1.0); },
     cauldron: (x, z) => { box(1.5, 1.2, 1.5, M.metal, x, 0.7, z); box(1.3, 0.2, 1.3, M.green, x, 1.25, z); box(0.2, 1.3, 0.2, M.dark, x - 0.95, 0.65, z); box(0.2, 1.3, 0.2, M.dark, x + 0.95, 0.65, z); solid(x, z, 1.1); },
     craft: (x, z) => { box(2.8, 0.25, 1.5, M.wood, x, 1.0, z); for (const lx of [-1.2, 1.2]) for (const lz of [-0.6, 0.6]) box(0.16, 1.0, 0.16, M.wood, x + lx, 0.5, z + lz); box(0.35, 0.35, 0.35, M.cyan, x, 1.3, z); solid(x, z, 1.5); },
-    barrel: (x, z) => { box(0.95, 1.3, 0.95, M.wood, x, 0.65, z); solid(x, z, 0.7); },
+    barrel: (x, z) => { if(!model('barrel',x,z,.95,1,.95))box(0.95, 1.3, 0.95, M.wood, x, 0.65, z); solid(x, z, 0.7); },
     lamp: (x, z) => { box(0.16, 2.6, 0.16, M.dark, x, 1.3, z); box(0.5, 0.5, 0.5, M.win, x, 2.7, z); },
   };
 }
@@ -119,17 +136,21 @@ export function createInteriors(scene) {
     const g = new THREE.Group(); root.add(g); g.visible = false;
     const stations = [], solids = [];
     const pal = PAL(biome), P = { floor: mat(pal.floor), wall: mat(pal.wall), beam: mat(pal.beam), rug: mat(pal.rug) };
-    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const box = (w,h,d,m,x,y,z) => roomBox(g,w,h,d,m,x,y,z,m===P.wall);
     const st = (kind, label, x, z) => stations.push({ kind, label, x: IX + x, z: IZ + z, y: FY });
     const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
     const person = (x, z, color) => {   // a proper standing person (legs, clothed torso, distinct arms + hands, head, hair)
-      const cloth = mat(color), dark = mat(0x2a2330);
-      box(0.2, 0.7, 0.2, dark, x - 0.16, 0.35, z); box(0.2, 0.7, 0.2, dark, x + 0.16, 0.35, z);                       // legs
-      box(0.64, 0.78, 0.4, cloth, x, 1.1, z);                                                                         // torso (clothes)
+      const cloth = mat(color), dark = mat(0x514539);
+      const part=(key,tint,px,py,pz)=>{const mesh=artModel(key,tint);if(!mesh)return false;mesh.position.set(IX+px,FY+py,IZ+pz);g.add(mesh);return true;};
+      if(!part('hero_boot',0x65584a,x-.16,.7,z))box(0.2, 0.7, 0.2, dark, x - 0.16, 0.35, z);
+      if(!part('hero_boot',0x65584a,x+.16,.7,z))box(0.2, 0.7, 0.2, dark, x + 0.16, 0.35, z);
+      if(!part('hero_torso',color,x,1.1,z))box(0.64, 0.78, 0.4, cloth, x, 1.1, z);
       box(0.18, 0.56, 0.2, cloth, x - 0.44, 1.18, z); box(0.16, 0.16, 0.16, M.skin, x - 0.44, 0.84, z);              // left arm + hand
       box(0.18, 0.56, 0.2, cloth, x + 0.44, 1.18, z); box(0.16, 0.16, 0.16, M.skin, x + 0.44, 0.84, z);              // right arm + hand
-      const h = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), M.skin); h.position.set(IX + x, FY + 1.75, IZ + z); g.add(h);   // head
-      box(0.42, 0.18, 0.42, mat(0x3a2a20), x, 1.95, z);                                                               // hair
+      if(!part('hero_head',0xffffff,x,1.75,z)){
+        const h = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), M.skin); h.position.set(IX + x, FY + 1.75, IZ + z); g.add(h);
+        box(0.42, 0.18, 0.42, mat(0x3a2a20), x, 1.95, z);
+      }
       solid(x, z, 0.8);
     };
     const keeper = (x, z, color) => person(x, z, color);                                   // stands behind the counter; template adds the service station in front
@@ -146,9 +167,13 @@ export function createInteriors(scene) {
     for (let i = -1; i <= 1; i++) box(RW, 0.28, 0.28, P.beam, 0, WALL_H - 0.18, i * RD / 3);   // exposed ceiling beams in the biome's wood tone
     box(2.4, 1.8, 0.12, M.win, -4, 3, -HD + 0.3);
     box(2.4, 1.8, 0.12, M.win, 4, 3, -HD + 0.3);
+    for(const x of [-4,4]){
+      for(const dx of [-1.26,0,1.26])box(.1,2,.18,P.beam,x+dx,3,-HD+.42);
+      for(const y of [2.03,3,3.97])box(2.6,.1,.18,P.beam,x,y,-HD+.42);
+    }
     box(3, 0.06, 1.4, M.cloth, 0, 0.2, HD - 1.5);
     st('exit', 'Exit to town', 0, HD - 1.5);
-    const f = furniture(box, solid, P);
+    const f = furniture(box, solid, P, g);
     (TEMPLATES[type] || TEMPLATES.home)(f, st, keeper, patron);
     buildAccent(biome, box, solid, g);
     cache[type + '|' + biome] = { group: g, stations, solids, lamp: pal.lamp };
@@ -162,7 +187,7 @@ export function createInteriors(scene) {
     const g = new THREE.Group(); root.add(g); g.visible = false;
     const stations = [], solids = [];
     const P = { floor: mat(0x8a7048), wall: mat(0xcdc2a4), beam: mat(0x5a4632), rug: mat(0x8a2438), stone: mat(0x9aa0b0), robe: mat(0x6a2f9a) };
-    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const box = (w,h,d,m,x,y,z) => roomBox(g,w,h,d,m,x,y,z,m===P.wall);
     const cyl = (rt, rb, h, m, x, y, z, s = 8) => { const me = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, s), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
     const ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
     const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
@@ -222,7 +247,7 @@ export function createInteriors(scene) {
     const g = new THREE.Group(); root.add(g); g.visible = false;
     const stations = [], solids = [];
     const P = { floor: mat(0x3a3a42), wall: mat(0x565662), beam: mat(0x2a2a30), stone: mat(0x44454e), rug: mat(0x2f5a44) };
-    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const box = (w,h,d,m,x,y,z) => roomBox(g,w,h,d,m,x,y,z,m===P.wall);
     const ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
     const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
     const wallSolids = (x0, z0, x1, z1) => { const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 2)); for (let i = 0; i <= n; i++) { const t = i / n; solid(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.2); } };
@@ -257,7 +282,7 @@ export function createInteriors(scene) {
     const g = new THREE.Group(); root.add(g); g.visible = false;
     const stations = [], solids = [];
     const P = { floor: mat(0x2e2422), wall: mat(0x4a3a34), beam: mat(0x241a16), stone: mat(0x3a2e2a) };
-    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const box = (w,h,d,m,x,y,z) => roomBox(g,w,h,d,m,x,y,z,m===P.wall);
     const ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
     const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
     const wallSolids = (x0, z0, x1, z1) => { const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 2)); for (let i = 0; i <= n; i++) { const t = i / n; solid(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.2); } };
@@ -290,7 +315,7 @@ export function createInteriors(scene) {
     const g = new THREE.Group(); root.add(g); g.visible = false;
     const stations = [], solids = [];
     const P = { floor: mat(0x1e2436), wall: mat(0x2a3040), beam: mat(0x14202e), stone: mat(0x1a2030), rug: mat(0x3a2f4a) };
-    const box = (w, h, d, m, x, y, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
+    const box = (w,h,d,m,x,y,z) => roomBox(g,w,h,d,m,x,y,z,m===P.wall);
     const ico = (r, m, x, y, z) => { const me = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m); me.position.set(IX + x, FY + y, IZ + z); g.add(me); return me; };
     const solid = (x, z, r) => solids.push({ x: IX + x, z: IZ + z, r });
     const wallSolids = (x0, z0, x1, z1) => { const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 2)); for (let i = 0; i <= n; i++) { const t = i / n; solid(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.2); } };

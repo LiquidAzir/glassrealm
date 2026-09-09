@@ -3,6 +3,7 @@ import { TAU, clamp, smoothstep, mulberry32, dist2D, distToSeg } from './util.js
 import { DISCOVERIES, NPCS, WANDERERS, ENEMY_SPAWNS, QUESTS, CLUE_SPOTS } from './content.js';
 import { WORLD_SCALE as WS } from './scale.js';
 import { rimLight } from './shaders.js';
+import { artGeometry, artMaterial, artModel, instanceChunks, chunkTerrain, groundTexture, makeGroundPath, contactShadowGeometry, meadowGeometry } from './realm-art.js';
 
 // ============================================================================
 // MODULAR WORLD — one contiguous heightfield (no loading zones).
@@ -358,6 +359,14 @@ export function createWorld(scene, seed = 1337) {
   geo.rotateX(-Math.PI / 2); geo.translate(CX, 0, CZ);
   const pa = geo.attributes.position;
   for (let i = 0; i < pa.count; i++) pa.setY(i, height(pa.getX(i), pa.getZ(i)));
+  // Decorations follow the actual rendered triangles, including their diagonals.
+  // This avoids hovering paths on a coarse heightfield without changing collision.
+  const surfaceHeight = (x, z) => {
+    const u = clamp((x-CX+SIZE/2)/SIZE*SEG,0,SEG-.0001), v = clamp((z-CZ+SIZE/2)/SIZE*SEG,0,SEG-.0001);
+    const ix = Math.floor(u), iz = Math.floor(v), fx = u-ix, fz = v-iz, a = iz*(SEG+1)+ix;
+    const h00=pa.getY(a),h10=pa.getY(a+1),h01=pa.getY(a+SEG+1),h11=pa.getY(a+SEG+2);
+    return fx+fz<=1 ? h00+(h10-h00)*fx+(h01-h00)*fz : h11+(h01-h11)*(1-fx)+(h10-h11)*(1-fz);
+  };
   geo = geo.toNonIndexed(); geo.computeVertexNormals();
   const p = geo.attributes.position;
   const colors = new Float32Array(p.count * 3);
@@ -375,6 +384,7 @@ export function createWorld(scene, seed = 1337) {
     else if (h < 8.2) hex = bi.high;
     else hex = bi.peak;
     c.setHex(hex);
+    if (h >= .9 && h < 5) c.lerp(rockC.setHex(bi.low),.78); // replace large alternating green triangles with a coherent meadow
     if (h >= 0.9) {                            // land: weather the slopes + let elevation catch light, so hills read as 3D form
       const slope = 1 - Math.abs(na.getY(i));  // 0 = flat ground, →1 = sheer cliff face
       if (slope > 0.32) c.lerp(rockC.setHex(bi.high), Math.min(0.8, (slope - 0.32) * 1.7)).multiplyScalar(0.84);   // bare darker rock on cliffs
@@ -385,13 +395,16 @@ export function createWorld(scene, seed = 1337) {
     for (let k = 0; k < 3; k++) { colors[(i + k) * 3] = c.r; colors[(i + k) * 3 + 1] = c.g; colors[(i + k) * 3 + 2] = c.b; }
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
+  const terrainUV = new Float32Array(p.count*2);
+  for (let i=0;i<p.count;i++){terrainUV[i*2]=p.getX(i)/12;terrainUV[i*2+1]=p.getZ(i)/12;}
+  geo.setAttribute('uv',new THREE.BufferAttribute(terrainUV,2));
+  chunkTerrain(group,geo,new THREE.MeshLambertMaterial({vertexColors:true,map:groundTexture('grass'),flatShading:true}));
 
   // Sea: a faintly self-lit surface (reads as luminous water on the additive display) that ripples on
   // the GPU — a subdivided plane displaced by crossed sine waves in the vertex shader.
   const waveUniform = { value: 0 };
   const water = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 48, 48).rotateX(-Math.PI / 2),   // PERF: 96→48 subdivisions (still smooth waves, ¼ vertex count)
-    new THREE.MeshLambertMaterial({ color: 0x2bd6cf, emissive: 0x0a3a44, transparent: true, opacity: 0.52, depthWrite: false }));
+    new THREE.MeshLambertMaterial({ color: 0x488e99, emissive: 0x081c25, transparent: true, opacity: 0.70, depthWrite: false }));
   water.material.onBeforeCompile = (sh) => {
     sh.uniforms.uWave = waveUniform;
     sh.vertexShader = sh.vertexShader
@@ -500,22 +513,48 @@ export function createWorld(scene, seed = 1337) {
       sh.uniforms.uWind = windUniform;
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', '#include <common>\nuniform float uWind;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_INSTANCING\nfloat wph = uWind + instanceMatrix[3].x * 0.18 + instanceMatrix[3].z * 0.18;\nfloat wsw = 0.16 * (0.5 + position.y * 0.3);\ntransformed.x += sin(wph) * wsw;\ntransformed.z += cos(wph * 0.8) * wsw * 0.7;\n#endif');
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_INSTANCING\nfloat wph = uWind + instanceMatrix[3].x * 0.18 + instanceMatrix[3].z * 0.18;\nfloat wsw = max(0.0, position.y) * 0.035;\ntransformed.x += sin(wph) * wsw;\ntransformed.z += cos(wph * 0.8) * wsw * 0.7;\n#endif');
     };
   };
-  const N = Math.max(trees.length, 1);
-  const trunkIM = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.3, 1.7, 5), new THREE.MeshLambertMaterial({ flatShading: true }), N);
-  const folLowIM = new THREE.InstancedMesh(new THREE.ConeGeometry(1.5, 2.3, 6), new THREE.MeshLambertMaterial({ flatShading: true }), N);
-  const folHiIM = new THREE.InstancedMesh(new THREE.ConeGeometry(1.05, 1.9, 6), new THREE.MeshLambertMaterial({ flatShading: true }), N);
-  applyWindSway(folLowIM.material); applyWindSway(folHiIM.material);
-  trees.forEach((t, i) => {
-    const s = t.s; dummy.rotation.set(0, rng() * TAU, 0); dummy.scale.setScalar(s);
-    dummy.position.set(t.x, t.y + 0.85 * s, t.z); dummy.updateMatrix(); trunkIM.setMatrixAt(i, dummy.matrix);
-    dummy.position.set(t.x, t.y + 2.15 * s, t.z); dummy.updateMatrix(); folLowIM.setMatrixAt(i, dummy.matrix);
-    dummy.position.set(t.x, t.y + 3.35 * s, t.z); dummy.updateMatrix(); folHiIM.setMatrixAt(i, dummy.matrix);
-    trunkIM.setColorAt(i, tmpC.setHex(t.trunk)); folLowIM.setColorAt(i, tmpC.setHex(t.low)); folHiIM.setColorAt(i, tmpC.setHex(t.hi)); t.idx = i;
+  // Consume exactly the original one random number/tree so saved resource IDs stay stable.
+  trees.forEach((t,i)=>{t.yaw=rng()*TAU;t.idx=i;});
+  let trunkIM,folLowIM,folHiIM;
+  const artTreeHandles=[];
+  if(artGeometry('oak')&&artGeometry('pine')){
+    for(const key of ['oak','pine']){
+      const rows=trees.filter(t=>{
+        const biome=biomeAt(t.x,t.z),conifer=['snow','aurora','highland','sky','crystal','obsidian','basalt','cinder'].includes(biome)||t.idx%5===0;
+        return (conifer?'pine':'oak')===key;
+      });
+      const material=artMaterial(key==='pine'?0xf5ffff:0xfff9e6).clone();applyWindSway(material);
+      const batch=instanceChunks(group,artGeometry(key),material,rows,(d,t)=>{
+        d.position.set(t.x,t.y,t.z);d.rotation.y=t.yaw;d.scale.setScalar(t.s);
+        const biome=biomeAt(t.x,t.z);
+        return ['fae','umbral','arcane','spore'].includes(biome)?0xd9b9ec:biome==='autumn'?0xffc780:['snow','aurora'].includes(biome)?0xd6e6ed:0xffffff;
+      });
+      rows.forEach((t,i)=>artTreeHandles[t.idx]=batch.handles[i]);
+    }
+  }else{
+    const lowMat=new THREE.MeshLambertMaterial({flatShading:true}),hiMat=lowMat.clone();applyWindSway(lowMat);applyWindSway(hiMat);
+    const transform=(dy,color)=>(d,t)=>{d.position.set(t.x,t.y+dy*t.s,t.z);d.rotation.y=t.yaw;d.scale.setScalar(t.s);return t[color];};
+    trunkIM=instanceChunks(group,new THREE.CylinderGeometry(.16,.3,1.7,5),new THREE.MeshLambertMaterial({flatShading:true}),trees,transform(.85,'trunk'));
+    folLowIM=instanceChunks(group,new THREE.ConeGeometry(1.5,2.3,6),lowMat,trees,transform(2.15,'low'));
+    folHiIM=instanceChunks(group,new THREE.ConeGeometry(1.05,1.9,6),hiMat,trees,transform(3.35,'hi'));
+  }
+  const treeShadowIM=instanceChunks(group,contactShadowGeometry(),new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,side:THREE.DoubleSide}),trees,(d,t)=>{
+    d.position.set(t.x,surfaceHeight(t.x,t.z)+.08,t.z);d.rotation.y=t.yaw;d.scale.set(t.s*1.65,1,t.s*1.15);
   });
-  group.add(trunkIM, folLowIM, folHiIM);
+  const meadow=[];
+  for(const t of trees){
+    const biome=biomeAt(t.x,t.z);if(!['grass','forest','royal','coast','autumn','jungle'].includes(biome))continue;
+    for(let n=0;n<5;n++){
+      const a=t.yaw+n*2.4,x=t.x+Math.cos(a)*(1.8+n*.23),z=t.z+Math.sin(a)*(1.8+n*.23);
+      // Decoration must not prime the quantized gameplay height cache.
+      if(surfaceHeight(x,z)<=.35||villages.some(v=>dist2D(x,z,v.x,v.z)<14))continue;
+      meadow.push({x,z,y:surfaceHeight(x,z),yaw:a,s:.7+(t.idx%4)*.16});
+    }
+  }
+  instanceChunks(group,meadowGeometry(),new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}),meadow,(d,t)=>{d.position.set(t.x,t.y+.03,t.z);d.rotation.y=t.yaw;d.scale.setScalar(t.s);});
 
   // cacti (desert)
   const cactusMat = new THREE.MeshLambertMaterial({ color: 0x4a8f5a, flatShading: true });
@@ -567,6 +606,7 @@ export function createWorld(scene, seed = 1337) {
   const solids = [];                       // circular collision obstacles (buildings, wells)
   const animalSpawns = [];                 // {kind,x,z,home,roam,penned} — farm livestock + wild creatures (entities.js builds them)
   const stations = [];
+  const visualBuildings=[];
   // PERF: cache world build materials by colour — settlements reuse the same palette colours extensively
   const _wmatCache = {};
   const lmat = (c) => { if (_wmatCache[c]) return _wmatCache[c]; const m = new THREE.MeshLambertMaterial({ color: c, flatShading: true }); _wmatCache[c] = m; return m; };
@@ -627,6 +667,18 @@ export function createWorld(scene, seed = 1337) {
     const faceA = Math.atan2(vcx - bx, vcz - bz);                 // face the plaza
     const fx = Math.sin(faceA), fz = Math.cos(faceA), rx = Math.cos(faceA), rz = -Math.sin(faceA);
     const cfg = BLD[type] || BLD.home, W = 5.2, D = 5.2, H = cfg.h;
+    const sx = bx + fx * (D / 2 + 1.2), sz = bz + fz * (D / 2 + 1.2);
+    group.add(makeGroundPath([{x:vcx,z:vcz},{x:sx,z:sz}],surfaceHeight,2.1));
+    const model=artModel(type,['snow','aurora','sky','highland'].includes(biome)?0xddebf6:['fae','arcane','umbral','crystal'].includes(biome)?0xe0cff3:['desert','badlands','autumn'].includes(biome)?0xffe1b6:0xffffff);
+    if(model){
+      model.position.set(bx,y,bz);model.rotation.y=faceA;group.add(model);
+      model.updateMatrix();
+      visualBuildings.push({x:bx,z:bz,y,height:model.geometry.boundingBox.max.y,r:3.2,mesh:model,baseMaterial:model.material,box:model.geometry.boundingBox.clone().applyMatrix4(model.matrix).expandByScalar(.25),fade:1});
+      stations.push({kind:'door',label:'Enter '+(BLD_NAME[type]||'building'),x:sx,z:sz,y:height(sx,sz),building:type,biome});
+      solids.push({x:bx,z:bz,r:2.9});
+      return;
+    }
+    visualBuildings.push({x:bx,z:bz,y,height:H+cfg.roofH*1.4,r:3.2});
     // place at building-local coords: side = right offset, oy = height, fwd = toward the plaza
     const put = (geo, mat, side, oy, fwd, rotX) => { const m = new THREE.Mesh(geo, mat); m.position.set(bx + fx * fwd + rx * side, y + oy, bz + fz * fwd + rz * side); m.rotation.y = faceA; if (rotX) m.rotation.x = rotX; group.add(m); return m; };
     const basic = (c) => new THREE.MeshBasicMaterial({ color: c });
@@ -690,7 +742,6 @@ export function createWorld(scene, seed = 1337) {
       else if (acc === 'embers') { for (const e of [[-W * 0.3, 0.5], [W * 0.36, 0.8], [0, 1.4]]) put(new THREE.BoxGeometry(0.16, 0.16, 0.16), basic(0xff7a33), e[0], e[1], D / 2 + 0.3); }
       else if (acc === 'vines') { for (const s of [-W * 0.36, 0, W * 0.36]) put(new THREE.BoxGeometry(0.34, 1.6, 0.12), lmat(0x3f8f3f), s, H * 0.55, D / 2 + 0.02); }
     }
-    const sx = bx + fx * (D / 2 + 1.2), sz = bz + fz * (D / 2 + 1.2);
     stations.push({ kind: 'door', label: 'Enter ' + (BLD_NAME[type] || 'building'), x: sx, z: sz, y: height(sx, sz), building: type, biome });
     solids.push({ x: bx, z: bz, r: 2.9 });
   }
@@ -1620,8 +1671,23 @@ export function createWorld(scene, seed = 1337) {
   for (const o of orbMeshes) _live(o.m);
   for (const f of (ferryBoats || [])) _live(f.m);
 
+  const cameraRay=new THREE.Ray(),cameraTarget=new THREE.Vector3(),cameraDirection=new THREE.Vector3(),cameraHit=new THREE.Vector3();
+  function updateView(camera,player){
+    cameraTarget.set(player.x,player.y+1.15,player.z);
+    cameraDirection.subVectors(cameraTarget,camera.position);const distance=cameraDirection.length();cameraDirection.normalize();
+    cameraRay.set(camera.position,cameraDirection);
+    for(const b of visualBuildings){
+      if(!b.mesh)continue;
+      const hit=cameraRay.intersectBox(b.box,cameraHit),blocked=hit&&camera.position.distanceTo(cameraHit)<distance-.35;
+      b.fade+=( (blocked?.16:1)-b.fade)*.22;
+      if(b.fade<.995){
+        if(!b.fadeMaterial){b.fadeMaterial=b.baseMaterial.clone();b.fadeMaterial.transparent=true;b.fadeMaterial.depthWrite=false;rimLight(b.fadeMaterial,.3);}
+        b.fadeMaterial.opacity=b.fade;b.mesh.material=b.fadeMaterial;
+      }else b.mesh.material=b.baseMaterial;
+    }
+  }
   return {
-    group, height, isWalkable, WATER_Y,
+    group, height, isWalkable, WATER_Y, visualBuildings, updateView,
     village: VILLAGE_A,
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
@@ -1629,8 +1695,9 @@ export function createWorld(scene, seed = 1337) {
     trees, rocks, bushes, oreNodes, fishingSpots, hives, stations, plots, stalls, shortcuts, solids, dynSolids, inSolidGrid, animalSpawns, obstacles: solids.filter((s) => s.r >= 1.2), mines: MINES, discoveries, houseFurniture, ferries, waystones, snapLand, findClear, ambientEmitters,
     removeTree(idx) {
       const t = trees[idx]; if (!t || !t.alive) return; t.alive = false;
-      trunkIM.setMatrixAt(idx, zero); folLowIM.setMatrixAt(idx, zero); folHiIM.setMatrixAt(idx, zero);
-      trunkIM.instanceMatrix.needsUpdate = folLowIM.instanceMatrix.needsUpdate = folHiIM.instanceMatrix.needsUpdate = true;
+      treeShadowIM.setMatrixAt(idx,zero);
+      if(artTreeHandles.length){const h=artTreeHandles[idx];if(h){h.mesh.setMatrixAt(h.index,zero);h.mesh.instanceMatrix.needsUpdate=true;}}
+      else {trunkIM.setMatrixAt(idx,zero);folLowIM.setMatrixAt(idx,zero);folHiIM.setMatrixAt(idx,zero);}
     },
     harvestBush(idx) {
       const b = bushes[idx]; if (!b || !b.alive) return; b.alive = false;

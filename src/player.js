@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { artGeometry, artModel } from './realm-art.js';
 import { TAU, damp } from './util.js';
 import { weaponOf } from './content.js';
 import { rimLight } from './shaders.js';
@@ -7,7 +8,7 @@ const SPEED = 8.0;          // units/sec
 const TURN = 2.4;           // rad/sec
 const COAST_FWD = 0.42;
 const COAST_TURN = 0.26;
-const CAM_DIST = 9.5, CAM_HEIGHT = 5.2, CAM_LOOK = 3.0, HEAD_Y = 1.5;
+const CAM_DIST = 11.2, CAM_HEIGHT = 9.2, CAM_LOOK = 2.0, HEAD_Y = 1.5;
 const ATTACK_DUR = 0.34;
 const GATHER_DUR = 0.6;
 const HURT_DUR = 0.32;     // flinch reaction length
@@ -92,29 +93,32 @@ export function createPlayer(scene, world) {
   const body = new THREE.Group();      // bobs while walking; keeps ground calc clean
   group.add(body);
 
-  const tunic = rimLight(new THREE.MeshLambertMaterial({ color: 0x36d1c4, flatShading: true }));
+  const tunic = rimLight(new THREE.MeshLambertMaterial({ color: 0x648f80, flatShading: true }));
   const skin = rimLight(new THREE.MeshLambertMaterial({ color: 0xf2c79a, flatShading: true }));
-  const dark = rimLight(new THREE.MeshLambertMaterial({ color: 0x2a3340, flatShading: true }));
+  const dark = rimLight(new THREE.MeshLambertMaterial({ color: 0x65584a, flatShading: true }));
   const steel = rimLight(new THREE.MeshLambertMaterial({ color: 0xcdd6e0, flatShading: true }));
   const woodMat = rimLight(new THREE.MeshLambertMaterial({ color: 0x6e4a2b, flatShading: true }));
   const orbMat = new THREE.MeshBasicMaterial({ color: 0x9b6bff });
   const visorMat = new THREE.MeshBasicMaterial({ color: 0x9bf2ff });
 
   const mkBox = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return m; };
+  const part=(key,material,x=0,y=0,z=0)=>{const geo=artGeometry(key);if(!geo)return null;const m=material.clone();m.vertexColors=true;rimLight(m,.3);const mesh=new THREE.Mesh(geo,m);mesh.position.set(x,y,z);return mesh;};
   // legs hang from hip pivots so they can swing in a walk cycle
-  const legL = new THREE.Group(); legL.position.set(-0.17, 0.7, 0); legL.add(mkBox(0.24, 0.7, 0.24, dark, 0, -0.35, 0)); body.add(legL);
-  const legR = new THREE.Group(); legR.position.set(0.17, 0.7, 0); legR.add(mkBox(0.24, 0.7, 0.24, dark, 0, -0.35, 0)); body.add(legR);
-  body.add(mkBox(0.74, 0.82, 0.46, tunic, 0, 1.15, 0));      // torso
+  const legL = new THREE.Group(); legL.position.set(-0.17, 0.7, 0); legL.add(part('hero_boot',dark)||mkBox(0.24, 0.7, 0.24, dark, 0, -0.35, 0)); body.add(legL);
+  const legR = new THREE.Group(); legR.position.set(0.17, 0.7, 0); legR.add(part('hero_boot',dark)||mkBox(0.24, 0.7, 0.24, dark, 0, -0.35, 0)); body.add(legR);
+  body.add(part('hero_torso',tunic,0,1.15,0)||mkBox(0.74, 0.82, 0.46, tunic, 0, 1.15, 0));
   const armL = new THREE.Group(); armL.position.set(-0.5, 1.5, 0); armL.add(mkBox(0.2, 0.62, 0.22, tunic, 0, -0.31, 0)); body.add(armL);   // left arm (swings)
   const leftFist = mkBox(0.18, 0.18, 0.18, skin, 0, -0.62, 0); armL.add(leftFist);   // left hand — completes the silhouette + grips two-handed weapons
   // head rides on its own pivot so it can nod + look around independently of the
   // body (the helm/hood stay on the armor group, so they don't tilt with the face).
-  const headPivot = new THREE.Group(); headPivot.position.set(0, 1.86, 0); body.add(headPivot);
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), skin); headPivot.add(head);
+  const headPivot = new THREE.Group(); headPivot.position.set(0, 1.81, 0); body.add(headPivot);
+  const head = artModel('hero_head')||new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), skin); headPivot.add(head);
+  if(!artGeometry('hero_head')){
   headPivot.add(mkBox(0.44, 0.2, 0.44, dark, 0, 0.2, 0));          // hair/cap — rounds out the silhouette from every angle (helm/hood cover it when armored)
   headPivot.add(mkBox(0.4, 0.12, 0.06, visorMat, 0, 0.04, 0.3));   // facing visor (+z), rides with the head
   const lensMat = new THREE.MeshBasicMaterial({ color: 0xe4fbff });
   for (const lx of [0.12, -0.12]) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.055, 0), lensMat); l.position.set(lx, 0.045, 0.315); headPivot.add(l); }   // two bright visor-lenses (the hero's glowing "eyes")
+  }
 
   // armor overlay group — rebuilt to match the equipped armor (chest/shoulders/helm/hood)
   const armorGroup = new THREE.Group(); body.add(armorGroup);
@@ -209,8 +213,8 @@ export function createPlayer(scene, world) {
     const a = ARMOR_MODEL[dispKey] || { color: 0xb9c2cc };
     const dye = cosmetic && cosmetic.dyes ? cosmetic.dyes.armor : null;
     const m = rimLight(new THREE.MeshLambertMaterial({ color: (dye != null) ? dye : a.color, flatShading: true }));
-    armorGroup.add(mkBox(0.86, 0.92, 0.58, m, 0, 1.15, 0));                         // chest plate over the tunic
-    if (a.shoulders) { armorGroup.add(mkBox(0.34, 0.26, 0.52, m, -0.52, 1.5, 0)); armorGroup.add(mkBox(0.34, 0.26, 0.52, m, 0.52, 1.5, 0)); }
+    armorGroup.add(part('hero_cuirass',m,0,1.15,0)||mkBox(0.86, 0.92, 0.58, m, 0, 1.15, 0));
+    if (a.shoulders) { armorGroup.add(part('hero_shoulder',m,-.52,1.5,0)||mkBox(0.34, 0.26, 0.52, m, -0.52, 1.5, 0)); armorGroup.add(part('hero_shoulder',m,.52,1.5,0)||mkBox(0.34, 0.26, 0.52, m, 0.52, 1.5, 0)); }
     if (a.helm) armorGroup.add(mkBox(0.44, 0.34, 0.44, m, 0, 2.0, 0));
     if (a.hood) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.55, 6), m); h.position.set(0, 2.05, 0); armorGroup.add(h); }
     const trimMat = a.trim ? new THREE.MeshLambertMaterial({ color: a.trim, flatShading: true }) : null;
@@ -310,11 +314,29 @@ export function createPlayer(scene, world) {
   };
 
   function weapon() { return weaponOf(state.equipment.weapon); }
+  const readableMaterials=new WeakMap();
+  function keepHeroReadable(){
+    // A small baked fill follows the material/vertex colours. It keeps the local
+    // adventurer readable at night without adding another scene light or pass.
+    body.traverse(mesh=>{
+      if(!mesh.isMesh||!mesh.material.isMeshLambertMaterial)return;
+      const original=mesh.material;if(original.userData.heroFill)return;
+      let material=readableMaterials.get(original);
+      if(!material){
+        material=original.clone();rimLight(material,.3);material.userData.heroFill=true;
+        const previous=material.onBeforeCompile;
+        material.onBeforeCompile=shader=>{previous(shader);shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>','outgoingLight += diffuseColor.rgb * 0.18;\n#include <opaque_fragment>');};
+        readableMaterials.set(original,material);
+      }
+      mesh.material=material;
+    });
+  }
   function refreshEquipment() {
     setWeaponMesh(state.equipment.weapon);
     buildArmor(state.equipment.armor);
     buildShield(state.equipment.shield);
     state.hasShield = !!state.equipment.shield;   // a shield occupies the off-hand → no two-handed grip
+    keepHeroReadable();
   }
   refreshEquipment();
 
@@ -579,12 +601,25 @@ export function createPlayer(scene, world) {
     const f = forwardVec();
     const px = group.position.x, py = group.position.y, pz = group.position.z;
     const dist = state.bounds ? 5.2 : CAM_DIST, ht = state.bounds ? 7.0 : CAM_HEIGHT, look = state.bounds ? 1.5 : CAM_LOOK;
-    const dX = px - f.x * dist, dZ = pz - f.z * dist, dY = py + ht;
+    const dX = px - f.x * dist, dZ = pz - f.z * dist;
+    let dY = py + ht;
+    // Lift the follow camera over nearby roofs instead of losing the hero behind
+    // a wall. These are visual bounds only; movement and collision stay unchanged.
+    if(!state.bounds && world.visualBuildings){
+      const vx=dX-px,vz=dZ-pz,len2=vx*vx+vz*vz;
+      for(const b of world.visualBuildings){
+        const t=((b.x-px)*vx+(b.z-pz)*vz)/len2;
+        if(t<.18||t>1.15)continue;
+        const dx=px+vx*t-b.x,dz=pz+vz*t-b.z;
+        if(dx*dx+dz*dz<(b.r+.6)*(b.r+.6))dY=Math.max(dY,Math.min(py+12,py+HEAD_Y+(b.y+b.height+1-py-HEAD_Y)/Math.max(.3,t)));
+      }
+    }
     if (!camReady) { camera.position.set(dX, dY, dZ); camReady = true; }
     else { const k = damp(6, dt); camera.position.x += (dX - camera.position.x) * k; camera.position.y += (dY - camera.position.y) * k; camera.position.z += (dZ - camera.position.z) * k; }
     if (!state.bounds) { const camFloor = world.height(camera.position.x, camera.position.z) + 2.4; if (camera.position.y < camFloor) camera.position.y = camFloor; }   // ride up over hills instead of clipping through them (e.g. behind you on a bridge)
     tmpTarget.set(px + f.x * look, py + HEAD_Y, pz + f.z * look);
     camera.lookAt(tmpTarget);
+    if(world.updateView)world.updateView(camera,group.position);
   }
 
   // world position of the right hand (where projectiles launch from)

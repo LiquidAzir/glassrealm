@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createEngine } from './engine.js';
+import { loadRealmArt, artState } from './realm-art.js';
 import { createInput } from './input.js';
 import { createControls } from './controls.js';
 import { createWorld } from './world.js';
@@ -36,6 +37,9 @@ try {
   let freshStart = false; try { freshStart = !!sessionStorage.getItem('glassrealm.fresh'); if (freshStart) sessionStorage.removeItem('glassrealm.fresh'); } catch (e) {}
   if (cloud.enabled && !freshStart) { try { const remote = await cloud.pull(); if (remote && mergeRemoteSave(remote)) cloud.markSynced(remote); } catch (e) {} }
   const saved = loadSave();
+
+  bootSub.textContent = 'Opening the gates of the realm…';
+  await loadRealmArt();
 
   const world = createWorld(engine.scene);
   const player = createPlayer(engine.scene, world);
@@ -2005,15 +2009,19 @@ try {
     engine.hemi.color.setHSL(0.60 - 0.02 * gh, 0.55 - 0.30 * day, 0.26 + 0.46 * day);   // moody blue night → soft pale-blue day (night floor kept readable on the additive display)
     engine.fill.color.setHSL(0.58, 0.50, 0.30 + 0.10 * day);                            // cool sky bounce into the shadows
     const fog = engine.scene.fog;
-    if (fog) { fog.color.setHSL(0.60, 0.6, 0.005 + 0.003 * day); fog.color.r += 0.05 * tw; fog.color.g += 0.025 * tw; fog.color.b += 0.004 * tw; }   // faint near-black blue haze + a SMOOTH warm push at twilight (no hue jump); near-black so far distance still melts into the real world
+    if (fog) {
+      if(engine.screenDisplay){fog.color.setHSL(.57,.24,.09+.32*day);fog.color.r+=.04*tw;engine.renderer.setClearColor(fog.color);}
+      else {fog.color.setHSL(.60,.6,.005+.003*day);fog.color.r+=.05*tw;fog.color.g+=.025*tw;fog.color.b+=.004*tw;engine.renderer.setClearColor(0x000000);}
+    }
   }
   function applyInteriorLight() {   // cozy, time-of-day-independent ambient indoors (the room carries its own warm lamp); restored to the day/night cycle on exit
-    engine.hemi.color.setHex(0xdcccaa); engine.hemi.intensity = 0.72;
-    engine.sun.color.setHex(0xfff0d0); engine.sun.intensity = 0.5;
-    engine.fill.color.setHex(0x88b8ff); engine.fill.intensity = 0.2;
+    engine.renderer.setClearColor(0x000000);if(engine.scene.fog)engine.scene.fog.color.setHex(0x000000);
+    engine.hemi.color.setHex(0xe5dbc6); engine.hemi.intensity = 0.88;
+    engine.sun.color.setHex(0xfff0d0); engine.sun.intensity = 0.65;
+    engine.fill.color.setHex(0xadc9df); engine.fill.intensity = 0.28;
   }
   const updateLighting = () => { if (G.inInterior) applyInteriorLight(); else applyTimeOfDay(tod); };   // indoors shouldn't track the outdoor sky
-  let running = true, tod = (saved && saved.tod != null) ? saved.tod : 0.32, mmTick = 0, econTick = 0, locTick = 0;
+  let running = true, tod = (saved && saved.tod != null) ? saved.tod : 0.32, mmTick = 0, econTick = 0, locTick = 0, lastRender = -Infinity;
   Object.defineProperty(G, 'tod', { get: () => tod, configurable: true });   // expose for save.js
   function frame() {
     if (!running) return;
@@ -2070,7 +2078,9 @@ try {
     if ((mode === 'world' || mode === 'interior') && econTick % 2 === 0) updateMarkers();   // PERF: markers every 2nd frame (~30 Hz) — projections + DOM writes
     if (mode === 'interior') G.ui.setMinimapVisible(false);
     else { G.ui.setMinimapVisible(true); if (mode === 'world') { mmTick++; if (mmTick % 3 === 0) G.ui.updateMinimap(); } }
-    engine.renderer.render(engine.scene, engine.camera);
+    // Simulation/input retain their timing; limit GPU work for the glasses.
+    const renderNow = performance.now();
+    if(renderNow-lastRender>=1000/30-1){engine.renderer.render(engine.scene,engine.camera);lastRender=renderNow;}
     requestAnimationFrame(frame);
   }
 
@@ -2126,7 +2136,16 @@ try {
     get drawCalls() { return engine.renderer.info.render.calls; },
     get triangles() { return engine.renderer.info.render.triangles; },
     get programs() { return engine.renderer.info.programs ? engine.renderer.info.programs.length : 'N/A'; },
+    art: artState,
   };
+  window.render_game_to_text = () => JSON.stringify({
+    mode, coordinates:'+Y up; X east, Z south; heading in radians',
+    player:{...window.__gr.pos,heading:player.state.heading,hp:player.state.hp,equipment:player.state.equipment},
+    target:window.__gr.target(),region:document.getElementById('locLabel').textContent,
+    inventory:G.inventory.list().map(it=>({key:it.key,n:it.count})),
+    art:artState,render:{calls:window.__gr.drawCalls,triangles:window.__gr.triangles}
+  });
+  window.advanceTime = (ms) => { window.__gr.pause();window.__gr.step(Math.max(1,Math.ceil(ms/16))); };
 } catch (err) {
   bootSub.textContent = 'Error: ' + (err && err.message ? err.message : err);
   console.error(err);

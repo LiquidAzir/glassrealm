@@ -4,6 +4,8 @@ import * as THREE from 'three';
 // additive waveguide; fog fades distant geometry to black so the world melts into
 // the real world rather than hard-clipping at the far plane.
 export function createEngine(canvas) {
+  const requestedDisplay=new URLSearchParams(location.search).get('display');
+  const screenDisplay=requestedDisplay==='screen'||(requestedDisplay!=='glasses'&&window.matchMedia&&matchMedia('(pointer: fine), (pointer: coarse)').matches);
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: false,   // PERF: disabled — saves ~30% GPU fill on mobile/glasses (low-poly style hides jaggies)
@@ -11,7 +13,7 @@ export function createEngine(canvas) {
     powerPreference: 'high-performance',
   });
   // The glasses are 600x600 @ 1x; cap the ratio so we never render a 1200px+
-  // buffer (also keeps software-GL preview captures responsive). MSAA still AAs.
+  // buffer (also keeps software-GL preview captures responsive).
   renderer.setPixelRatio(1);
   renderer.setSize(600, 600, false);
   renderer.setClearColor(0x000000, 1);
@@ -21,7 +23,8 @@ export function createEngine(canvas) {
   const FOG = 0x000000;
   scene.fog = new THREE.Fog(FOG, 26, 110);
 
-  const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 160);   // PERF: far plane 400→160 (fog hides beyond ~110 anyway; GPU frustum cull kicks in earlier)
+  // Fog is fully opaque at 110; reject scenery beyond it before submission.
+  const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 120);
   camera.position.set(0, 12, 14);
 
   // Hemisphere for soft sky/ground ambient + a warm directional sun for facets.
@@ -40,5 +43,5 @@ export function createEngine(canvas) {
 
   const clock = new THREE.Clock();
 
-  return { renderer, scene, camera, sun, hemi, fill, clock, THREE };
+  return { renderer, scene, camera, sun, hemi, fill, clock, THREE, screenDisplay };
 }
