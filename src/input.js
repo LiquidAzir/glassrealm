@@ -1,6 +1,6 @@
 // Input — maps the glasses' EMG/captouch (delivered as arrow keys + Enter) into
 // semantic actions. We expose BOTH a held-key set (for continuous world movement)
-// and discrete action events, plus double-tap detection used as a universal "back".
+// and discrete action events, plus a world-only double-tap attack shortcut.
 //
 // Robust to however the band delivers a swipe: held key, key-repeat, or a single
 // momentary press all work — the player controller adds a short "coast" on each
@@ -20,9 +20,11 @@ export function createInput(target = window) {
   // additionally emits 'doubletap' as a desktop-only convenience.
   function resolveTap() {
     const now = performance.now();
+    const previous = lastTapAt;
+    lastTapAt = now;
     emit('tap');
-    if (lastTapAt >= 0 && now - lastTapAt < TAP_GAP) { lastTapAt = -1; emit('doubletap'); }
-    else lastTapAt = now;
+    // Opening/closing an overlay during tap cancels its trailing doubletap.
+    if (lastTapAt === now && previous >= 0 && now - previous < TAP_GAP) { lastTapAt = -1; emit('doubletap'); }
   }
 
   function onKeyDown(e) {
@@ -82,6 +84,7 @@ export function createInput(target = window) {
     emit, // drive a semantic action directly (used by tests / alt input sources)
     setHeld,
     clearHeld,
+    resetTap() { lastTapAt = -1; },
     destroy() {
       target.removeEventListener('keydown', onKeyDown);
       target.removeEventListener('keyup', onKeyUp);

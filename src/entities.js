@@ -71,7 +71,7 @@ function makeMob(def) {
 function makeNpc(def, world) {
   const seed = Math.abs((def.key || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0));
   const g = buildPerson({ cloth: def.color, skin: SKIN[seed % SKIN.length], hair: HAIR[seed % HAIR.length], seed });
-  g.position.set(def.pos.x, world.height(def.pos.x, def.pos.z), def.pos.z);
+  g.position.set(def.pos.x, world.walkHeight(def.pos.x, def.pos.z) ?? 0, def.pos.z);
   let nv = world.villages[0], best = Infinity;
   for (const v of world.villages) { const d = (v.x - def.pos.x) ** 2 + (v.z - def.pos.z) ** 2; if (d < best) { best = d; nv = v; } }
   g.rotation.y = Math.atan2(nv.x - def.pos.x, nv.z - def.pos.z);
@@ -578,11 +578,22 @@ function makeAnimal(kind) {
 
 export function createEntities(scene, world, G) {
   let T = 0;
+  const ACTOR_RADIUS = .24;
+  const groundY = (x, z, previous = 0) => world.walkHeight(x, z) ?? previous;
+  function actorLanding(x, z, radius = ACTOR_RADIUS) {
+    return world.findClear(x, z, radius) || world.findClear(world.village.x, world.village.z + 12, radius);
+  }
+  function placeActor(group, x, z, radius = ACTOR_RADIUS) {
+    const d = actorLanding(x, z, radius);
+    if (!d) return false;
+    group.position.set(d.x, groundY(d.x, d.z), d.z);
+    return true;
+  }
   const npcs = NPCS.map((def) => {
     // Snap every NPC onto clear, walkable land (like enemy spawns) — an authored position that
     // lands a hair offshore or in a terrain dip would strand a quest-giver in the sea, blocking
     // their whole questline. Mutating def.pos keeps quest markers/turn-in targets consistent.
-    if (!world.isWalkable(def.pos.x, def.pos.z)) { const s = world.findClear(def.pos.x, def.pos.z); def.pos.x = s.x; def.pos.z = s.z; }
+    if (!world.canStand(def.pos.x, def.pos.z, ACTOR_RADIUS)) { const s = actorLanding(def.pos.x, def.pos.z); if (s) { def.pos.x = s.x; def.pos.z = s.z; } }
     const group = makeNpc(def, world);
     scene.add(group);
     return { def, group, kind: 'npc', baseRot: group.rotation.y, phase: Math.random() * TAU, get pos() { return group.position; } };
@@ -594,12 +605,12 @@ export function createEntities(scene, world, G) {
     if (def.kind === 'squad' || def.kind === 'escort') {
       const squad = { loop: def.loop, members: [] };
       const s0 = def.loop[0];
-      const addMember = (g, extra) => { g.position.set(s0.x, world.height(s0.x, s0.z), s0.z); scene.add(g); const m = Object.assign({ def, group: g, squad, idx: squad.members.length, heading: 0, walkPhase: Math.random() * TAU, speed: def.speed, loopI: 0, get pos() { return g.position; } }, extra); squad.members.push(m); mobs.push(m); };
+      const addMember = (g, extra) => { placeActor(g, s0.x, s0.z); scene.add(g); const m = Object.assign({ def, group: g, squad, idx: squad.members.length, heading: 0, walkPhase: Math.random() * TAU, speed: def.speed, loopI: 0, get pos() { return g.position; } }, extra); squad.members.push(m); mobs.push(m); };
       for (let k = 0; k < def.count; k++) addMember(makeMob({ color: def.color, helm: def.helm, soldier: true, seed: di * 7 + k }), null);
       if (def.prisoner) addMember(makePrisoner(def.prisoner), { prisoner: true });   // escort: a bound captive walks hemmed in by the guards
     } else {
       const g = makeMob({ color: def.color, soldier: !!def.soldier, helm: def.helm, seed: di * 5 });
-      g.position.set(def.home.x, world.height(def.home.x, def.home.z), def.home.z); scene.add(g);
+      placeActor(g, def.home.x, def.home.z); scene.add(g);
       mobs.push({ def, group: g, heading: Math.random() * TAU, walkPhase: Math.random() * TAU, speed: def.speed, home: def.home, radius: def.radius, target: null, pauseT: 0, get pos() { return g.position; } });
     }
   });
@@ -679,7 +690,7 @@ export function createEntities(scene, world, G) {
   const animals = [];
   const eggs = [];
   function spawnEgg(x, z) {
-    const y = Math.max(world.height(x, z), world.WATER_Y) + 0.14;   // float on water (duck eggs), rest on land
+    const y = Math.max(groundY(x, z, world.WATER_Y), world.WATER_Y) + 0.14;   // float on water (duck eggs), rest on land
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshLambertMaterial({ color: 0xf6e9a8, flatShading: true }));
     m.scale.y = 1.35; m.position.set(x, y, z); scene.add(m);
     eggs.push({ mesh: m, x, z, y, t: 90 });
@@ -687,7 +698,8 @@ export function createEntities(scene, world, G) {
   (world.animalSpawns || []).forEach((sp) => {
     const D = ANIMAL_DEF[sp.kind]; if (!D) return;
     const g = makeAnimal(sp.kind);
-    g.position.set(sp.x, world.height(sp.x, sp.z), sp.z);
+    if (D.water && world.walkHeight(sp.x, sp.z) !== null && world.walkHeight(sp.x, sp.z) < .48) g.position.set(sp.x, world.WATER_Y + .06, sp.z);
+    else placeActor(g, sp.x, sp.z, Math.min(.4, D.solidR));
     g.rotation.y = Math.random() * TAU;
     scene.add(g);
     const hd = g.userData.anim.head;
@@ -710,14 +722,30 @@ export function createEntities(scene, world, G) {
     return true;
   }
   function animalStep(a, nx, nz) {
-    if (!(world.isWalkable(nx, nz) || (a.def.water && world.height(nx, nz) <= 0.4))) return false;
-    return obstacleClear(nx, nz);
+    const radius = Math.min(.4, a.solidR);
+    if (world.canTraverse(a.pos.x, a.pos.z, nx, nz, radius)) return true;
+    if (!a.def.water) return false;
+    const fromH = world.walkHeight(a.pos.x, a.pos.z), toH = world.walkHeight(nx, nz);
+    if (fromH === null || toH === null || (fromH >= .48 && toH >= .48)) return false;
+    // Swimming remains available to waterfowl, but a wet endpoint cannot let a
+    // long step tunnel through a shoreline structure or an intervening land ridge.
+    const n = Math.max(1, Math.ceil(Math.hypot(nx - a.pos.x, nz - a.pos.z) / .15));
+    let previous = Math.max(fromH, world.WATER_Y + .06);
+    for (let i = 0; i <= n; i++) {
+      const x = a.pos.x + (nx - a.pos.x) * i / n, z = a.pos.z + (nz - a.pos.z) * i / n;
+      const h = world.walkHeight(x, z);
+      if (h === null || world.inSolidGrid(x, z, radius) || !obstacleClear(x, z)) return false;
+      const foot = Math.max(h, world.WATER_Y + .06);
+      if (Math.abs(foot - previous) > .3 + 1.35 * Math.hypot(nx - a.pos.x, nz - a.pos.z) / n) return false;
+      previous = foot;
+    }
+    return true;
   }
   // Move group by (sx,sz), sliding along walls (try full, then X-only, then Z-only) so it routes AROUND
   // a building instead of phasing through it or sticking. `gate(nx,nz)` is an optional extra constraint
   // (e.g. an enemy's leash). Returns true if it moved.
   function stepSlide(group, px, pz, sx, sz, gate) {
-    const ok = (nx, nz) => world.isWalkable(nx, nz) && obstacleClear(nx, nz) && (!gate || gate(nx, nz));
+    const ok = (nx, nz) => world.canTraverse(px, pz, nx, nz, ACTOR_RADIUS) && (!gate || gate(nx, nz));
     if (ok(px + sx, pz + sz)) { group.position.x = px + sx; group.position.z = pz + sz; return true; }
     if (ok(px + sx, pz)) { group.position.x = px + sx; return true; }
     if (ok(px, pz + sz)) { group.position.z = pz + sz; return true; }
@@ -761,10 +789,10 @@ export function createEntities(scene, world, G) {
 
   const enemies = [];
   function spawnEnemy(key, x, z) {
-    if (!world.isWalkable(x, z)) { outer: for (let r = 4; r <= 40; r += 4) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (world.isWalkable(nx, nz)) { x = nx; z = nz; break outer; } } }   // keep spawns out of the sea
+    const landing = actorLanding(x, z); if (landing) { x = landing.x; z = landing.z; }   // keep spawns out of water and solid scenery
     const def = ENEMIES[key];
     const group = makeEnemyMesh(def, key);
-    group.position.set(x, world.height(x, z), z);
+    group.position.set(x, groundY(x, z), z);
     scene.add(group);
     const e = {
       def, group, kind: 'enemy', enemyKey: key,
@@ -782,7 +810,7 @@ export function createEntities(scene, world, G) {
 
   const telegraphs = [];   // boss slam warnings: a growing ground ring that hits its area after a windup
   function spawnTelegraph(x, z, dmg, delay) {
-    const y = world.height(x, z) + 0.12;
+    const y = groundY(x, z) + 0.12;
     const ring = new THREE.Mesh(new THREE.RingGeometry(2.0, 2.7, 24), new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2; ring.position.set(x, y, z); scene.add(ring);
     telegraphs.push({ mesh: ring, x, z, r: 2.7, t: delay || 1.2, dmg: dmg || 22 });
@@ -805,18 +833,21 @@ export function createEntities(scene, world, G) {
         e.respawn -= dt;
         if (e.respawn <= 0) {
           if (dist2D(player.position.x, player.position.z, e.home.x, e.home.z) < 4) { e.respawn = 1.2; continue; }   // never pop back into existence on top of the player — wait till they step away
+          const landing = actorLanding(e.home.x, e.home.z); if (!landing) { e.respawn = 1.2; continue; }
           e.hp = e.maxHp; e.alive = true; e.state = 'wander'; e.provoked = false; e.group.visible = true;
+          e.dot = null; e.attackCd = 0; e._lastSkill = null; e._xpStance = null;
           e.hurtFlash = 0; e.atkAnim = 0; e.group.rotation.x = 0; e.group.rotation.z = 0; e.group.scale.setScalar(e.baseScale);
-          e.group.position.set(e.home.x, world.height(e.home.x, e.home.z), e.home.z);
+          e.group.position.set(landing.x, groundY(landing.x, landing.z), landing.z);
         }
         continue;
       }
       if (e.hurtFlash > 0) e.hurtFlash -= dt;
       if (e.atkAnim > 0) e.atkAnim -= dt;
       if (e.dot) {   // poison/burn damage-over-time applied by the player
-        e.dot.t -= dt; e.dot.tick -= dt;
-        if (e.dot.tick <= 0) { e.dot.tick = 1.5; damageEnemy(e, e.dot.dmg); if (G.fx) G.fx.burst(e.pos.x, e.pos.y + 1.2, e.pos.z, e.dot.kind === 'burn' ? 0xff7a33 : 0x6ad06a, { n: 5, up: 1.6 }); }
-        if (e.dot.t <= 0) e.dot = null;
+        const dot = e.dot;
+        dot.t -= dt; dot.tick -= dt;
+        if (dot.tick <= 0) { dot.tick = 1.5; e._lastSkill = dot.skill || e._lastSkill; e._xpStance = dot.stance || e._xpStance; damageEnemy(e, dot.dmg); if (G.fx) G.fx.burst(e.pos.x, e.pos.y + 1.2, e.pos.z, dot.kind === 'burn' ? 0xff7a33 : 0x6ad06a, { n: 5, up: 1.6 }); }
+        if (dot.t <= 0) e.dot = null;
         if (!e.alive) continue;
       }
       const d = dist2D(e.pos.x, e.pos.z, player.position.x, player.position.z);
@@ -877,7 +908,7 @@ export function createEntities(scene, world, G) {
           }
         }
       }
-      e.group.position.y = world.height(e.pos.x, e.pos.z);
+      e.group.position.y = groundY(e.pos.x, e.pos.z, e.pos.y);
       faceTo(e.group, e.heading, dt, 11);   // smooth turn (chasing foes still feel responsive)
       // walk cycle (limbs swing at hips/shoulders) + a subtle body waddle + attack lean
       if (moving) e.walkPhase += dt * 9;
@@ -938,7 +969,7 @@ export function createEntities(scene, world, G) {
         const s = Math.sin(T * 1.3 + n.phase) * 0.09;
         a.armL.rotation.x = s; a.armR.rotation.x = -s;
         if (a.head) { a.head.rotation.y = Math.sin(T * 0.5 + n.phase) * 0.16; a.head.rotation.x = Math.sin(T * 1.4 + n.phase) * 0.05; }   // look around + breathe
-        n.group.position.y = world.height(n.pos.x, n.pos.z) + Math.sin(T * 1.6 + n.phase) * 0.012;   // breathing bob (overrides the static terrain snap)
+        n.group.position.y = groundY(n.pos.x, n.pos.z, n.pos.y) + Math.sin(T * 1.6 + n.phase) * 0.012;   // breathing bob above the same foot surface as the hero
       }
     }
     // ambient mobs — squads patrol a loop in formation, wanderers stroll near home; all walk-cycle
@@ -973,7 +1004,7 @@ export function createEntities(scene, world, G) {
       let moving = false;
       if (dd > stop) {
         const desired = Math.atan2(dx, dz);
-        const used = seekStep(m.group, m.pos.x, m.pos.z, desired, spd, dt);   // route around fences/walls rather than pressing into them
+        const used = seekStep(m.group, m.pos.x, m.pos.z, desired, spd, dt, (nx, nz) => (nx - player.position.x) ** 2 + (nz - player.position.z) ** 2 >= (.5 + player.collisionRadius + .04) ** 2);   // patrols stop outside the hero's footprint
         if (used != null) { moving = true; m.heading = used; m.stuckT = 0; }
         else {
           m.heading = desired; m.stuckT = (m.stuckT || 0) + dt;              // fully boxed in
@@ -984,7 +1015,7 @@ export function createEntities(scene, world, G) {
           }
         }
       }
-      m.group.position.y = world.height(m.pos.x, m.pos.z);
+      m.group.position.y = groundY(m.pos.x, m.pos.z, m.pos.y);
       faceTo(m.group, m.heading, dt, 9);   // guards/wanderers TURN at patrol corners instead of about-facing in one frame
       if (moving) m.walkPhase += dt * 9;
       const a = m.group.userData.anim;
@@ -1006,7 +1037,7 @@ export function createEntities(scene, world, G) {
       if (flee) {
         a.heading = Math.atan2(pdx, pdz);   // directly away from the player
         const nx = a.pos.x + Math.sin(a.heading) * D.speed * 1.7 * dt, nz = a.pos.z + Math.cos(a.heading) * D.speed * 1.7 * dt;
-        if (world.isWalkable(nx, nz) || (D.water && world.height(nx, nz) <= 0.4)) { a.group.position.x = nx; a.group.position.z = nz; moving = true; }
+        if (animalStep(a, nx, nz)) { a.group.position.x = nx; a.group.position.z = nz; moving = true; }
         a.state = 'pause'; a.pauseT = 0.6; a.target = null;
       } else if (a.state === 'wander' && a.target) {
         const dx = a.target.x - a.pos.x, dz = a.target.z - a.pos.z, dd = Math.hypot(dx, dz);
@@ -1024,8 +1055,8 @@ export function createEntities(scene, world, G) {
         a.pauseT -= dt;
         if (a.pauseT <= 0) { const ang = Math.random() * TAU, r = (0.4 + Math.random() * 0.6) * a.roam; a.target = { x: a.home.x + Math.cos(ang) * r, z: a.home.z + Math.sin(ang) * r }; a.state = 'wander'; }
       }
-      const gh = world.height(a.pos.x, a.pos.z);
-      a.group.position.y = (D.water && gh <= 0.4) ? world.WATER_Y + 0.06 : gh;   // waterfowl float on the surface
+      const gh = world.walkHeight(a.pos.x, a.pos.z);
+      a.group.position.y = D.water && gh !== null && gh < .48 ? world.WATER_Y + 0.06 : (gh ?? a.pos.y);   // waterfowl float; land animals share the hero's foot surface
       faceTo(a.group, a.heading, dt, 8);   // grazing critters amble around, no snap-turns
       if (moving) a.walkPhase += dt * (D.hop ? 7 : 9);
       if (anim) {
@@ -1057,9 +1088,10 @@ export function createEntities(scene, world, G) {
       const bz = player.position.z - Math.cos(ph) * 2.4 - Math.sin(ph) * 1.0;
       const dx = bx - pet.group.position.x, dz = bz - pet.group.position.z, moving = Math.hypot(dx, dz) > 0.4;
       if (moving) faceTo(pet.group, Math.atan2(dx, dz), dt, 10);   // the companion swings round smoothly as it trails you
-      const k = pet.snap ? 1 : Math.min(1, dt * 4); pet.snap = false;
-      pet.group.position.x += dx * k; pet.group.position.z += dz * k;
-      pet.group.position.y = world.height(pet.group.position.x, pet.group.position.z);
+      if (pet.snap || Math.hypot(dx, dz) > 20) {
+        const landing = actorLanding(bx, bz); if (landing) { pet.group.position.x = landing.x; pet.group.position.z = landing.z; pet.snap = false; }
+      } else if (moving) seekStep(pet.group, pet.group.position.x, pet.group.position.z, Math.atan2(dx, dz), Math.min(10, Math.hypot(dx, dz) * 4), dt);
+      pet.group.position.y = groundY(pet.group.position.x, pet.group.position.z, pet.group.position.y);
       if (moving) pet.walkPhase += dt * 9;
       const pa = pet.group.userData.anim;
       if (pa && pa.legs) { const gait = moving ? Math.sin(pet.walkPhase) * 0.5 : 0, L = pa.legs; if (pa.biped) { if (L[0]) L[0].rotation.x = gait; if (L[1]) L[1].rotation.x = -gait; } else for (let i = 0; i < L.length; i++) L[i].rotation.x = (i === 0 || i === 3) ? gait : -gait; }
@@ -1070,7 +1102,7 @@ export function createEntities(scene, world, G) {
       const k = 1 + 0.35 * Math.abs(Math.sin(T * 14)); tg.mesh.scale.set(k, k, 1); tg.mesh.material.opacity = 0.4 + 0.3 * Math.abs(Math.sin(T * 14));
       if (tg.t <= 0) {
         if (dist2D(player.position.x, player.position.z, tg.x, tg.z) < tg.r + 0.6) G.damagePlayer(tg.dmg);
-        if (G.fx) G.fx.burst(tg.x, world.height(tg.x, tg.z) + 0.5, tg.z, 0xff5a2a, { n: 22, spread: 3.6, up: 3.2, life: 1 });
+        if (G.fx) G.fx.burst(tg.x, groundY(tg.x, tg.z) + 0.5, tg.z, 0xff5a2a, { n: 22, spread: 3.6, up: 3.2, life: 1 });
         scene.remove(tg.mesh); telegraphs.splice(i, 1);
       }
     }
@@ -1078,10 +1110,11 @@ export function createEntities(scene, world, G) {
   }
 
   function damageEnemy(e, amount) {
-    if (!e.alive) return false;
+    if (!e.alive || !Number.isFinite(amount) || amount <= 0) return false;
     e.provoked = true;   // striking a foe makes it (and only it) fight back
     e.hp -= amount; e.hurtFlash = 0.2;
     if (e.hp <= 0) {
+      e.hp = 0; e.dot = null;
       e.alive = false; e.dying = DEATH_DUR; e.deathY = e.group.position.y; e.atkAnim = 0; e.group.rotation.x = 0; e.respawn = 18;
       if (G.fx) G.fx.burst(e.pos.x, e.pos.y + 1, e.pos.z, e.def.color, { n: 14, spread: 4, up: 4, life: 0.7 });
       if (G.onEnemyKilled) G.onEnemyKilled(e);

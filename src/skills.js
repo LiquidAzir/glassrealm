@@ -35,28 +35,39 @@ function levelForXp(xp) { let l = 1; while (l < 99 && xpForLevel(l + 1) <= xp) l
 const PRESTIGE_AT = 20;
 
 export function createSkills(saved, savedPrestige) {
-  const xp = { ...DEFAULTS, ...(saved || {}) };
-  const prestige = { ...(savedPrestige || {}) };
+  const whole = value => {
+    const n = typeof value === 'number' || typeof value === 'string' ? Number(value) : 0;
+    return Number.isFinite(n) ? Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n))) : 0;
+  };
+  const xp = { ...DEFAULTS }, prestige = {};
+  for (const { key } of DEFS) {
+    xp[key] = whole(saved && saved[key]);
+    const stars = whole(savedPrestige && savedPrestige[key]);
+    if (stars > 0) prestige[key] = stars;
+  }
+  const known = key => Object.hasOwn(DEFAULTS, key);
   return {
     DEFS,
     xp,
     level(key) { return levelForXp(xp[key] || 0); },
     progress(key) {
       const l = levelForXp(xp[key] || 0);
+      if (l === 99) return 1;
       const cur = xpForLevel(l), next = xpForLevel(l + 1);
       return next > cur ? clamp(((xp[key] || 0) - cur) / (next - cur), 0, 1) : 1;
     },
-    toNext(key) { const l = levelForXp(xp[key] || 0); return Math.max(0, xpForLevel(l + 1) - (xp[key] || 0)); },
+    toNext(key) { const l = levelForXp(xp[key] || 0); return l === 99 ? 0 : Math.max(0, xpForLevel(l + 1) - (xp[key] || 0)); },
     prestigeOf(key) { return prestige[key] || 0; },
-    canPrestige(key) { return levelForXp(xp[key] || 0) >= PRESTIGE_AT; },
+    canPrestige(key) { return known(key) && levelForXp(xp[key] || 0) >= PRESTIGE_AT; },
     doPrestige(key) {
-      if (levelForXp(xp[key] || 0) < PRESTIGE_AT) return false;
+      if (!known(key) || levelForXp(xp[key] || 0) < PRESTIGE_AT) return false;
       xp[key] = 0; prestige[key] = (prestige[key] || 0) + 1; return true;
     },
     addXp(key, amount) {
-      amount = Math.round(amount * (1 + 0.08 * (prestige[key] || 0)));
       const before = levelForXp(xp[key] || 0);
-      xp[key] = (xp[key] || 0) + amount;
+      if (!known(key) || !Number.isFinite(amount) || amount <= 0) return { leveled: false, level: before, amount: 0 };
+      amount = Math.min(Number.MAX_SAFE_INTEGER - xp[key], Math.round(amount * (1 + 0.08 * (prestige[key] || 0))));
+      xp[key] += amount;
       const after = levelForXp(xp[key]);
       return { leveled: after > before, level: after, amount };
     },

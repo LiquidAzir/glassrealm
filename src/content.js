@@ -1765,7 +1765,7 @@ function finaleNode(G, name, src, qid) {
     return node(name, body, src.choices.map((ch) => ({
       label: ch.label,
       action: (g) => {
-        g.quests.complete(qid);
+        if (!g.quests.complete(qid)) return false;
         if (ch.grant) for (const k in ch.grant) g.inventory.add(k, ch.grant[k]);
         if (g.sagaChoice) g.sagaChoice(qid, ch.outcome); else (g.sagaChoices || (g.sagaChoices = {}))[qid] = ch.outcome;
         if (ch.say && g.ui && g.ui.toast) g.ui.toast(ch.say, 'good', 4600);

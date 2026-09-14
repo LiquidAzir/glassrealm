@@ -359,12 +359,32 @@ export function createWorld(scene, seed = 1337) {
   geo.rotateX(-Math.PI / 2); geo.translate(CX, 0, CZ);
   const pa = geo.attributes.position;
   for (let i = 0; i < pa.count; i++) pa.setY(i, height(pa.getX(i), pa.getZ(i)));
-  // Decorations follow the actual rendered triangles, including their diagonals.
-  // This avoids hovering paths on a coarse heightfield without changing collision.
+  // Keep the original lattice and all legacy height/RNG calls intact. Expansion
+  // regions need additional tiles beyond that old square, sampled independently.
+  const TERRAIN_STEP=SIZE/SEG, TERRAIN_X=CX-SIZE/2, TERRAIN_Z=CZ-SIZE/2;
+  const terrainBounds={
+    minIX:Math.min(0,Math.floor((Math.min(...REGIONS.map(r=>r.x-r.r))-12-TERRAIN_X)/TERRAIN_STEP)),
+    maxIX:Math.max(SEG,Math.ceil((Math.max(...REGIONS.map(r=>r.x+r.r))+12-TERRAIN_X)/TERRAIN_STEP)),
+    minIZ:Math.min(0,Math.floor((Math.min(...REGIONS.map(r=>r.z-r.r))-12-TERRAIN_Z)/TERRAIN_STEP)),
+    maxIZ:Math.max(SEG,Math.ceil((Math.max(...REGIONS.map(r=>r.z+r.r))+12-TERRAIN_Z)/TERRAIN_STEP)),
+  };
+  terrainBounds.minX=TERRAIN_X+terrainBounds.minIX*TERRAIN_STEP;terrainBounds.maxX=TERRAIN_X+terrainBounds.maxIX*TERRAIN_STEP;
+  terrainBounds.minZ=TERRAIN_Z+terrainBounds.minIZ*TERRAIN_STEP;terrainBounds.maxZ=TERRAIN_Z+terrainBounds.maxIZ*TERRAIN_STEP;
+  const terrainContains=(x,z)=>Number.isFinite(x)&&Number.isFinite(z)&&x>=terrainBounds.minX&&x<=terrainBounds.maxX&&z>=terrainBounds.minZ&&z<=terrainBounds.maxZ;
+  const outerHeights=new Map();
+  function gridHeight(ix,iz){
+    if(ix>=0&&ix<=SEG&&iz>=0&&iz<=SEG)return pa.getY(iz*(SEG+1)+ix);
+    const key=ix+','+iz;if(outerHeights.has(key))return outerHeights.get(key);
+    const y=Math.fround(_heightRaw(Math.fround(TERRAIN_X+ix*TERRAIN_STEP),Math.fround(TERRAIN_Z+iz*TERRAIN_STEP)));
+    outerHeights.set(key,y);return y;
+  }
+  // Decorations and runtime navigation follow the rendered triangles, including
+  // their diagonals. Legacy generation still uses height(), preserving saves.
   const surfaceHeight = (x, z) => {
-    const u = clamp((x-CX+SIZE/2)/SIZE*SEG,0,SEG-.0001), v = clamp((z-CZ+SIZE/2)/SIZE*SEG,0,SEG-.0001);
-    const ix = Math.floor(u), iz = Math.floor(v), fx = u-ix, fz = v-iz, a = iz*(SEG+1)+ix;
-    const h00=pa.getY(a),h10=pa.getY(a+1),h01=pa.getY(a+SEG+1),h11=pa.getY(a+SEG+2);
+    if(!terrainContains(x,z))return -1.6;
+    const u = clamp((x-TERRAIN_X)/TERRAIN_STEP,terrainBounds.minIX,terrainBounds.maxIX-.0000001), v = clamp((z-TERRAIN_Z)/TERRAIN_STEP,terrainBounds.minIZ,terrainBounds.maxIZ-.0000001);
+    const ix = Math.floor(u), iz = Math.floor(v), fx = u-ix, fz = v-iz;
+    const h00=gridHeight(ix,iz),h10=gridHeight(ix+1,iz),h01=gridHeight(ix,iz+1),h11=gridHeight(ix+1,iz+1);
     return fx+fz<=1 ? h00+(h10-h00)*fx+(h01-h00)*fz : h11+(h01-h11)*(1-fx)+(h10-h11)*(1-fz);
   };
   geo = geo.toNonIndexed(); geo.computeVertexNormals();
@@ -399,6 +419,21 @@ export function createWorld(scene, seed = 1337) {
   for (let i=0;i<p.count;i++){terrainUV[i*2]=p.getX(i)/12;terrainUV[i*2+1]=p.getZ(i)/12;}
   geo.setAttribute('uv',new THREE.BufferAttribute(terrainUV,2));
   chunkTerrain(group,geo,new THREE.MeshLambertMaterial({vertexColors:true,map:groundTexture('grass'),flatShading:true}));
+  {
+    const positions=[],tints=[],uvs=[];
+    const append=(ia,ja,ib,jb,ic,jc)=>{
+      const coords=[[ia,ja],[ib,jb],[ic,jc]],ys=coords.map(([i,j])=>gridHeight(i,j));
+      const cx=TERRAIN_X+(ia+ib+ic)/3*TERRAIN_STEP,cz=TERRAIN_Z+(ja+jb+jc)/3*TERRAIN_STEP,h=(ys[0]+ys[1]+ys[2])/3,bi=BIOMES[biomeAt(cx,cz)];
+      const color=new THREE.Color(h<-.2?bi.sea:h<.9?bi.sand:h<5?bi.low:h<8.2?bi.high:bi.peak);
+      for(let n=0;n<3;n++){const x=TERRAIN_X+coords[n][0]*TERRAIN_STEP,z=TERRAIN_Z+coords[n][1]*TERRAIN_STEP;positions.push(x,ys[n],z);tints.push(color.r,color.g,color.b);uvs.push(x/12,z/12);}
+    };
+    for(let iz=terrainBounds.minIZ;iz<terrainBounds.maxIZ;iz++)for(let ix=terrainBounds.minIX;ix<terrainBounds.maxIX;ix++){
+      if(ix>=0&&ix<SEG&&iz>=0&&iz<SEG)continue;
+      append(ix,iz,ix,iz+1,ix+1,iz);append(ix+1,iz,ix,iz+1,ix+1,iz+1);
+    }
+    const extension=new THREE.BufferGeometry();extension.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));extension.setAttribute('color',new THREE.Float32BufferAttribute(tints,3));extension.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));extension.computeVertexNormals();
+    chunkTerrain(group,extension,new THREE.MeshLambertMaterial({vertexColors:true,map:groundTexture('grass'),flatShading:true}));
+  }
 
   // Sea: a faintly self-lit surface (reads as luminous water on the additive display) that ripples on
   // the GPU — a subdivided plane displaced by crossed sine waves in the vertex shader.
@@ -574,8 +609,9 @@ export function createWorld(scene, seed = 1337) {
   group.add(cactusIM, cactusArmIM);
 
   // rocks
+  const instanceTop=(geometry,matrix)=>{const p=geometry.attributes.position,m=matrix.elements;let top=-Infinity;for(let i=0;i<p.count;i++)top=Math.max(top,m[1]*p.getX(i)+m[5]*p.getY(i)+m[9]*p.getZ(i)+m[13]);return top;};
   const rockIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x8b96a3, flatShading: true }), Math.max(rocks.length, 1));
-  rocks.forEach((rk, i) => { dummy.position.set(rk.x, rk.y + rk.s * 0.4, rk.z); dummy.scale.set(rk.s, rk.s * 0.8, rk.s); dummy.rotation.set(rng(), rng() * TAU, rng()); dummy.updateMatrix(); rockIM.setMatrixAt(i, dummy.matrix); });
+  rocks.forEach((rk, i) => { dummy.position.set(rk.x, rk.y + rk.s * 0.4, rk.z); dummy.scale.set(rk.s, rk.s * 0.8, rk.s); dummy.rotation.set(rng(), rng() * TAU, rng()); dummy.updateMatrix(); rockIM.setMatrixAt(i, dummy.matrix); rk.visualTop=instanceTop(rockIM.geometry,dummy.matrix); });
   group.add(rockIM);
 
   // bushes
@@ -586,7 +622,7 @@ export function createWorld(scene, seed = 1337) {
   // ore
   const oreCol = { copper: 0xc87a3a, iron: 0xb9a99a, coal: 0x6c6f7a, mithril: 0x5a8fc0, gem_rock: 0x6fe0ff, essence: 0xb98fff, silver: 0xc8d0dc, gold: 0xf4d24a, adamant: 0x4f8a68, runite: 0x4aa8c0 };
   const oreIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.85, 0), new THREE.MeshLambertMaterial({ flatShading: true }), Math.max(oreNodes.length, 1));
-  oreNodes.forEach((o, i) => { dummy.position.set(o.x, o.y + 0.5, o.z); dummy.scale.set(1, 1.2, 1); dummy.rotation.set(rng(), rng() * TAU, rng()); dummy.updateMatrix(); oreIM.setMatrixAt(i, dummy.matrix); oreIM.setColorAt(i, tmpC.setHex(oreCol[o.type] || 0x999999)); o.idx = i; });
+  oreNodes.forEach((o, i) => { dummy.position.set(o.x, o.y + 0.5, o.z); dummy.scale.set(1, 1.2, 1); dummy.rotation.set(rng(), rng() * TAU, rng()); dummy.updateMatrix(); oreIM.setMatrixAt(i, dummy.matrix); oreIM.setColorAt(i, tmpC.setHex(oreCol[o.type] || 0x999999)); o.idx = i; o.visualTop=instanceTop(oreIM.geometry,dummy.matrix); });
   group.add(oreIM);
 
   // fishing spots (per region shore)
@@ -1244,7 +1280,7 @@ export function createWorld(scene, seed = 1337) {
   for (const t of trees) solids.push({ x: t.x, z: t.z, r: 0.7, ref: t });
   for (const c of cacti) solids.push({ x: c.x, z: c.z, r: 0.6 });
   for (const o of oreNodes) solids.push({ x: o.x, z: o.z, r: 0.95, ref: o });   // re-blocks when the node respawns (o.alive)
-  for (const rk of rocks) if (rk.s > 0.7) solids.push({ x: rk.x, z: rk.z, r: 0.5 + rk.s * 0.4 });   // only the larger boulders
+  for (const rk of rocks) if (rk.s > 0.7) solids.push({ x: rk.x, z: rk.z, r: 0.5 + rk.s * 0.4, maxY:rk.visualTop });   // only the larger boulders
   const BLOCK_DISC = { obelisk: 1.0, tower: 1.0, statue: 1.0, lighthouse: 1.1, crystal: 0.9, well: 0.9, idol: 0.8, shrine: 0.7, cairn: 0.7, meteor: 1.0, wreck: 1.4 };
   for (const d of discoveries) { const r = BLOCK_DISC[d.kind]; if (r) solids.push({ x: d.x, z: d.z, r }); }
 
@@ -1268,16 +1304,46 @@ export function createWorld(scene, seed = 1337) {
       }
     }
   }
-  function inSolidGrid(x, z) {
-    const cx = Math.floor(x / GRID_CELL), cz = Math.floor(z / GRID_CELL);
-    const cell = solidGrid[_gridKey(cx, cz)];
-    if (!cell) return false;
-    for (let i = 0; i < cell.length; i++) { const o = cell[i]; if (o.ref && !o.ref.alive) continue; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return true; }
+  function inSolidGrid(x, z, radius=0) {
+    if(!Number.isFinite(x)||!Number.isFinite(z))return true;
+    radius=Math.max(0,radius);
+    const minX=Math.floor((x-radius)/GRID_CELL),maxX=Math.floor((x+radius)/GRID_CELL),minZ=Math.floor((z-radius)/GRID_CELL),maxZ=Math.floor((z+radius)/GRID_CELL);
+    let footY;
+    for(let cx=minX;cx<=maxX;cx++)for(let cz=minZ;cz<=maxZ;cz++){
+      const cell=solidGrid[_gridKey(cx,cz)];if(!cell)continue;
+      for(const o of cell){if(o.ref&&!o.ref.alive)continue;const dx=x-o.x,dz=z-o.z,r=o.r+radius;if(dx*dx+dz*dz>=r*r-1e-9)continue;const top=o.maxY??o.ref?.visualTop;if(radius>0&&Number.isFinite(top)){if(footY===undefined)footY=walkHeight(x,z);if(footY!==null&&top<footY-.02)continue;}return true;}
+    }
+    return false;
+  }
+  function segmentHitsSolid(ax,az,bx,bz,radius){
+    const dx=bx-ax,dz=bz-az,len2=dx*dx+dz*dz;
+    const minX=Math.floor((Math.min(ax,bx)-radius)/GRID_CELL),maxX=Math.floor((Math.max(ax,bx)+radius)/GRID_CELL),minZ=Math.floor((Math.min(az,bz)-radius)/GRID_CELL),maxZ=Math.floor((Math.max(az,bz)+radius)/GRID_CELL);
+    for(let cx=minX;cx<=maxX;cx++)for(let cz=minZ;cz<=maxZ;cz++){
+      const cell=solidGrid[_gridKey(cx,cz)];if(!cell)continue;
+      for(const o of cell){
+        if(o.ref&&!o.ref.alive)continue;
+        const rawT=len2?((o.x-ax)*dx+(o.z-az)*dz)/len2:0,t=clamp(rawT,0,1),ox=ax+t*dx-o.x,oz=az+t*dz-o.z,r=o.r+radius;
+        if(ox*ox+oz*oz>=r*r-1e-9)continue;
+        const top=o.maxY??o.ref?.visualTop;
+        if(radius>0&&Number.isFinite(top)){
+          const lx=ax+rawT*dx-o.x,lz=az+rawT*dz-o.z,span=len2?Math.sqrt(Math.max(0,(r*r-lx*lx-lz*lz)/len2)):0;
+          let reachesBody=false;
+          for(const at of [clamp(rawT-span,0,1),t,clamp(rawT+span,0,1)]){const y=walkHeight(ax+at*dx,az+at*dz);if(y===null||top>=y-.02){reachesBody=true;break;}}
+          if(!reachesBody)continue;
+        }
+        return true;
+      }
+    }
     return false;
   }
   // find a spot that's both walkable AND clear of solids — used by teleports so you never land stuck inside an obstacle
   function inSolid(x, z) { return inSolidGrid(x, z); }
-  function findClear(x, z) { if (isWalkable(x, z) && !inSolid(x, z)) return { x, z }; for (let r = 2; r <= 40; r += 2) for (let a = 0; a < TAU; a += TAU / 16) { const nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r; if (isWalkable(nx, nz) && !inSolid(nx, nz)) return { x: nx, z: nz }; } return { x, z }; }
+  function findClear(x,z,radius=.28,extraBlocked=null){
+    if(!Number.isFinite(x)||!Number.isFinite(z))return null;
+    if(canStand(x,z,radius,extraBlocked))return{x,z};
+    for(let ring=.5;ring<=40;ring+=ring<4?.5:1.5){const n=Math.max(16,Math.ceil(TAU*ring/1.2));for(let i=0;i<n;i++){const a=i*TAU/n,nx=x+Math.cos(a)*ring,nz=z+Math.sin(a)*ring;if(canStand(nx,nz,radius,extraBlocked))return{x:nx,z:nz};}}
+    return null;
+  }
 
   // Player house at Hearth Village — a Bed to rest + boss trophy pedestals.
   const trophyMeshes = {};
@@ -1430,7 +1496,7 @@ export function createWorld(scene, seed = 1337) {
 
   // crossing visuals vary by type: a grand stone-arch span, a rustic plank causeway, a
   // natural isthmus (blended land), or a FERRY (a dock at each shore + a boat shuttling the sea-lane).
-  const ferries = [], ferryBoats = [];
+  const ferries = [], ferryBoats = [], oldCrossingDecks=[], crossingFixtures=[], vineAnchors=[];
   function dock(x, z) {
     const y = height(x, z);
     const plat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 6), lmat(0x6a4a2a)); plat.position.set(x, Math.max(y, 1.0) + 0.2, z); group.add(plat);
@@ -1444,8 +1510,9 @@ export function createWorld(scene, seed = 1337) {
     for (let i = 0; i <= N; i++) {
       const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, y = height(px, pz);
       const plate = new THREE.Mesh(new THREE.BoxGeometry(cfg.w, 0.34, segLen), cfg.deckMat); plate.position.set(px, y + 0.02, pz); plate.rotation.y = ang; group.add(plate);
-      if (cfg.railMat && i % 2 === 0) for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, cfg.railH, 0.2), cfg.railMat); post.position.set(px + ex * s * (cfg.w / 2), y + cfg.railH / 2, pz + ez * s * (cfg.w / 2)); group.add(post); }
-      if (cfg.lampEvery && i % cfg.lampEvery === 0) { const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: cfg.lampColor || 0xffd47a })); lamp.position.set(px + ex * (cfg.w / 2 + 0.1), y + cfg.railH + 0.3, pz + ez * (cfg.w / 2 + 0.1)); group.add(lamp); }
+      oldCrossingDecks.push(plate);
+      if (cfg.railMat && i % 2 === 0) for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, cfg.railH, 0.2), cfg.railMat); post.position.set(px + ex * s * (cfg.w / 2), y + cfg.railH / 2, pz + ez * s * (cfg.w / 2)); group.add(post); crossingFixtures.push({mesh:post,b,px,pz,offset:cfg.railH/2}); }
+      if (cfg.lampEvery && i % cfg.lampEvery === 0) { const lamp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: cfg.lampColor || 0xffd47a })); lamp.position.set(px + ex * (cfg.w / 2 + 0.1), y + cfg.railH + 0.3, pz + ez * (cfg.w / 2 + 0.1)); group.add(lamp); crossingFixtures.push({mesh:lamp,b,px,pz,offset:cfg.railH+.3}); }
     }
   }
   for (const b of BRIDGES) {
@@ -1491,14 +1558,14 @@ export function createWorld(scene, seed = 1337) {
       layDeck(b, ang, ex, ez, { w: 5.2, deckMat: lmat(0xb08a55), railMat: lmat(0x8a6a45), railH: 0.9, lampEvery: 3, lampColor: 0xffd47a });   // stilted timber boardwalk + harbour lanterns
     } else if (b.type === 'vinespan') {   // swaying vine/slat canopy bridge slung between anchor-trees + glowing blossoms
       const N = Math.max(10, Math.round(len / 2));
-      for (let i = 0; i <= N; i++) { const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, yy = height(px, pz); const slat = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 0.6), lmat(0x7a5a32)); slat.position.set(px, yy + 0.1, pz); slat.rotation.y = ang; group.add(slat); if (i % 3 === 0) { const bl = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), new THREE.MeshBasicMaterial({ color: i % 6 === 0 ? 0xff5aa0 : 0x7fffd0 })); bl.position.set(px + ex * 1.1, yy + 0.9, pz + ez * 1.1); group.add(bl); } }
-      for (const e2 of [[b.ax, b.az], [b.bx, b.bz]]) { const yy = height(e2[0], e2[1]); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 5, 7), lmat(0x5a3a22)); tr.position.set(e2[0], yy + 2.5, e2[1]); group.add(tr); const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(2, 0), lmat(0x2f7a3a)); leaf.position.set(e2[0], yy + 5.5, e2[1]); group.add(leaf); solids.push({ x: e2[0], z: e2[1], r: 0.8 }); }
+      for (let i = 0; i <= N; i++) { const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, yy = height(px, pz); const slat = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 0.6), lmat(0x7a5a32)); slat.position.set(px, yy + 0.1, pz); slat.rotation.y = ang; group.add(slat); oldCrossingDecks.push(slat); if (i % 3 === 0) { const bl = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), new THREE.MeshBasicMaterial({ color: i % 6 === 0 ? 0xff5aa0 : 0x7fffd0 })); bl.position.set(px + ex * 1.1, yy + 0.9, pz + ez * 1.1); group.add(bl); } }
+      for (const e2 of [[b.ax, b.az], [b.bx, b.bz]]) { const yy = height(e2[0], e2[1]); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 5, 7), lmat(0x5a3a22)); tr.position.set(e2[0], yy + 2.5, e2[1]); group.add(tr); const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(2, 0), lmat(0x2f7a3a)); leaf.position.set(e2[0], yy + 5.5, e2[1]); group.add(leaf); vineAnchors.push({tr,leaf,b,ex,ez,x:e2[0],z:e2[1]}); solids.push({ x: e2[0], z: e2[1], r: 0.8 }); }
     } else if (b.type === 'iceshelf') {   // cracked pack-ice plates with glowing turquoise crack-lines + pressure ridges
       const N = Math.max(8, Math.round(len / 6));
-      for (let i = 0; i <= N; i++) { const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, off = (((i * 1.7) % 3) - 1.5) * 2; const plate = new THREE.Mesh(new THREE.BoxGeometry(5, 0.25, 5), lmat(0xcfeaff)); plate.position.set(px + ex * off, height(px + ex * off, pz) + 0.12, pz); plate.rotation.y = i * 0.5; group.add(plate); const crack = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 4), new THREE.MeshBasicMaterial({ color: 0x7fe0ff })); crack.position.set(px, height(px, pz) + 0.18, pz); crack.rotation.y = ang + (i % 2 ? 0.6 : -0.6); group.add(crack); if (i % 3 === 1) { const ridge = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.6, 5), lmat(0xeaf6ff)); ridge.position.set(px + ex * 3, height(px + ex * 3, pz) + 0.6, pz); ridge.rotation.z = 0.3; group.add(ridge); } }
+      for (let i = 0; i <= N; i++) { const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, off = (((i * 1.7) % 3) - 1.5) * 2; const plate = new THREE.Mesh(new THREE.BoxGeometry(5, 0.25, 5), lmat(0xcfeaff)); plate.position.set(px + ex * off, height(px + ex * off, pz) + 0.12, pz); plate.rotation.y = i * 0.5; group.add(plate); oldCrossingDecks.push(plate); const crack = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 4), new THREE.MeshBasicMaterial({ color: 0x7fe0ff })); crack.position.set(px, height(px, pz) + 0.18, pz); crack.rotation.y = ang + (i % 2 ? 0.6 : -0.6); group.add(crack); crossingFixtures.push({mesh:crack,b,px,pz,offset:.025}); if (i % 3 === 1) { const ridge = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.6, 5), lmat(0xeaf6ff)); ridge.position.set(px + ex * 3, height(px + ex * 3, pz) + 0.6, pz); ridge.rotation.z = 0.3; group.add(ridge); } }
     } else if (b.type === 'pass') {   // switchback gravel road up over the raised saddle + lantern posts + a crest arch
       const N = Math.max(8, Math.round(len / 4));
-      for (let i = 0; i <= N; i++) { const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, off = (i % 2 ? 1 : -1) * 2.0, rx = px + ex * off, rz = pz + ez * off, ry = height(rx, rz); const seg = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 4), lmat(0xbdb59f)); seg.position.set(rx, ry + 0.2, rz); seg.rotation.y = ang; group.add(seg); if (i % 2 === 0) { const lp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lp.position.set(rx, ry + 1.4, rz); group.add(lp); } }
+      for (let i = 0; i <= N; i++) { const t = i / N, px = b.ax + (b.bx - b.ax) * t, pz = b.az + (b.bz - b.az) * t, off = (i % 2 ? 1 : -1) * 2.0, rx = px + ex * off, rz = pz + ez * off, ry = height(rx, rz); const seg = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 4), lmat(0xbdb59f)); seg.position.set(rx, ry + 0.2, rz); seg.rotation.y = ang; group.add(seg); oldCrossingDecks.push(seg); if (i % 2 === 0) { const lp = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: 0xffd47a })); lp.position.set(rx, ry + 1.4, rz); group.add(lp); } }
       const cy = height(mx, mz); for (const s of [-1.6, 1.6]) { const pil = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 0.5), lmat(0xb8b2a0)); pil.position.set(mx + ex * s, cy + 2, mz + ez * s); group.add(pil); } const lintel = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 0.6), lmat(0xb8b2a0)); lintel.position.set(mx, cy + 4, mz); lintel.rotation.y = ang; group.add(lintel); const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: 0x9bf2ff })); cap.position.set(mx, cy + 4.5, mz); group.add(cap);
     } else {
       layDeck(b, ang, ex, ez, { w: 5.4, deckMat: lmat(0x8a6a45), railMat: lmat(0x5a4630), railH: 1.0, lampEvery: 0 });   // rustic plank causeway that rides the ramp
@@ -1619,23 +1686,117 @@ export function createWorld(scene, seed = 1337) {
   locations.push({ name: 'Cinderbreak Isle', x: byKey.cinderbreak.x, z: byKey.cinderbreak.z });
   function peakName(key) { return ({ verdant: 'North Peak', forest: 'Forest Tor', snow: 'Frostpeak', ember: 'Emberpeak', jungle: 'Kytari Spire', badlands: 'Red Mesa', highland: 'Thunderpeak', glade: 'Moonspire', amberfell: 'Amber Tor', shardspire: 'Prism Peak', skyreach: 'Aerie Spire', cinderbreak: 'Cinder Cone', sporevale: 'Spore Knoll' })[key] || 'Peak'; }
 
-  // Keep a clear lane down the centre of every land bridge: a stray tree/rock/prop that generated on a
-  // causeway must never block the crossing to a new region. Drop those solids so passage stays fluid.
-  // (Mutates `solids` in place so the collision list, `obstacles`, and the inSolid/findClear closures all agree.)
+  // Keep saved resources and visible props solid on crossings. Deleting their
+  // circles made the player walk through trunks and rocks. Only the decorative
+  // vine anchors move off the path, so their old circles are replaced below.
   (() => {
     const kept = solids.filter((s) => {
-      for (const b of BRIDGES) {
-        if (b.type === 'ferry') continue;
-        if (distToSeg(s.x, s.z, b.ax, b.az, b.bx, b.bz) < Math.min(b.halfW, 3.6) + (s.r || 0)) return false;   // within the central walking lane
-      }
+      if(!s.ref&&s.r===.8&&vineAnchors.some(a=>a.x===s.x&&a.z===s.z))return false;
       return true;
     });
     if (kept.length !== solids.length) { solids.length = 0; for (const k of kept) solids.push(k); }
   })();
+
+  // Runtime support is separate from the saved-world generator. Every crossing
+  // gets a continuous visible surface with exactly the same triangle sampler.
+  const crossingProfiles=[],crossingGrid=new Map(),CROSS_CELL=24;
+  const crossingWidths={causeway:2.7,span:2.4,pier:2.6,vinespan:1.4,isthmus:4.4,pass:2.2,iceshelf:2.7};
+  const crossingColors={causeway:0x8a6a45,span:0xcfc7b4,pier:0xb08a55,vinespan:0x7a5a32,pass:0xbdb59f,iceshelf:0xcfeaff};
+  const profileByBridge=new Map();
+  const landing=(x,z,cx,cz)=>{
+    const dx=cx-x,dz=cz-z,d=Math.hypot(dx,dz)||1;
+    for(let s=0;s<=18;s+=1.5){const nx=x+dx/d*s,nz=z+dz/d*s;if(surfaceHeight(nx,nz)>.75)return{x:nx,z:nz};}
+    return{x,z};
+  };
+  for(const b of LAND_BRIDGES){
+    const A=landing(b.ax,b.az,b.acx,b.acz),B=landing(b.bx,b.bz,b.bcx,b.bcz),dx=B.x-A.x,dz=B.z-A.z,length=Math.hypot(dx,dz);
+    if(length<.1)continue;
+    const ux=dx/length,uz=dz/length,ex=uz,ez=-ux,halfWidth=crossingWidths[b.type]||2.7;
+    const banks=b.type==='isthmus',sides=banks?[-halfWidth-2,-halfWidth,0,halfWidth,halfWidth+2]:[-halfWidth,halfWidth],rows=Math.max(4,Math.ceil(length/1.5)),ys=[];
+    const profile={b,ax:A.x,az:A.z,bx:B.x,bz:B.z,length,ux,uz,ex,ez,halfWidth,sides,rows,ys,rails:['causeway','span','pier','vinespan'].includes(b.type),bankMargin:Math.min(5,length*.22)};
+    for(let i=0;i<=rows;i++){
+      const t=i/rows,x=A.x+dx*t,z=A.z+dz*t,ground=surfaceHeight(x,z),edge=Math.min(1,Math.min(i,rows-i)/2);
+      const high=Math.max(ground,surfaceHeight(x+ex*halfWidth,z+ez*halfWidth),surfaceHeight(x-ex*halfWidth,z-ez*halfWidth));
+      const target=Math.max(.62,high+.045,_heightRaw(x,z)+(banks?.035:.19)),deck=ground+.025+(target-ground-.025)*edge;
+      for(const side of sides)ys.push(Math.fround(banks&&Math.abs(side)>halfWidth?surfaceHeight(x+ex*side,z+ez*side)+.02:deck));
+    }
+    const positions=[],uvs=[],colors=[],count=sides.length;
+    const vertex=(i,j)=>[A.x+dx*i/rows+ex*sides[j],ys[i*count+j],A.z+dz*i/rows+ez*sides[j]];
+    const addTriangle=(a,b2,c2)=>{for(const v of [a,b2,c2]){positions.push(...v);uvs.push(v[0]/3,v[2]/3);if(banks){const color=new THREE.Color(BIOMES[biomeAt(v[0],v[2])].low);colors.push(color.r,color.g,color.b);}}};
+    for(let i=0;i<rows;i++)for(let j=0;j<count-1;j++){
+      const a=vertex(i,j),b2=vertex(i+1,j),c2=vertex(i,j+1),d2=vertex(i+1,j+1);addTriangle(a,b2,c2);addTriangle(c2,b2,d2);
+    }
+    if(!banks)for(let i=0;i<rows;i++)for(const j of [0,count-1]){
+      const a=vertex(i,j),b2=vertex(i+1,j),c2=[a[0],a[1]-.2,a[2]],d2=[b2[0],b2[1]-.2,b2[2]];
+      if(j===0){addTriangle(a,c2,b2);addTriangle(b2,c2,d2);}else{addTriangle(a,b2,c2);addTriangle(b2,d2,c2);}
+    }
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));if(banks)geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geometry.computeVertexNormals();
+    const material=new THREE.MeshLambertMaterial({color:banks?0xffffff:crossingColors[b.type]||0x8a6a45,vertexColors:banks,map:groundTexture(banks?'grass':b.type==='span'||b.type==='pass'||b.type==='iceshelf'?'paving':'planks'),flatShading:true});
+    const mesh=new THREE.Mesh(geometry,material);mesh.name='Crossing surface';mesh.userData.crossingType=b.type;mesh.userData.navigationSupport=true;group.add(mesh);
+    crossingProfiles.push(profile);profileByBridge.set(b,profile);
+    const reach=Math.max(...sides.map(Math.abs))+1;
+    for(let cx=Math.floor((Math.min(A.x,B.x)-reach)/CROSS_CELL);cx<=Math.floor((Math.max(A.x,B.x)+reach)/CROSS_CELL);cx++)for(let cz=Math.floor((Math.min(A.z,B.z)-reach)/CROSS_CELL);cz<=Math.floor((Math.max(A.z,B.z)+reach)/CROSS_CELL);cz++){
+      const key=cx+','+cz;if(!crossingGrid.has(key))crossingGrid.set(key,[]);crossingGrid.get(key).push(profile);
+    }
+    if(profile.rails){
+      const railVertices=[];
+      const quad=(a,b2,c2,d2)=>railVertices.push(...a,...b2,...c2,...c2,...b2,...d2);
+      for(let i=0;i<rows;i++){
+        if(i/rows*length<profile.bankMargin||(i+1)/rows*length>length-profile.bankMargin)continue;
+        for(const side of [-1,1]){
+          const row=(r,off,y)=>[A.x+dx*r/rows+ex*(side*halfWidth+off),ys[r*count]+y,A.z+dz*r/rows+ez*(side*halfWidth+off)];
+          const a=row(i,-.055,.67),b2=row(i+1,-.055,.67),c2=row(i,.055,.67),d2=row(i+1,.055,.67),e=row(i,-.055,.56),f=row(i+1,-.055,.56),h=row(i,.055,.56),k=row(i+1,.055,.56);
+          quad(a,b2,c2,d2);quad(e,h,f,k);quad(a,e,b2,f);quad(c2,d2,h,k);
+        }
+      }
+      const railGeometry=new THREE.BufferGeometry();railGeometry.setAttribute('position',new THREE.Float32BufferAttribute(railVertices,3));railGeometry.computeVertexNormals();const rail=new THREE.Mesh(railGeometry,new THREE.MeshLambertMaterial({color:b.type==='span'?0xb8b09a:0x725338,flatShading:true}));rail.name='Crossing rail';group.add(rail);
+    }
+  }
+  for(const mesh of oldCrossingDecks){group.remove(mesh);mesh.geometry.dispose();}
+  function crossingHeight(p,x,z){
+    const ox=x-p.ax,oz=z-p.az,along=ox*p.ux+oz*p.uz,side=ox*p.ex+oz*p.ez;
+    if(along<0||along>p.length||side<p.sides[0]||side>p.sides[p.sides.length-1])return null;
+    const row=Math.min(p.rows-1,Math.floor(along/p.length*p.rows)),fz=along/p.length*p.rows-row;
+    let col=0;while(col<p.sides.length-2&&side>p.sides[col+1])col++;
+    const fx=(side-p.sides[col])/(p.sides[col+1]-p.sides[col]),n=p.sides.length,a=row*n+col,h00=p.ys[a],h10=p.ys[a+1],h01=p.ys[a+n],h11=p.ys[a+n+1];
+    return fx+fz<=1?h00+(h10-h00)*fx+(h01-h00)*fz:h11+(h01-h11)*(1-fx)+(h10-h11)*(1-fz);
+  }
+  const nearbyCrossings=(x,z)=>crossingGrid.get(Math.floor(x/CROSS_CELL)+','+Math.floor(z/CROSS_CELL))||[];
+  function walkHeight(x,z){
+    if(!terrainContains(x,z))return null;
+    let y=surfaceHeight(x,z);for(const p of nearbyCrossings(x,z)){const deck=crossingHeight(p,x,z);if(deck!==null)y=Math.max(y,deck);}return y;
+  }
+  for(const f of crossingFixtures){const p=profileByBridge.get(f.b);if(p){const y=crossingHeight(p,f.px,f.pz);if(y!==null)f.mesh.position.y=y+f.offset;}}
+  for(const anchor of vineAnchors){
+    const x=anchor.x+anchor.ex*2,z=anchor.z+anchor.ez*2,y=surfaceHeight(x,z);
+    anchor.tr.position.set(x,y+2.5,z);anchor.leaf.position.set(x,y+5.5,z);solids.push({x,z,r:.7});
+  }
+  const FOOT_OFFSETS=[[1,0],[-1,0],[0,1],[0,-1],[Math.SQRT1_2,Math.SQRT1_2],[-Math.SQRT1_2,Math.SQRT1_2],[Math.SQRT1_2,-Math.SQRT1_2],[-Math.SQRT1_2,-Math.SQRT1_2]];
+  const NAV_DRY=.48,MAX_SLOPE=1.35,MAX_STEP=.30;
+  function railBlocked(x,z,radius){
+    for(const p of nearbyCrossings(x,z))if(p.rails){const ox=x-p.ax,oz=z-p.az,along=ox*p.ux+oz*p.uz,side=Math.abs(ox*p.ex+oz*p.ez);if(along>p.bankMargin&&along<p.length-p.bankMargin&&side+radius>p.halfWidth-.055&&side-radius<p.halfWidth+.055)return true;}
+    return false;
+  }
+  function terrainStand(x,z,radius){
+    const y=walkHeight(x,z);if(y===null||y<NAV_DRY||railBlocked(x,z,radius))return false;
+    for(const [dx,dz] of FOOT_OFFSETS){const h=walkHeight(x+dx*radius,z+dz*radius);if(h===null||h<NAV_DRY||Math.abs(h-y)>radius*MAX_SLOPE+.025)return false;}
+    return true;
+  }
+  function canStand(x,z,radius=.28,extraBlocked=null){
+    if(!Number.isFinite(radius)||radius<0)return false;
+    return terrainStand(x,z,radius)&&!inSolidGrid(x,z,radius)&&!(extraBlocked&&extraBlocked(x,z,radius));
+  }
+  function canTraverse(ax,az,bx,bz,radius=.28,extraBlocked=null){
+    if(![ax,az,bx,bz,radius].every(Number.isFinite)||radius<0)return false;
+    const distance=Math.hypot(bx-ax,bz-az);if(distance>512||segmentHitsSolid(ax,az,bx,bz,radius))return false;
+    const n=Math.max(1,Math.ceil(distance/.2));let previous=walkHeight(ax,az);if(previous===null)return false;
+    for(let i=1;i<=n;i++){const t=i/n,x=ax+(bx-ax)*t,z=az+(bz-az)*t,y=walkHeight(x,z);if(y===null||Math.abs(y-previous)>MAX_STEP+MAX_SLOPE*distance/n||!terrainStand(x,z,radius)||(extraBlocked&&extraBlocked(x,z,radius)))return false;previous=y;}
+    return true;
+  }
   buildSolidGrid();   // PERF: build spatial hash after all static solids + bridge clearing
 
   const zero = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
-  function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }
+  function setOreScale(o, s) { dummy.position.set(o.x, o.y + 0.5 * s, o.z); dummy.scale.set(s, 1.2 * s, s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); oreIM.setMatrixAt(o.idx, dummy.matrix); o.visualTop=instanceTop(oreIM.geometry,dummy.matrix); oreIM.instanceMatrix.needsUpdate = true; }
 
   const dynSolids = [];   // PERF: dynamic entity solids (NPCs/mobs/animals) — separate from grid-indexed statics
   // PERF: BATCH static decorative props into one vertex-coloured mesh PER REGION. Only meshes that are
@@ -1741,7 +1902,8 @@ export function createWorld(scene, seed = 1337) {
     }
   }
   return {
-    group, height, surfaceHeight, isWalkable, WATER_Y, visualBuildings, updateView, isLabelOccluded,
+    group, height, surfaceHeight, walkHeight, canStand, canTraverse, isWalkable, WATER_Y, visualBuildings, updateView, isLabelOccluded,
+    navigation:{bounds:terrainBounds,waterClearance:NAV_DRY,maxSlope:MAX_SLOPE,crossings:crossingProfiles},
     village: VILLAGE_A,
     villages: villages.map((v) => ({ name: v.name, x: v.x, z: v.z })),
     regions: REGIONS, biomes: BIOMES, isles: REGIONS, bridges: BRIDGES, bridge: BRIDGES[0],
@@ -1766,7 +1928,14 @@ export function createWorld(scene, seed = 1337) {
     depleteOre(o) { if (!o.alive) return; o.alive = false; o.respawn = 14; setOreScale(o, 0.32); },
     depleteHive(h) { if (!h.alive) return; h.alive = false; h.respawn = 22; if (h.mesh) h.mesh.scale.setScalar(0.35); },
     plantPlot(pl) { pl.state = 'growing'; pl.grow = GROW; plotVisual(pl); },
-    harvestPlot(pl) { pl.state = 'empty'; plotVisual(pl); },
+    harvestPlot(pl) { pl.state = 'empty'; pl.grow = 0; pl.crop = null; plotVisual(pl); },
+    restorePlot(saved) {
+      const pl = plots[saved.idx];
+      if (!pl || !['growing', 'grown'].includes(saved.state)) return;
+      pl.crop = saved.crop; pl.grow = Math.max(0, Math.min(GROW, saved.grow || 0));
+      pl.state = saved.state === 'grown' || pl.grow === 0 ? 'grown' : 'growing';
+      plotVisual(pl);
+    },
     showTrophy(key) { const m = trophyMeshes[key]; if (m) m.forEach((x) => (x.visible = true)); },
     tick(dt) {
       animT += dt;

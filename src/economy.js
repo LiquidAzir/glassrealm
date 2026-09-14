@@ -8,7 +8,21 @@ const defOf = (k) => BUSINESSES.find((b) => b.key === k);
 
 export function createEconomy(saved) {
   const state = { businesses: {}, lastTick: Date.now() };
-  if (saved) { state.businesses = saved.businesses || {}; if (saved.lastTick) state.lastTick = saved.lastTick; }
+  const nonnegative = (value, fallback = 0) => {
+    const n = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+    return Number.isFinite(n) && n >= 0 ? Math.min(Number.MAX_SAFE_INTEGER, n) : fallback;
+  };
+  if (saved) {
+    state.lastTick = nonnegative(saved.lastTick, state.lastTick);
+    for (const def of BUSINESSES) {
+      const b = saved.businesses && saved.businesses[def.key];
+      if (!b || b.owned !== true) continue;
+      state.businesses[def.key] = {
+        owned: true, level: Math.max(1, Math.floor(nonnegative(b.level, 1))),
+        emp: Math.min(def.maxEmp, Math.floor(nonnegative(b.emp))), accrued: nonnegative(b.accrued),
+      };
+    }
+  }
 
   // net coin/min = (base output + employees·(boost − wage)) · level
   function netPerMin(key) {
@@ -20,12 +34,13 @@ export function createEconomy(saved) {
   // and periodically while playing)
   function accrue() {
     const now = Date.now();
-    let ms = now - (state.lastTick || now);
+    if (now <= state.lastTick) return;   // a clock correction must not repay an already counted interval
+    let ms = now - state.lastTick;
     state.lastTick = now;
     if (ms < 0) ms = 0;
     if (ms > CAP_MS) ms = CAP_MS;
     const min = ms / 60000;
-    for (const def of BUSINESSES) { const b = state.businesses[def.key]; if (b && b.owned) b.accrued = (b.accrued || 0) + netPerMin(def.key) * min; }
+    for (const def of BUSINESSES) { const b = state.businesses[def.key]; if (b && b.owned) b.accrued = Math.min(Number.MAX_SAFE_INTEGER, b.accrued + netPerMin(def.key) * min); }
   }
 
   return {
@@ -39,11 +54,11 @@ export function createEconomy(saved) {
     upgradeCost: (k) => { const def = defOf(k), b = state.businesses[k]; return def ? Math.round(def.foundCost * 0.8 * (b ? b.level : 1)) : 0; },
     hireCost: (k) => { const def = defOf(k), b = state.businesses[k]; return def ? Math.round(def.empBase * (1 + (b ? b.emp : 0) * 0.5)) : 0; },
     canHire: (k) => { const def = defOf(k), b = state.businesses[k]; return !!(def && b && b.owned && b.emp < def.maxEmp); },
-    found: (k) => { accrue(); if (!state.businesses[k]) state.businesses[k] = { owned: true, level: 1, emp: 0, accrued: 0 }; },
-    upgrade: (k) => { accrue(); const b = state.businesses[k]; if (b) b.level++; },
-    hire: (k) => { accrue(); const b = state.businesses[k]; if (b) b.emp++; },
-    collect: (k) => { accrue(); const b = state.businesses[k]; if (!b) return 0; const g = Math.floor(b.accrued || 0); b.accrued = 0; return g; },
+    found: (k) => { accrue(); if (!defOf(k) || state.businesses[k]) return false; state.businesses[k] = { owned: true, level: 1, emp: 0, accrued: 0 }; return true; },
+    upgrade: (k) => { accrue(); const b = state.businesses[k]; if (!b || !b.owned || b.level >= Number.MAX_SAFE_INTEGER) return false; b.level++; return true; },
+    hire: (k) => { accrue(); const b = state.businesses[k], def = defOf(k); if (!def || !b || !b.owned || b.emp >= def.maxEmp) return false; b.emp++; return true; },
+    collect: (k) => { accrue(); const b = state.businesses[k]; if (!b || !b.owned) return 0; const g = Math.floor(b.accrued); b.accrued -= g; return g; },
     tick: accrue,
-    serialize: () => ({ businesses: state.businesses, lastTick: state.lastTick }),
+    serialize: () => ({ businesses: Object.fromEntries(Object.entries(state.businesses).map(([key, b]) => [key, { ...b }])), lastTick: state.lastTick }),
   };
 }

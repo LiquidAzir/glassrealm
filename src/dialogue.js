@@ -5,7 +5,7 @@ import { DIALOGUE, NPC_GOSSIP, NPC_BRANCH } from './content.js';
 // Every NPC with an NPC_GOSSIP entry also gets an injected "Chat" branch → an
 // "Ask about…" topic menu (personality / lore / opinions about other NPCs).
 export function createDialogue(G) {
-  let treeId = null, current = null, choiceIdx = 0, onClose = null;
+  let treeId = null, current = null, choiceIdx = 0, onClose = null, revision = 0, selecting = false;
 
   const backChoices = [{ label: '(Ask something else)', to: '__chat' }, { label: '(Farewell)', to: null }];
   function gossipNode(id) {
@@ -32,13 +32,19 @@ export function createDialogue(G) {
   }
   const resolve = (id) => {
     if (typeof id === 'string' && id.indexOf('__') === 0) return gossipNode(id);   // synthetic gossip / reply nodes
-    const raw = DIALOGUE[treeId][id];
+    const raw = DIALOGUE[treeId] && DIALOGUE[treeId][id];
     return typeof raw === 'function' ? raw(G) : raw;
   };
   const visibleChoices = () => ((current && current.choices) || []).filter((c) => !c.show || c.show(G));
-  const render = () => G.ui.renderDialogue(current.speaker, current.text, visibleChoices(), choiceIdx);
+  const render = () => {
+    if (!current) return;
+    const choices = visibleChoices();
+    choiceIdx = Math.max(0, Math.min(choiceIdx, choices.length - 1));
+    G.ui.renderDialogue(current.speaker, current.text, choices, choiceIdx);
+  };
 
   function close() {
+    revision++;
     treeId = null; current = null;
     G.ui.hideDialogue();
     const cb = onClose; onClose = null;
@@ -47,29 +53,40 @@ export function createDialogue(G) {
   function goto(id) {
     if (id == null) { close(); return; }
     current = resolve(id);
+    if (!current) { if (G.ui.toast) G.ui.toast('This conversation is unavailable.', 'bad', 2400); close(); return; }
+    revision++;
     if (id === 'root' && current && NPC_GOSSIP[treeId]) {   // offer a Chat branch on every NPC with gossip
       current = { ...current, choices: [...((current.choices) || []), { label: '❖ Chat', to: '__chat' }] };
     }
     choiceIdx = 0;
     render();
   }
-  function open(tree, cb) { treeId = tree; onClose = cb || null; G.ui.showDialogue(); goto('root'); }
+  function open(tree, cb) { revision++; treeId = tree; onClose = cb || null; G.ui.showDialogue(); goto('root'); }
   // Ad-hoc dialogue from a plain node object (no DIALOGUE tree needed) — used for
   // ambient guards / the prisoner. Choices use { to: null } to close or { node } to advance inline.
-  function openNode(node, cb) { treeId = '__adhoc'; onClose = cb || null; G.ui.showDialogue(); current = (typeof node === 'function') ? node(G) : node; choiceIdx = 0; render(); }
+  function openNode(node, cb) { revision++; treeId = '__adhoc'; onClose = cb || null; G.ui.showDialogue(); current = (typeof node === 'function') ? node(G) : node; choiceIdx = 0; if (current) render(); else close(); }
   function move(dir) {
     const c = visibleChoices();
     if (!c.length) return;
     choiceIdx = (choiceIdx + dir + c.length) % c.length;
     render();
   }
-  function select() {
+  function select(index) {
+    if (selecting || !current) return;
     const c = visibleChoices();
     if (!c.length) { close(); return; }
+    if (Number.isInteger(index)) choiceIdx = Math.max(0, Math.min(index, c.length - 1));
+    choiceIdx = Math.min(choiceIdx, c.length - 1);
     const ch = c[choiceIdx];
-    if (ch.action) ch.action(G);
-    if (ch.node) { current = (typeof ch.node === 'function') ? ch.node(G) : ch.node; choiceIdx = 0; render(); return; }   // inline ad-hoc branch
-    goto(ch.to !== undefined ? ch.to : null);
+    const before = revision;
+    selecting = true;
+    try {
+      const result = ch.action ? ch.action(G) : undefined;
+      if (revision !== before) return;   // an action opened or closed another conversation
+      if (result === false) { if (DIALOGUE[treeId]) goto('root'); else render(); return; }   // rejected quest offers/turn-ins cannot claim success in the next node
+      if (ch.node) { current = (typeof ch.node === 'function') ? ch.node(G) : ch.node; choiceIdx = 0; revision++; if (current) render(); else close(); return; }
+      goto(ch.to !== undefined ? ch.to : null);
+    } finally { selecting = false; }
   }
 
   return { open, openNode, move, select, close, get active() { return !!current; } };

@@ -3,11 +3,13 @@ import { artGeometry, artModel, contactShadowGeometry } from './realm-art.js';
 import { TAU, damp } from './util.js';
 import { weaponOf } from './content.js';
 import { rimLight } from './shaders.js';
+import { moveAndSlide, segmentCircleBlocked } from './collision.js';
 
 const SPEED = 8.0;          // units/sec
 const TURN = 2.4;           // rad/sec
 const COAST_FWD = 0.42;
 const COAST_TURN = 0.26;
+const COLLISION_RADIUS = .28;
 const CAM_DIST = 11.2, CAM_HEIGHT = 9.2, CAM_LOOK = 2.0, HEAD_Y = 1.5;
 const ATTACK_DUR = 0.34;
 const GATHER_DUR = 0.6;
@@ -339,7 +341,7 @@ export function createPlayer(scene, world) {
     heading: Math.PI,
     hp: 100, maxHp: 100,
     coastFwd: 0, coastBack: 0, coastTurn: 0, coastTurnDir: 0,
-    moving: false, bob: 0, slideBias: 0, slideHold: 0,   // committed wall-slide side + pocket-escape hold (see tryMove)
+    moving: false, wantsMove: false, blocked: false, bob: 0,
 
     attackCd: 0, attackAnim: 0, attackStyle: 'unarmed', animDur: ATTACK_DUR, toolActive: false,
     swingDir: 0, hurt: 0, hurtDir: 0,   // alternate swing direction each stroke + flinch reaction (driven by playHurt)
@@ -388,50 +390,67 @@ export function createPlayer(scene, world) {
   function playGather(kind) { setToolMesh(kind); showTool(true); state.attackStyle = kind; state.attackAnim = GATHER_DUR; state.animDur = GATHER_DUR; }
   function playHurt(dir) { state.hurt = HURT_DUR; state.hurtDir = (dir == null) ? (Math.random() < 0.5 ? -1 : 1) : dir; if (state.attackAnim > 0) state.attackAnim = Math.min(state.attackAnim, state.animDur * 0.2); }   // a hit aborts the swing + recoils the body
 
-  const inB = (b, x, z) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ;
+  const inB = (b, x, z) => x >= b.minX + COLLISION_RADIUS && x <= b.maxX - COLLISION_RADIUS && z >= b.minZ + COLLISION_RADIUS && z <= b.maxZ - COLLISION_RADIUS;
+  const activeSolid = o => !(o.ref && !o.ref.alive);
+  function dynamicBlocked(x, z, radius = COLLISION_RADIUS) {
+    for (const o of state.dynSolids || []) {
+      if (!activeSolid(o)) continue;
+      if ((x - o.x) ** 2 + (z - o.z) ** 2 < (o.r + radius) ** 2) return true;
+    }
+    return false;
+  }
   function clear(x, z) {
-    if (state.bounds) { if (!inB(state.bounds, x, z)) return false; }
-    else if (!world.isWalkable(x, z)) return false;
-    // PERF: spatial grid for static solids (buildings/trees/rocks/etc) + linear scan only for dynamic entities (~230 NPCs/mobs/animals)
-    if (state.worldRef && state.worldRef.inSolidGrid(x, z)) return false;
-    const s = state.dynSolids;
-    if (s) for (let i = 0; i < s.length; i++) { const o = s[i]; const dx = x - o.x, dz = z - o.z; if (dx * dx + dz * dz < o.r * o.r) return false; }
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+    if (state.bounds) return inB(state.bounds, x, z) && !dynamicBlocked(x, z);
+    return world.canStand(x, z, COLLISION_RADIUS, dynamicBlocked);
+  }
+  function traverse(ax, az, bx, bz) {
+    if (state.bounds) {
+      if (!inB(state.bounds, bx, bz)) return false;
+    } else if (!world.canTraverse(ax, az, bx, bz, COLLISION_RADIUS)) return false;
+    for (const o of state.dynSolids || []) {
+      if (activeSolid(o) && segmentCircleBlocked(ax, az, bx, bz, o.x, o.z, o.r + COLLISION_RADIUS)) return false;
+    }
     return true;
   }
-  // Wall-slide deflection ladder: try the intended direction, then steer to ever-wider
-  // angles so you GLIDE along diagonal terrain / bridge edges (and around obstacles)
-  // instead of stopping dead. Deflected steps project onto the intent (cos), so hugging
-  // a wall is a touch slower but movement never sticks — the #1 fix for bridge crossings.
-  // slideBias COMMITS to the side that worked last frame: without it, re-aiming at a target
-  // behind an obstacle alternates ±deflections each frame and they cancel (pinned in place,
-  // "orbiting" a lamp/well forever). With it you keep sliding ONE way and round the obstacle.
-  // Magnitudes run PAST 90° (1.7, 2.1 rad): wedged in a concave pocket between two solids
-  // (plaza lamp + well), every ≤75° deflection still lands inside a circle — the only way out
-  // is briefly sideways-backward. Speed floors at 0.25 there so escaping still moves you.
-  const SLIDE_MAG = [0.3, 0.6, 0.95, 1.3, 1.7, 2.1];
+  let lastSafe = null;
+  function findSafePosition(x, z) {
+    if (!state.bounds) return world.findClear(x, z, COLLISION_RADIUS, dynamicBlocked);
+    const b = state.bounds;
+    x = Math.max(b.minX + COLLISION_RADIUS, Math.min(b.maxX - COLLISION_RADIUS, x));
+    z = Math.max(b.minZ + COLLISION_RADIUS, Math.min(b.maxZ - COLLISION_RADIUS, z));
+    if (clear(x, z)) return { x, z };
+    const range = Math.hypot(b.maxX - b.minX, b.maxZ - b.minZ);
+    for (let r = .1; r <= range; r += .15) {
+      const n = Math.min(96, Math.ceil(TAU * r / .2));
+      for (let i = 0; i < n; i++) {
+        const nx = x + Math.cos(i * TAU / n) * r, nz = z + Math.sin(i * TAU / n) * r;
+        if (clear(nx, nz)) return { x: nx, z: nz };
+      }
+    }
+    return null;
+  }
+  function ensureSafePosition() {
+    const p = group.position;
+    if (!clear(p.x, p.z)) {
+      // Prefer a nearby previously valid foot position when a moving entity enters
+      // the player; never jump back across the map after a deliberate relocation.
+      const previous = lastSafe && Math.hypot(p.x - lastSafe.x, p.z - lastSafe.z) < 1 && clear(lastSafe.x, lastSafe.z) ? lastSafe : null;
+      const safe = previous || findSafePosition(p.x, p.z);
+      if (!safe) return false;
+      p.x = safe.x; p.z = safe.z;
+    }
+    p.y = state.bounds ? state.bounds.y : world.walkHeight(p.x, p.z);
+    lastSafe = { x: p.x, z: p.z };
+    state.pinnedT = 0;
+    return true;
+  }
   function tryMove(dt, dir) {
-    const step = SPEED * dt * Math.abs(dir);
-    const base = state.heading + (dir < 0 ? Math.PI : 0);   // movement direction (forward, or the slower back-pedal)
-    const x = group.position.x, z = group.position.z;
-    const attempt = (ang, spd) => {
-      const a = base + ang, sc = spd != null ? spd : (ang === 0 ? 1 : Math.max(0.25, Math.cos(ang)));
-      const nx = x + Math.sin(a) * step * sc, nz = z + Math.cos(a) * step * sc;
-      if (!clear(nx, nz)) return false;
-      group.position.x = nx; group.position.z = nz;
-      state.slideBias = ang === 0 ? 0 : Math.sign(ang);   // remember which side we slid — keep circling the same way next frame
-      if (Math.abs(ang) >= 1.3) state.slideHold = 6;      // deep in a pocket: hold the slide a few frames so we crab OUT instead of oscillating in-out
-      return true;
-    };
-    if (state.slideHold > 0) state.slideHold--;
-    else if (attempt(0)) return;                           // (during a hold, skip the straight attempt — it would just re-enter the pocket)
-    const first = state.slideBias >= 0 ? 1 : -1;   // committed side first (default right)
-    for (const m of SLIDE_MAG) { if (attempt(first * m) || attempt(-first * m)) return; }
-    // last resorts: axis slide (head-on walls), then a plain backstep — you walked in, so the
-    // way back is open by construction: guarantees you can never be permanently pinned.
-    const fx = Math.sin(base) * step, fz = Math.cos(base) * step;
-    if (clear(x + fx, z)) { group.position.x = x + fx; return; }
-    if (clear(x, z + fz)) { group.position.z = z + fz; return; }
-    attempt(Math.PI, 0.5);
+    const step = SPEED * Math.min(.05, Math.max(0, dt)) * dir;
+    const result = moveAndSlide(group.position.x, group.position.z, Math.sin(state.heading) * step, Math.cos(state.heading) * step, clear, traverse);
+    group.position.x = result.x; group.position.z = result.z;
+    state.blocked = result.blocked;
+    return result.distance > .0005;
   }
 
   function update(dt, input) {
@@ -448,20 +467,20 @@ export function createPlayer(scene, world) {
     state.coastFwd = Math.max(0, state.coastFwd - dt);
     const backing = !walking && (input.keys.has('down') || state.coastBack > 0);
     state.coastBack = Math.max(0, state.coastBack - dt);
-    state.moving = walking || backing;
-    if (walking) tryMove(dt, 1);
-    else if (backing) tryMove(dt, -0.55);   // slower back-pedal
+    state.wantsMove = walking || backing;
+    state.blocked = false;
+    state.moving = walking ? tryMove(dt, 1) : backing ? tryMove(dt, -0.55) : false;
 
     // anti-stuck safety net: if you ever end up INSIDE blocked geometry (clipped into a hillside, a
     // mob wedged onto you, a bad landing) ease to the nearest open ground so you can't be pinned.
     // Only fires when genuinely blocked — normal wall-pressing keeps your own cell clear, so it's silent then.
-    if (!state.bounds && !clear(group.position.x, group.position.z)) {
+    if (!clear(group.position.x, group.position.z)) {
       state.pinnedT = (state.pinnedT || 0) + dt;
-      if (state.pinnedT > 0.35) { const d = world.findClear(group.position.x, group.position.z); group.position.x = d.x; group.position.z = d.z; state.pinnedT = 0; }
-    } else state.pinnedT = 0;
+      if (state.pinnedT > 0.35) ensureSafePosition();
+    } else { state.pinnedT = 0; lastSafe = { x: group.position.x, z: group.position.z }; }
 
-    group.position.y = state.bounds ? state.bounds.y : world.height(group.position.x, group.position.z);
-    groundShadow.position.y=state.bounds ? .17 : (world.surfaceHeight(group.position.x,group.position.z)-group.position.y+.035);
+    group.position.y = state.bounds ? state.bounds.y : (world.walkHeight(group.position.x, group.position.z) ?? group.position.y);
+    groundShadow.position.y = state.bounds ? .17 : .035;
     group.rotation.y = state.heading;
     state.t = (state.t || 0) + dt;
     if (state.moving) state.bob += dt * 11;
@@ -656,7 +675,7 @@ export function createPlayer(scene, world) {
     }
     if (!camReady) { camera.position.set(dX, dY, dZ); camReady = true; }
     else { const k = damp(6, dt); camera.position.x += (dX - camera.position.x) * k; camera.position.y += (dY - camera.position.y) * k; camera.position.z += (dZ - camera.position.z) * k; }
-    if (!state.bounds) { const camFloor = world.height(camera.position.x, camera.position.z) + 2.4; if (camera.position.y < camFloor) camera.position.y = camFloor; }   // ride up over hills instead of clipping through them (e.g. behind you on a bridge)
+    if (!state.bounds) { const camFloor = (world.walkHeight(camera.position.x, camera.position.z) ?? py) + 2.4; if (camera.position.y < camFloor) camera.position.y = camFloor; }
     tmpTarget.set(px + f.x * look, py + HEAD_Y, pz + f.z * look);
     camera.lookAt(tmpTarget);
     if(world.updateView)world.updateView(camera,group.position);
@@ -669,7 +688,8 @@ export function createPlayer(scene, world) {
   return {
     group, state, update, updateCamera, impulseForward, impulseBack, impulseTurn, forwardVec,
     playAttack, playGather, playHurt, refreshEquipment, weapon, handPosition,
-    setBounds(b) { state.bounds = b; },
+    canOccupy: clear, ensureSafePosition, findSafePosition, collisionRadius: COLLISION_RADIUS,
+    setBounds(b) { state.bounds = b; lastSafe = null; state.pinnedT = 0; },
     setSolids(w) { if (w && w.inSolidGrid) { state.worldRef = w; state.dynSolids = w.dynSolids; } else { state.worldRef = null; state.dynSolids = Array.isArray(w) ? w : null; } },   // PERF: world ref → grid collision; plain array → interior furniture
     snapCamera() { camReady = false; }, setCape,
     setCosmetic(c) { cosmetic = c; refreshEquipment(); },

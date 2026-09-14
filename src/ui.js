@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ITEMS, SHOP, PRAYERS, SPELLS, ACHIEVEMENTS, ENEMIES, WEAKNESS, ATK_STYLE, AUTO_MODES } from './content.js';
 import { WORLD_SCALE } from './scale.js';
+import { questNpcName } from './quest-guidance.js';
 
 const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Spells', 'Quests', 'Auto', 'Pets', 'Mastery', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
 
@@ -20,7 +21,8 @@ export function createUI(G) {
   els.compass.innerHTML = DIRS.concat(DIRS, DIRS)
     .map((d) => `<span class="tick ${['N', 'E', 'S', 'W'].includes(d) ? 'card' : ''}">${d}</span>`).join('');
   function setCompass(heading) {
-    const deg = ((heading * 180 / Math.PI) % 360 + 360) % 360;
+    // World heading zero faces +Z (south); the compass is clockwise from north.
+    const deg = ((180 - heading * 180 / Math.PI) % 360 + 360) % 360;
     els.compass.style.transform = `translateX(${110 - 20 - (12 * 40 + deg * (40 / 30))}px)`;
   }
 
@@ -51,7 +53,9 @@ export function createUI(G) {
   function setQuestArrow(rad, label, dist) {
     if (rad == null) { questGuide.classList.add('hidden'); return; }
     questGuide.classList.remove('hidden');
-    qgArrow.style.transform = `rotate(${rad}rad)`;
+    // World bearings increase counterclockwise from the player's view, whereas
+    // CSS rotation is clockwise. A target to the left must point left.
+    qgArrow.style.transform = `rotate(${-rad}rad)`;
     qgLabel.textContent = label; qgLabel.title = label;
     qgDistance.textContent = dist != null ? `${dist}m` : '';
   }
@@ -313,6 +317,7 @@ export function createUI(G) {
     if (sel) els.menuTabs.scrollLeft = sel.offsetLeft - (els.menuTabs.clientWidth - sel.offsetWidth) / 2;   // CSS scroll-behavior:smooth animates the shift so the active tab glides to centre
   }
   function renderMenu() {
+    row = Math.max(0, Math.min(row, rowCount() - 1));
     syncTabs();
     ({ Inventory: renderInventory, Gear: renderGear, Skills: renderSkills, Prayer: renderPrayer, Spells: renderSpells, Quests: renderQuests, Auto: renderAuto, Pets: renderPets, Mastery: renderMastery, Diary: renderDiary, Bestiary: renderBestiary, Log: renderLog, Tasks: renderTasks, Map: renderMap })[TABS[tab]]();
   }
@@ -506,7 +511,7 @@ export function createUI(G) {
     }).join('');
     els.menuBody.innerHTML = html;
   }
-  function npcName(key) { const n = G.entities.npcs.find((x) => x.def.key === key); return n ? n.def.name : key; }
+  function npcName(key) { return questNpcName(key); }
   function renderQuests() {
     const all = G.quests.all();
     const sect = (label, arr, fn) => arr.length ? `<div class="section-head">${label}</div>` + arr.map(fn).join('') : '';
@@ -662,11 +667,13 @@ export function createUI(G) {
   const pickerBodyEl = pickerEl.querySelector('#pickerBody');
   const pickerHintEl = pickerEl.querySelector('#pickerHint');
   let pickerCfg = null, pickerRow = 0, pickerRows = [];
-  function renderPicker() {
+  const pickerKey = r => r && (pickerCfg.rowKey ? pickerCfg.rowKey(r) : JSON.stringify(r.data || { title: r.title }));
+  function renderPicker(selectedKey) {
     if (!pickerCfg) return;
     pickerTitleEl.textContent = pickerCfg.title;
     pickerGoldEl.textContent = '🪙 ' + G.inventory.count('gold');
     pickerRows = pickerCfg.rows();
+    if (selectedKey != null) { const index = pickerRows.findIndex(r => pickerKey(r) === selectedKey); if (index >= 0) pickerRow = index; }
     if (pickerRow >= pickerRows.length) pickerRow = Math.max(0, pickerRows.length - 1);
     let html = '', lastSection = null;
     pickerRows.forEach((r, i) => {
@@ -679,6 +686,45 @@ export function createUI(G) {
   function closePicker() { pickerEl.classList.add('hidden'); pickerCfg = null; }
   function pickerMove(dir) { if (!pickerRows.length) return; pickerRow = (pickerRow + dir + pickerRows.length) % pickerRows.length; renderPicker(); const s = pickerBodyEl.querySelector('.row.sel'); if (s) s.scrollIntoView({ block: 'nearest' }); }
   function pickerSelect() { const r = pickerRows[pickerRow]; if (r && pickerCfg) pickerCfg.onSelect(r); renderPicker(); }
+  function refreshPicker() {
+    if (!pickerCfg?.live || pickerEl.classList.contains('hidden')) return;
+    const key = pickerKey(pickerRows[pickerRow]), scroll = pickerBodyEl.scrollTop;
+    renderPicker(key); pickerBodyEl.scrollTop = scroll;
+  }
+
+  // Pointing at a visible choice selects that choice on phones and desktops;
+  // the directional input path remains available for the glasses and keyboard.
+  const clickedIndex = (event, container, selector) => {
+    const item = event.target.closest(selector);
+    return item && container.contains(item) ? [...container.querySelectorAll(selector)].indexOf(item) : -1;
+  };
+  els.menuTabs.addEventListener('click', event => {
+    if (!api.menuOpen) return;
+    const index = clickedIndex(event, els.menuTabs, '.tab');
+    if (index < 0) return;
+    if (G.audio) G.audio.resume();
+    menuTab(index - tab);
+  });
+  els.menuBody.addEventListener('click', event => {
+    if (!api.menuOpen) return;
+    const index = clickedIndex(event, els.menuBody, '.row');
+    if (index < 0 || index >= rowCount()) return;
+    if (G.audio) G.audio.resume();
+    row = index; menuSelect();
+    if (api.menuOpen) renderMenu();
+  });
+  pickerBodyEl.addEventListener('click', event => {
+    if (!pickerCfg || pickerEl.classList.contains('hidden')) return;
+    const index = clickedIndex(event, pickerBodyEl, '.row');
+    if (index < 0 || index >= pickerRows.length) return;
+    if (G.audio) G.audio.resume();
+    pickerRow = index; pickerSelect();
+  });
+  els.dlgChoices.addEventListener('click', event => {
+    if (els.dialogue.classList.contains('hidden') || !G.dialogue.active) return;
+    const index = clickedIndex(event, els.dlgChoices, '.choice');
+    if (index >= 0) { if (G.audio) G.audio.resume(); G.dialogue.select(index); }
+  });
 
   // ---- cloud sync link panel (so the keyboard-less glasses can SEE + scan the link) ----
   const syncEl = document.createElement('div'); syncEl.id = 'syncPanel'; syncEl.className = 'overlay hidden';
@@ -716,7 +762,7 @@ export function createUI(G) {
     hitsplat, xpDrop, levelBanner, sayAt, updateBubbles, clearBubbles,
     labelLayoutInfo: () => labelInfo,
     openMenu, closeMenu, menuTab, menuMove, menuSelect,
-    openPicker, closePicker, pickerMove, pickerSelect,
+    openPicker, closePicker, pickerMove, pickerSelect, refreshPicker,
     showSync, hideSync, syncOpen,
     showDialogue, hideDialogue, renderDialogue,
   };

@@ -76,6 +76,7 @@ glassrealm/
     input.js      # swipe/tap/double-tap → semantic actions (+ coast-friendly held keys)
     world.js      # procedural island: terrain, water, instanced trees/rocks/bushes, village
     player.js     # character mesh, third-person controller, collision, follow camera
+    collision.js  # swept movement and boundary sliding (pure, independently testable)
     entities.js   # NPCs + boar AI
     interact.js   # nearest-interactable targeting
     ui.js         # HUD, 3D-projected markers, tabbed menu, minimap, dialogue box
@@ -83,6 +84,10 @@ glassrealm/
 ```
 
 ## Tuning notes
+
+- Gameplay system regressions: `node --test tests/*.test.mjs`. See `docs/systems-validation.md` for fixes, save compatibility and isolated browser checks.
+
+- Collision regression tests: `node --test tests/collision.test.mjs`. Route evidence and terrain/bridge rules are described in `docs/collision-validation.md`.
 
 - `player.js`: `SPEED`, `TURN`, `COAST_FWD`, `COAST_TURN`, camera distance/height.
 - `engine.js`: fog near/far and light intensities (kept low so vivid colors don't blow out).

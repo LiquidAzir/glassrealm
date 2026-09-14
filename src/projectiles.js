@@ -30,5 +30,6 @@ export function createProjectiles(scene) {
     }
   }
 
-  return { spawn, update };
+  function clear() { for (const p of list) scene.remove(p.mesh); list.length = 0; }
+  return { spawn, update, clear };
 }
