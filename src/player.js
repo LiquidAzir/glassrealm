@@ -4,6 +4,8 @@ import { TAU, damp } from './util.js';
 import { weaponOf } from './content.js';
 import { rimLight } from './shaders.js';
 import { moveAndSlide, segmentCircleBlocked } from './collision.js';
+import { createGatherTools } from './gather-tools.js';
+import { GATHER_MOTIONS, gatherPose } from './gather-motion.js';
 
 const SPEED = 8.0;          // units/sec
 const TURN = 2.4;           // rad/sec
@@ -12,7 +14,6 @@ const COAST_TURN = 0.26;
 const COLLISION_RADIUS = .28;
 const CAM_DIST = 11.2, CAM_HEIGHT = 9.2, CAM_LOOK = 2.0, HEAD_Y = 1.5;
 const ATTACK_DUR = 0.34;
-const GATHER_DUR = 0.6;
 const HURT_DUR = 0.32;     // flinch reaction length
 const smooth = (x) => { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); };   // smoothstep — eased keyframes so poses never snap
 
@@ -113,8 +114,9 @@ export function createPlayer(scene, world) {
   body.add(part('hero_torso',tunic,0,1.15,0)||mkBox(0.74, 0.82, 0.46, tunic, 0, 1.15, 0));
   const armL = new THREE.Group(); armL.position.set(-0.5, 1.5, 0);
   const upperArmL=part('hero_upper_arm',tunic)||mkBox(.2,.31,.22,tunic.clone(),0,-.155,0);armL.add(upperArmL);
-  armL.add(part('hero_forearm',dark,0,-.31,0)||mkBox(.2,.31,.22,tunic,0,-.465,0)); body.add(armL);
-  const leftFist = mkBox(0.18, 0.18, 0.18, skin, 0, -0.62, 0); armL.add(leftFist);   // left hand — completes the silhouette + grips two-handed weapons
+  const leftForearm=new THREE.Group();leftForearm.position.y=-.31;armL.add(leftForearm);
+  leftForearm.add(part('hero_forearm',dark)||mkBox(.2,.31,.22,tunic,0,-.155,0)); body.add(armL);
+  const leftFist = mkBox(0.18, 0.18, 0.18, skin, 0, -.31, 0); leftForearm.add(leftFist);
   // head rides on its own pivot so it can nod + look around independently of the
   // body (the helm/hood stay on the armor group, so they don't tilt with the face).
   const headPivot = new THREE.Group(); headPivot.position.set(0, 1.81, 0); body.add(headPivot);
@@ -153,7 +155,10 @@ export function createPlayer(scene, world) {
   const weaponHolder = new THREE.Group(); gripPivot.add(weaponHolder);
   weaponHolder.rotation.z = Math.PI;   // weapons are modelled extending -Y; flip so they're held UPRIGHT (blade/orb up), still forward-facing
   const bladeTip = new THREE.Object3D(); bladeTip.position.set(0, -1.0, 0); weaponHolder.add(bladeTip);   // approx blade tip — sampled for the swing trail
-  const toolHolder = new THREE.Group(); hand.add(toolHolder); toolHolder.visible = false;   // axe/pick/rod shown while gathering
+  const toolHolder = new THREE.Group(); body.add(toolHolder); toolHolder.visible = false;
+  toolHolder.name='Gather tool grip';
+  const gatherTools=createGatherTools();
+  let gather=null, currentTool=null;
   const weaponGlows = [];   // orb / magic-glow meshes that shimmer each frame
 
   function clearHolder() { for (let i = weaponHolder.children.length - 1; i >= 0; i--) { if (weaponHolder.children[i] !== bladeTip) weaponHolder.remove(weaponHolder.children[i]); } weaponGlows.length = 0; bladeTip.position.set(0,-1,0); }
@@ -275,24 +280,11 @@ export function createPlayer(scene, world) {
     else {shieldGroup.add(mkBox(.14,.72,.56,m,0,0,0));const boss=new THREE.Mesh(new THREE.IcosahedronGeometry(.1,0),steel);boss.position.x=-.085;shieldGroup.add(boss);}
   }
   function setToolMesh(kind) {
-    while (toolHolder.children.length) toolHolder.remove(toolHolder.children[0]);
-    // Orient each tool the way you'd actually hold it: pick/axe head UP (strike head-first), the rod
-    // angled UP-AND-FORWARD over the water (not dangling upside-down), the ladle bowl-down to dip the pot.
-    if (kind === 'cook') toolHolder.rotation.set(0, 0, 0);
-    else if (kind === 'fish') toolHolder.rotation.set(-0.6, 0, Math.PI);
-    else toolHolder.rotation.set(0, 0, Math.PI);
-    if (kind === 'mine') {                                                    // pickaxe
-      toolHolder.add(mkBox(0.06, 0.95, 0.06, woodMat, 0, -0.5, 0));
-      toolHolder.add(mkBox(0.55, 0.09, 0.09, steel, 0, -0.92, 0));
-    } else if (kind === 'fish') {                                             // fishing rod
-      toolHolder.add(mkBox(0.05, 1.3, 0.05, woodMat, 0, -0.64, 0));
-    } else if (kind === 'cook') {                                             // ladle
-      toolHolder.add(mkBox(0.05, 0.75, 0.05, woodMat, 0, -0.38, 0));
-      toolHolder.add(mkBox(0.2, 0.12, 0.2, steel, 0, -0.76, 0));
-    } else {                                                                  // axe (chop / forage)
-      toolHolder.add(mkBox(0.06, 0.9, 0.06, woodMat, 0, -0.46, 0));
-      toolHolder.add(mkBox(0.3, 0.16, 0.1, steel, 0.12, -0.86, 0));
-    }
+    const next=gatherTools.get(GATHER_MOTIONS[kind]?.tool,gather?.tier||1);
+    if(next===currentTool)return;
+    if(currentTool)toolHolder.remove(currentTool);
+    currentTool=next;
+    if(next){toolHolder.add(next);keepHeroReadable();}
   }
 
   // Stand on the plaza south of the village (clear of the hut ring), facing in.
@@ -385,10 +377,68 @@ export function createPlayer(scene, world) {
   const impulseForward = () => { state.coastFwd = COAST_FWD; };
   const impulseBack = () => { state.coastBack = COAST_FWD; };
   const impulseTurn = (dir) => { state.coastTurnDir = dir; state.coastTurn = COAST_TURN; };
-  function showTool(on) { toolHolder.visible = on; weaponHolder.visible = !on; state.toolActive = on; }
-  function playAttack(style) { if (state.toolActive) showTool(false); state.attackStyle = style || weapon().style; state.attackAnim = ATTACK_DUR; state.animDur = ATTACK_DUR; state.swingDir ^= 1; }
-  function playGather(kind) { setToolMesh(kind); showTool(true); state.attackStyle = kind; state.attackAnim = GATHER_DUR; state.animDur = GATHER_DUR; }
+  function showTool(on) { toolHolder.visible = on && !!currentTool; weaponHolder.visible = !on; shieldGroup.visible = !on; state.toolActive = on; }
+  function stopGather() { gather=null;state.gatherKind=null;state.attackAnim=0;showTool(false); }
+  function playAttack(style) { if (gather) stopGather(); state.attackStyle = style || weapon().style; state.attackAnim = ATTACK_DUR; state.animDur = ATTACK_DUR; state.swingDir ^= 1; }
+  function playGather(kind, options={}) {
+    const motion=GATHER_MOTIONS[kind]||GATHER_MOTIONS.forage;
+    gather={kind:GATHER_MOTIONS[kind]?kind:'forage',time:0,tier:options.tier||1,loop:!!options.loop,onImpact:options.onImpact||null,motion,phase:'wind-up'};
+    state.gatherKind=gather.kind;state.attackStyle=gather.kind;state.attackAnim=0;
+    setToolMesh(gather.kind);showTool(true);
+  }
   function playHurt(dir) { state.hurt = HURT_DUR; state.hurtDir = (dir == null) ? (Math.random() < 0.5 ? -1 : 1) : dir; if (state.attackAnim > 0) state.attackAnim = Math.min(state.attackAnim, state.animDur * 0.2); }   // a hit aborts the swing + recoils the body
+
+  // Solve both elbows toward actual haft grips. The old straight-arm pump let
+  // tools turn through the wrist and left the shield occupying the other hand.
+  const down=new THREE.Vector3(0,-1,0),aim=new THREE.Vector3(),bend=new THREE.Vector3(),elbow=new THREE.Vector3(),end=new THREE.Vector3(),lower=new THREE.Vector3();
+  const inverseArm=new THREE.Quaternion(),idleArm=new THREE.Quaternion(),gripPoint=new THREE.Vector3(),offGrip=new THREE.Vector3(),contactPoint=new THREE.Vector3();
+  const workPose={};let gripError=0;
+  function reach(upper,lowerArm,target,side) {
+    aim.copy(target).sub(upper.position);
+    const rawDistance=aim.length(),distance=Math.min(.619,Math.max(.025,rawDistance));
+    aim.multiplyScalar(1/Math.max(.00001,rawDistance));
+    end.copy(upper.position).addScaledVector(aim,distance);
+    bend.set(side,-.35,-.28).addScaledVector(aim,-bend.dot(aim)).normalize();
+    const half=distance*.5,height=Math.sqrt(Math.max(0,.31*.31-half*half));
+    elbow.copy(upper.position).addScaledVector(aim,half).addScaledVector(bend,height);
+    lower.copy(elbow).sub(upper.position).normalize();upper.quaternion.setFromUnitVectors(down,lower);
+    inverseArm.copy(upper.quaternion).invert();
+    lower.copy(end).sub(elbow).normalize().applyQuaternion(inverseArm);
+    lowerArm.quaternion.setFromUnitVectors(down,lower);
+    gripError=Math.max(gripError,Math.max(0,rawDistance-distance));
+  }
+  function updateGather(dt) {
+    const active=gather;if(!active)return 0;
+    const before=active.time/active.motion.duration;
+    active.time+=dt;
+    const after=active.time/active.motion.duration;
+    const p=active.loop?after%1:Math.min(1,after);
+    const pose=gatherPose(active.kind,p,workPose);active.phase=pose.phase;
+    body.rotation.x=pose.lean;body.rotation.y=pose.twist;body.position.z=0;
+    rightArm.position.x=.42;armL.position.x=-.42;
+    toolHolder.position.set(pose.x,pose.y,pose.z);toolHolder.rotation.set(pose.pitch,pose.yaw,0);toolHolder.scale.setScalar(1.2);
+    gripPoint.copy(toolHolder.position);gripError=0;
+    reach(rightArm,forearm,gripPoint,1);
+    if(currentTool&&active.kind!=='chop'){offGrip.set(0,-.16,0).multiplyScalar(1.2).applyEuler(toolHolder.rotation).add(gripPoint);reach(armL,leftForearm,offGrip,-1);}
+    else {offGrip.set(-.34,1.1,.15);reach(armL,leftForearm,offGrip,-1);}
+    // Keep fists aligned with the handle, including the recovery portion.
+    inverseArm.copy(rightArm.quaternion).multiply(forearm.quaternion).invert();
+    hand.quaternion.copy(inverseArm).multiply(toolHolder.quaternion);
+    legL.rotation.x=-pose.lean*.55;legR.rotation.x=pose.lean*.3;
+    headPivot.rotation.x=pose.lean*.6;headPivot.rotation.y=-pose.twist*.35;
+    const hit=active.motion.impact;
+    if(Math.floor(before-hit)<Math.floor(after-hit)&&active.onImpact){
+      if(currentTool){contactPoint.fromArray(currentTool.userData.gather.contact);toolHolder.updateWorldMatrix(true,false);toolHolder.localToWorld(contactPoint);}
+      else{body.updateWorldMatrix(true,false);contactPoint.copy(gripPoint);body.localToWorld(contactPoint);}
+      active.onImpact(contactPoint,active.kind);
+    }
+    if(!active.loop&&after>=1)stopGather();
+    return pose.crouch;
+  }
+  function gatherState() {
+    if(!gather)return null;
+    return {kind:gather.kind,tool:currentTool?.userData.gather.kind||null,tier:gather.tier,phase:gather.phase,cycle:+((gather.time/gather.motion.duration)%1).toFixed(3),gripError:+gripError.toFixed(4),shieldVisible:shieldGroup.visible,weaponVisible:weaponHolder.visible};
+  }
 
   const inB = (b, x, z) => x >= b.minX + COLLISION_RADIUS && x <= b.maxX - COLLISION_RADIUS && z >= b.minZ + COLLISION_RADIUS && z <= b.maxZ - COLLISION_RADIUS;
   const activeSolid = o => !(o.ref && !o.ref.alive);
@@ -506,6 +556,12 @@ export function createPlayer(scene, world) {
     const l2hX = -0.35, l2hZ = 1.15;                                                                        // off-hand reaches the haft without the near-horizontal over-rotation
 
     let crouch = 0;   // attack dip/rise, folded into the vertical compose below
+    if(!gather){
+      rightArm.position.x=.5;armL.position.x=-.5;
+      rightArm.rotation.y=0;armL.rotation.y=0;forearm.rotation.y=0;
+      leftForearm.quaternion.slerp(idleArm,gk);
+      hand.rotation.y=0;hand.rotation.z=0;
+    }
 
     // ---- hurt flinch takes priority: a hit aborts the swing and recoils the whole body ----
     if (state.hurt > 0) {
@@ -525,6 +581,7 @@ export function createPlayer(scene, world) {
       legR.rotation.x += (0.3 * k2 - legR.rotation.x) * gk;
       hand.rotation.x += (0.22 - hand.rotation.x) * gk;
     }
+    else if(gather) { crouch=updateGather(dt); }
     // ---- attack: a full-body swing, not just an arm pump ----
     else if (state.attackAnim > 0) {
       state.attackAnim = Math.max(0, state.attackAnim - dt);
@@ -544,25 +601,6 @@ export function createPlayer(scene, world) {
           } else { const u = smooth((p - 0.6) / 0.4);
             rArmX = -2.2 + 1.7 * u; aLX = -1.7 + 1.3 * u; lunge = 0.2 * u; headX = 0.12 - 0.2 * u;
           } break; }
-        case 'chop': {                                                 // axe: two big overhead bites, leaning in on each
-          const sw = Math.abs(Math.sin(p * Math.PI * 2));
-          rArmX = -2.0 * sw; twist = Math.sin(p * Math.PI * 2) * 0.28; lunge = 0.1 * sw; crouch = -0.12 * (1 - sw); headX = 0.18 * sw;
-          break; }
-        case 'mine': {                                                 // pick: two downward strikes
-          const sw = Math.abs(Math.sin(p * Math.PI * 2));
-          rArmX = -1.8 * sw; twist = Math.sin(p * Math.PI * 2) * 0.22; lunge = 0.08 * sw; crouch = -0.16 * (1 - sw); headX = 0.22 * sw;
-          break; }
-        case 'fish': {                                                 // rod: cast out, then settle
-          const s = Math.sin(p * Math.PI);
-          rArmX = -1.5 + 0.6 * s; lunge = 0.16 * s; twist = 0.12 * s; headX = -0.06 * s; break;
-        }
-        case 'cook': {                                                 // ladle: stir the pot
-          rArmX = -0.9 + 0.3 * Math.sin(p * Math.PI * 3); twist = Math.sin(p * Math.PI * 3) * 0.1; crouch = -0.04; break;
-        }
-        case 'forage': {                                               // reach down to the ground
-          const s = Math.sin(p * Math.PI);
-          rArmX = -1.0 * s; crouch = -0.22 * s; lunge = 0.1 * s; headX = 0.3 * s; break;
-        }
         default: {                                                     // melee / unarmed: wind-up → full-body slash
           const big = twoH ? 1.18 : 1;                                  // two-handers swing wider
           if (p < 0.32) { const u = smooth(p / 0.32);                  // wind-up: coil
@@ -687,7 +725,7 @@ export function createPlayer(scene, world) {
 
   return {
     group, state, update, updateCamera, impulseForward, impulseBack, impulseTurn, forwardVec,
-    playAttack, playGather, playHurt, refreshEquipment, weapon, handPosition,
+    playAttack, playGather, stopGather, gatherState, playHurt, refreshEquipment, weapon, handPosition,
     canOccupy: clear, ensureSafePosition, findSafePosition, collisionRadius: COLLISION_RADIUS,
     setBounds(b) { state.bounds = b; lastSafe = null; state.pinnedT = 0; },
     setSolids(w) { if (w && w.inSolidGrid) { state.worldRef = w; state.dynSolids = w.dynSolids; } else { state.worldRef = null; state.dynSolids = Array.isArray(w) ? w : null; } },   // PERF: world ref → grid collision; plain array → interior furniture

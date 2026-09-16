@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ITEMS, SHOP, PRAYERS, SPELLS, ACHIEVEMENTS, ENEMIES, WEAKNESS, ATK_STYLE, AUTO_MODES } from './content.js';
-import { WORLD_SCALE } from './scale.js';
+import { createMinimap } from './minimap.js';
 import { questNpcName } from './quest-guidance.js';
 
 const TABS = ['Inventory', 'Gear', 'Skills', 'Prayer', 'Spells', 'Quests', 'Auto', 'Pets', 'Mastery', 'Diary', 'Bestiary', 'Log', 'Tasks', 'Map'];
@@ -63,8 +63,8 @@ export function createUI(G) {
   // minimap (top-right) — a live local map centred on the player
   const minimap = document.createElement('canvas'); minimap.id = 'minimap'; minimap.width = 116; minimap.height = 116;
   document.getElementById('hud').appendChild(minimap);
-  const mmCtx = minimap.getContext('2d');
-  function setMinimapVisible(on) { minimap.style.display = on ? '' : 'none'; }
+  const localMap = createMinimap(G, minimap);
+  function setMinimapVisible(on) { localMap.setVisible(on); }
 
   // gathering channel progress bar (bottom-centre)
   const channelEl = document.createElement('div'); channelEl.id = 'channelBar'; channelEl.className = 'hidden';
@@ -621,41 +621,7 @@ export function createUI(G) {
   }
 
   function updateMinimap() {
-    const ctx = mmCtx, S = 116, R = 75 * WORLD_SCALE;         // 116px canvas shows ~75 (scaled) world units around the player
-    const px = G.player.position.x, pz = G.player.position.z, sc = (S / 2) / R;
-    const to = (x, z) => [S / 2 + (x - px) * sc, S / 2 + (z - pz) * sc];
-    ctx.clearRect(0, 0, S, S);
-    ctx.save(); ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 1, 0, 7); ctx.clip();
-    ctx.fillStyle = '#08222a'; ctx.fillRect(0, 0, S, S);
-    for (const r of G.world.regions) { const [x, y] = to(r.x, r.z); ctx.fillStyle = BIOME_MAP_COL[r.biome] || '#2f7d4a'; ctx.beginPath(); ctx.arc(x, y, r.r * sc, 0, 7); ctx.fill(); }
-    ctx.lineCap = 'round';
-    for (const b of G.world.bridges) { const [x1, y1] = to(b.ax, b.az), [x2, y2] = to(b.bx, b.bz); const ferry = b.type === 'ferry'; ctx.strokeStyle = ferry ? '#5fd6e6' : '#cdb98a'; ctx.setLineDash(ferry ? [5, 4] : []); ctx.lineWidth = Math.max(2, b.halfW * 2 * sc); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
-    ctx.setLineDash([]);
-    if (G.world.dungeons) { ctx.fillStyle = '#7a4a8a'; for (const d of G.world.dungeons) { const [x, y] = to(d.x, d.z); ctx.beginPath(); ctx.arc(x, y, Math.max(2, d.r * sc), 0, 7); ctx.fill(); } }
-    { const cv = G.world.cave; const [x, y] = to(cv.x, cv.z); ctx.fillStyle = '#5a5550'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, cv.r * sc), 0, 7); ctx.fill(); }
-    if (G.world.cave2) { const c2 = G.world.cave2; const [x, y] = to(c2.x, c2.z); ctx.fillStyle = '#5a6a80'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, c2.r * sc), 0, 7); ctx.fill(); }
-    ctx.fillStyle = '#caa050'; for (const m of (G.world.mines || [])) { const dx = m.x - px, dz = m.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(m.x, m.z); ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill(); }
-    ctx.fillStyle = '#ffd45f'; for (const v of G.world.villages) { const [x, y] = to(v.x, v.z); ctx.fillRect(x - 2, y - 2, 4, 4); }
-    for (const wp of (G.world.waystones || [])) { const dx = wp.x - px, dz = wp.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(wp.x, wp.z); ctx.fillStyle = (G.waystonesAttuned && G.waystonesAttuned.has(wp.key)) ? '#9bf2ff' : '#3a5a66'; ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-2, -2, 4, 4); ctx.restore(); }
-    // building-type chips (letters) for the local town when zoomed in
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 7px sans-serif';
-    for (const s of G.world.stations) {
-      if (s.kind !== 'door') continue;
-      const dx = s.x - px, dz = s.z - pz; if (dx * dx + dz * dz > R * R) continue;
-      const [x, y] = to(s.x, s.z);
-      ctx.fillStyle = BUILD_COL[s.building] || '#caa878'; ctx.beginPath(); ctx.arc(x, y, 3.4, 0, 7); ctx.fill();
-      ctx.fillStyle = '#08161c'; ctx.fillText(BUILD_ICON[s.building] || '?', x, y + 0.5);
-    }
-    ctx.textBaseline = 'alphabetic';
-    const mmGivers = new Set(G.quests.all().filter((q) => q.status === 'available').map((q) => q.def.giver));
-    for (const n of G.entities.npcs) { const dx = n.pos.x - px, dz = n.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const gv = mmGivers.has(n.def.key); const [x, y] = to(n.pos.x, n.pos.z); ctx.fillStyle = gv ? '#ffd24a' : '#5fe3ff'; ctx.beginPath(); ctx.arc(x, y, gv ? 2.6 : 1.7, 0, 7); ctx.fill(); }
-    for (const e of G.entities.enemies) { if (!e.alive) continue; const dx = e.pos.x - px, dz = e.pos.z - pz; if (dx * dx + dz * dz > R * R) continue; const [x, y] = to(e.pos.x, e.pos.z); ctx.fillStyle = e.def.boss ? '#ff3a2a' : '#ff6b6b'; ctx.beginPath(); ctx.arc(x, y, e.def.boss ? 3 : 1.7, 0, 7); ctx.fill(); }
-    if (G.questGuide) { const [x, y] = to(G.questGuide.x, G.questGuide.z); ctx.fillStyle = '#6db3ff'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#ffffff'; ctx.stroke(); }
-    ctx.restore();
-    ctx.strokeStyle = '#8c7549'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 1, 0, 7); ctx.stroke();
-    ctx.save(); ctx.translate(S / 2, S / 2); ctx.rotate(Math.PI - G.player.state.heading);
-    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(4, 4); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill(); ctx.restore();
-    ctx.fillStyle = '#e6cd8d'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('N', S / 2, 11);
+    localMap.update();
   }
 
   // ---- picker (shop / forge / bank) — generic list overlay ----

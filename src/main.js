@@ -391,7 +391,6 @@ try {
 
   G.chopTree = (t) => {
     world.removeTree(t.idx);
-    player.playGather('chop');
     G.fx.burst(t.x, t.y + 1.6, t.z, 0x9a6a3a, { n: 9, up: 2.6 });
     const lvl = G.skills.level('woodcutting');
     // every tree yields Driftwood (keeps 'wood' flowing for quests/recipes); higher
@@ -406,7 +405,6 @@ try {
   };
   G.forageBush = (b) => {
     world.harvestBush(b.idx);
-    player.playGather('forage');
     G.fx.burst(b.x, b.y + 0.8, b.z, 0x4f9a40, { n: 7, up: 2.0 });
     const lvl = G.skills.level('foraging'), roll = Math.random();
     let item, label;
@@ -507,7 +505,6 @@ try {
   const ORE_FX = { mithril: 0x6fa8d8, gem_rock: 0x6fe0ff, essence: 0xb98fff, silver: 0xd8e0ec, gold: 0xf4d24a, adamant: 0x6aa07a, runite: 0x5ab8d0 };
   G.mineOre = (o) => {
     world.depleteOre(o);
-    player.playGather('mine');
     G.fx.burst(o.x, o.y + 0.6, o.z, ORE_FX[o.type] || 0x9aa0a8, { n: 9, up: 2.4 });
     if (o.type === 'gem_rock') {
       const gr = Math.random(); const gem = gr < 0.2 ? 'ruby' : gr < 0.5 ? 'emerald' : 'sapphire';
@@ -523,7 +520,6 @@ try {
     checkQuestReady(); G.save.save();
   };
   G.fishSpot = (f) => {
-    player.playGather('fish');
     if (f) G.fx.burst(f.x, (f.y || 0) + 0.3, f.z, 0x9bf2ff, { n: 8, up: 2.2 });
     const lvl = G.skills.level('fishing');
     const pool = FISH.filter((fi) => lvl >= fi.level);
@@ -542,7 +538,6 @@ try {
   };
   G.harvestHive = (h) => {
     world.depleteHive(h);
-    player.playGather('forage');
     G.fx.burst(h.x, (h.y || 0) + 1.2, h.z, 0xf4c24a, { n: 12, spread: 1.8, up: 2.4 });
     const lvl = G.skills.level('foraging');
     G.inventory.add('honey', 1 + (Math.random() < 0.4 ? 1 : 0));
@@ -936,7 +931,7 @@ try {
     if (G.channel) return;
     const r = SMELT.find((x) => x.out === out); if (!r || maxSmelt(r) < 1) return;
     const dur = Math.max(1.6, Math.min(6, maxSmelt(r) * 0.9));
-    startChannel(dur, 'mine', `Smelting ${ITEMS[out].name}…`, () => {
+    startChannel(dur, 'smith', `Smelting ${ITEMS[out].name}…`, () => {
       const made = maxSmelt(r);
       if (made > 0) { for (const k in r.in) G.inventory.remove(k, r.in[k] * made); G.inventory.add(out, made); G.gainXp('smithing', r.xp * made); }
       if (made) { if (G.fx) G.fx.burst(player.position.x, player.position.y + 1.2, player.position.z, 0xff7a33, { n: 12, spread: 2.2, up: 3, life: 0.8 }); G.ui.toast(`Smelted ${made} × ${ITEMS[out].name}`, 'good', 2400); G.audio.sfx('pickup'); if (G.ach) G.ach.evaluate(); checkQuestReady(); G.save.save(); }
@@ -1800,11 +1795,11 @@ try {
     const lvl = (k) => G.skills.level(k);
     // best gathering tool you own for a skill auto-speeds the channel (Toolsmithing payoff)
     const toolSpeed = (skill) => { let f = 1; for (const it of G.inventory.list()) { const d = it.def; if (d && d.type === 'tool' && d.tool === skill && d.speed < f) f = d.speed; } return f * (G.petGather ? G.petGather() : 1) * (G.perkGather ? G.perkGather(skill) : 1) * (G.weatherGather ? G.weatherGather(skill) : 1) * (G.factionGatherMult ? G.factionGatherMult() : 1); };
-    if (t.kind === 'tree') startChannel(Math.max(1.8, (4 - lvl('woodcutting') * 0.03) * toolSpeed('woodcutting')), 'chop', 'Chopping…', () => G.chopTree(t.ref));
-    else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref));
-    else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(3, (7 - lvl('mining') * 0.04) * toolSpeed('mining')), 'mine', 'Mining…', () => G.mineOre(t.ref)); }
-    else if (t.kind === 'fish') startChannel(Math.max(3, (7 - lvl('fishing') * 0.04) * toolSpeed('fishing')), 'fish', 'Fishing…', () => G.fishSpot(t.ref));
-    else if (t.kind === 'hive') { if (lvl('foraging') < 10) G.ui.toast('Needs Foraging level 10 to rob a hive', 'bad', 2200); else startChannel(Math.max(1.8, 3 - lvl('foraging') * 0.02), 'forage', 'Robbing the hive…', () => G.harvestHive(t.ref)); }
+    if (t.kind === 'tree') startChannel(Math.max(1.8, (4 - lvl('woodcutting') * 0.03) * toolSpeed('woodcutting')), 'chop', 'Chopping…', () => G.chopTree(t.ref), t.ref);
+    else if (t.kind === 'bush') startChannel(Math.max(1.6, 2.5 - lvl('foraging') * 0.02), 'forage', 'Foraging…', () => G.forageBush(t.ref), t.ref);
+    else if (t.kind === 'ore') { const req = ORE_LEVEL[t.ref.type] || 1; if (lvl('mining') < req) G.ui.toast(`Needs Mining level ${req} to mine that`, 'bad', 2000); else startChannel(Math.max(3, (7 - lvl('mining') * 0.04) * toolSpeed('mining')), 'mine', 'Mining…', () => G.mineOre(t.ref), t.ref); }
+    else if (t.kind === 'fish') startChannel(Math.max(3, (7 - lvl('fishing') * 0.04) * toolSpeed('fishing')), 'fish', 'Fishing…', () => G.fishSpot(t.ref), t.ref);
+    else if (t.kind === 'hive') { if (lvl('foraging') < 10) G.ui.toast('Needs Foraging level 10 to rob a hive', 'bad', 2200); else startChannel(Math.max(1.8, 3 - lvl('foraging') * 0.02), 'forage', 'Robbing the hive…', () => G.harvestHive(t.ref), t.ref); }
     else if (t.kind === 'station') G.useStation(t.ref);
     else if (t.kind === 'plot') G.plotAction(t.ref);
     else if (t.kind === 'stall') G.thieveStall(t.ref);
@@ -1819,15 +1814,26 @@ try {
   }
 
   // ---------- channelled gathering (timed action: progress bar + looping tool animation) ----------
-  let channelAnimT = 0;
-  function startChannel(dur, anim, label, onDone) {
-    G.channel = { t: 0, dur, anim, label, onDone };
-    channelAnimT = 0;
-    player.playGather(anim);
-    G.audio.sfx(anim === 'fish' ? 'cast' : 'hit');
+  function startChannel(dur, anim, label, onDone, target=null) {
+    if(G.channel)return;
+    G.channel = { t: 0, dur, anim, label, onDone, target };
+    if(target&&Number.isFinite(target.x)&&Number.isFinite(target.z)) {
+      autoHalt();input.clearHeld();player.state.wantsMove=false;player.state.moving=false;
+      player.state.heading=Math.atan2(target.x-player.position.x,target.z-player.position.z);
+      player.group.rotation.y=player.state.heading;
+    }
+    const skill={chop:'woodcutting',mine:'mining',fish:'fishing'}[anim];
+    let best=null;
+    for(const item of G.inventory.list())if(skill&&item.def?.type==='tool'&&item.def.tool===skill&&(!best||item.def.speed<best.speed))best=item.def;
+    const visualKind=anim==='fish'&&best?'harpoon':anim;
+    player.playGather(visualKind,{loop:true,tier:best?.tier||1,onImpact:()=>{
+      if(!G.channel)return;
+      if(anim==='fish')G.audio.sfx('cast');
+      else if(anim==='chop'||anim==='mine'||anim==='smith')G.audio.sfx('hit');
+    }});
     G.ui.setChannel(0, label);
   }
-  function cancelChannel() { if (G.channel) { G.channel = null; G.ui.hideChannel(); } }
+  function cancelChannel() { if (G.channel) { G.channel = null; player.stopGather(); G.ui.hideChannel(); } }
   function updatePrayer(dt) {
     const st = player.state, ap = PRAYERS.find((p) => p.key === st.activePrayer);
     if (!ap) return;
@@ -1858,10 +1864,9 @@ try {
   function updateChannel(dt) {
     const c = G.channel; if (!c) return;
     if (player.state.wantsMove) { cancelChannel(); return; }   // a blocked walk attempt must still cancel gathering
-    c.t += dt; channelAnimT += dt;
-    if (channelAnimT >= 0.55) { channelAnimT = 0; player.playGather(c.anim); G.audio.sfx(c.anim === 'fish' ? 'cast' : 'hit'); }   // keep the tool swinging
+    c.t += dt;
     G.ui.setChannel(Math.min(1, c.t / c.dur), c.label);
-    if (c.t >= c.dur) { const done = c.onDone; G.channel = null; G.ui.hideChannel(); done(); }
+    if (c.t >= c.dur) { const done = c.onDone; G.channel = null; player.stopGather(); G.ui.hideChannel(); done(); }
   }
 
   // ---------- auto-attack: lock a foe and keep hitting it at the weapon's cadence ----------
@@ -2239,6 +2244,7 @@ try {
     player:{...window.__gr.pos,heading:player.state.heading,hp:player.state.hp,equipment:player.state.equipment},
     target:window.__gr.target(),region:document.getElementById('locLabel').textContent,
     inventory:G.inventory.list().map(it=>({key:it.key,n:it.count})),
+    gathering:player.gatherState(),channel:G.channel?{label:G.channel.label,progress:+(G.channel.t/G.channel.dur).toFixed(3)}:null,
     art:artState,render:{calls:window.__gr.drawCalls,triangles:window.__gr.triangles}
   });
   window.advanceTime = (ms) => { window.__gr.pause();window.__gr.step(Math.max(1,Math.ceil(ms/16))); };

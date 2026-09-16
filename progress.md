@@ -1,5 +1,19 @@
 Original prompt: Give Glass Realm a major graphical overhaul inspired by RuneScape and some World of Warcraft, using Blender and potentially Unity, while working on display glasses and ordinary screens. Pull latest GitHub first and follow the supplied builder/critic and evidence-based development principles.
 
+## Gathering and minimap production release, 2026-09-16
+- User explicitly approved publishing the reviewed gathering and minimap pass. Fresh origin/main remains e3a8264; all seven runtime source hashes match the independent final review exactly.
+- Release contains the reviewed runtime changes, the three motion regressions, and validation notes. Existing production target is https://glassrealm.onrender.com/ on Render's main branch. No cloud worker, configuration, or user save changes are included.
+- Deployment status, exact live-file comparisons, and isolated production browser verification are recorded in workspace .visual-review/realm-gather-map/production/.
+
+## Gathering and minimap polish, 2026-09-16 (complete locally)
+- Current request: correct woodcutting/mining tools and motions, and improve the top-right minimap while retaining the lightweight glasses renderer. Canonical checkout was clean at e3a8264 after a fresh fetch.
+- Baseline confirms incorrect forage axe, gathering while facing away from resources, a shield still occupying the off-hand, rebuilt meshes every 0.55 seconds, and delayed tool restoration on cancellation.
+- Added cached recognizable gathering tools, continuous eased work cycles, handle-following arm joints, target facing, and immediate cancel/completion restoration. Harvest timings/reward callbacks and stored equipment remain authoritative; no new per-stroke gameplay rewards.
+- The minimap now shows rendered coastlines, relief, paving, buildings, and actual crossings in a cached atlas. A compass bezel and restrained quest/foe markers retain the original HUD footprint and indoor hiding; world generation and collision queries remain unchanged.
+- Final gates pass:64 repository Node tests,35 gathering lifecycle checks,31 independent map checks,33 pose/cache/equipment checks,4 final harpoon checks,5 menu/pause checks. Standard game client chopping/mining sequences and clear side-view wind-up/contact frames were inspected. No browser errors; reward/XP deltas match the baseline exactly.
+- Held tools use two draws and160–280 triangles, shared cached geometry, and no per-stroke mesh rebuilding. Warm minimap redraw measured0.10ms median/0.20ms p95; representative scenes remain below100k triangles. These browser measurements do not certify physical-glasses performance.
+- Evidence and isolated baseline/current browser work are under workspace .visual-review/realm-gather-map/; see docs/gathering-map-validation.md. Local comparison: http://127.0.0.1:5433/; playable preview: http://127.0.0.1:5432/ (cloud saves disabled by the local server only). No production deployment has been performed for this pass.
+
 ## Production release, 2026-09-14
 - User explicitly requested publication of all completed work for play on the glasses. This release includes the reviewed collision and systems passes below, retaining the live second-round artwork.
 - Fresh GitHub main is9a2d85e. All37 reviewed files match the preserved September8 manifest exactly before this release note. The61 Node regressions and37 dialogue browser checks pass again; the full isolated systems browser suite is included in release verification.

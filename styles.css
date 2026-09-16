@@ -68,7 +68,7 @@ body { display:flex; align-items:center; justify-content:center; }
 .compass-track .tick.card { color:#ffe2a2; font:700 14px var(--display); }
 .compass-center { position:absolute; left:50%; top:0; width:0; height:0; transform:translateX(-50%); border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid #f2d79d; }
 #compass::after { content:""; position:absolute; bottom:0; left:50%; height:3px; width:1px; background:#f2d79d; }
-#minimap { position:absolute; top:var(--safe); right:var(--safe); width:116px; height:116px; border-radius:50%; border:2px solid #c0a574; background:#1d3428; box-shadow:0 0 0 3px #253126,0 0 0 4px #756542,0 3px 5px #0008; }
+#minimap { position:absolute; top:var(--safe); right:var(--safe); width:116px; height:116px; border-radius:50%; border:2px solid #b9a579; background:#172b31; box-shadow:0 0 0 2px #17282b,0 0 0 3px #776b51,0 3px 5px #0008; }
 #questGuide { position:absolute; left:50%; top:49px; transform:translateX(-50%); display:flex; align-items:center; gap:8px; padding:7px 10px; background:rgba(22,31,25,.91); border:1px solid #8a7951; border-radius:4px; max-width:236px; }
 .qg-arrow { display:inline-block; flex:0 0 20px; width:20px; height:25px; transition:transform 120ms linear; }
 .qg-arrow path { stroke:#f2d395; }
