@@ -1,3 +1,4 @@
+// Entry point: wires up the engine, world, player, and UI systems for Glassrealm.
 import * as THREE from 'three';
 import { createEngine } from './engine.js';
 import { loadRealmArt, artState } from './realm-art.js';
