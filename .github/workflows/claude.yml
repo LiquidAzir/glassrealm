@@ -13,9 +13,12 @@ on:
 jobs:
   claude:
     # Comments from bots (Claude's own progress comment, Codex) never re-trigger a run.
+    # Only the repo owner, org members and collaborators can trigger a run. On a
+    # public repo, anyone else commenting "@claude" must not be able to spend the
+    # OAuth token or drive a workflow that has write access to the repository.
     if: |
-      (github.event.comment && github.event.comment.user.type != 'Bot' && contains(github.event.comment.body, '@claude')) ||
-      (!github.event.comment && github.event.issue && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event.comment && github.event.comment.user.type != 'Bot' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (!github.event.comment && github.event.issue && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -70,6 +70,7 @@ glassrealm/
   index.html            # 600x600 canvas + HUD/menu/dialogue overlays + importmap
   styles.css            # additive-display palette, HUD, menu, dialogue, focus states
   lib/three.module.js   # vendored Three.js r160 (self-contained)
+  lib/qrcode.js         # vendored qrcode-generator 1.4.4 (MIT) — draws the sync-link QR locally
   src/
     main.js       # bootstrap, mode state machine (world/menu/dialogue), game loop, verbs
     engine.js     # renderer, camera, lights, fog

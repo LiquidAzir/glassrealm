@@ -698,9 +698,21 @@ export function createUI(G) {
   app.appendChild(syncEl);
   const syncLinkEl = syncEl.querySelector('#syncLink');
   const syncQrEl = syncEl.querySelector('#syncQr');
+// Render a QR code locally (vendored qrcode-generator, MIT) as an SVG data URL so the
+  // private sync link never leaves the device. Returns '' if the library is unavailable.
+  function localQrDataUrl(text) {
+    try {
+      const make = (typeof window !== 'undefined') ? window.qrcode : null;
+      if (typeof make !== 'function') return '';
+      const q = make(0, 'M'); q.addData(text); q.make();
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(q.createSvgTag({ cellSize: 4, margin: 8, scalable: true }));
+    } catch (e) { return ''; }
+  }
   function showSync(link) {
     syncLinkEl.textContent = link;
-    syncQrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=' + encodeURIComponent(link);
+    const qrUrl = localQrDataUrl(link);
+    if (qrUrl) { syncQrEl.src = qrUrl; syncQrEl.style.display = ''; }
+    else { syncQrEl.removeAttribute('src'); syncQrEl.style.display = 'none'; }
     syncEl.classList.remove('hidden');
   }
   function hideSync() { syncEl.classList.add('hidden'); }
